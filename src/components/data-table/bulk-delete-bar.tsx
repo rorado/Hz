@@ -17,7 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 type DeleteResult = { error?: string } | void;
 
@@ -38,6 +39,7 @@ export function BulkDeleteBar({
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -68,7 +70,9 @@ export function BulkDeleteBar({
   return (
     <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
       <p className="text-sm font-medium">
-        {count.toLocaleString("ar")} عنصر محدد
+        {formatMessage(t.common.itemsSelectedTemplate, {
+          count: count.toLocaleString(locale),
+        })}
       </p>
       <div className="flex gap-2">
         <Button
@@ -77,28 +81,29 @@ export function BulkDeleteBar({
           disabled={isPending}
           onClick={onClearSelection}
         >
-          إلغاء التحديد
+          {t.common.clearSelection}
         </Button>
         <AlertDialog open={open} onOpenChange={handleOpenChange}>
           <AlertDialogTrigger
             render={
               <Button variant="destructive" size="sm">
                 <Trash2 className="size-4" />
-                حذف المحدد
+                {t.common.deleteSelected}
               </Button>
             }
           />
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{ar.common.confirmDeleteTitle}</AlertDialogTitle>
+              <AlertDialogTitle>{t.common.confirmDeleteTitle}</AlertDialogTitle>
               <AlertDialogDescription>
-                سيتم حذف {count.toLocaleString("ar")} عنصر نهائياً. لا يمكن
-                التراجع عن هذا الإجراء.
+                {formatMessage(t.common.bulkDeleteConfirmDescription, {
+                  count: count.toLocaleString(locale),
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             {requirePassword && (
               <div className="space-y-2 px-1">
-                <Label htmlFor="bulk-delete-password">كلمة مرور الحذف</Label>
+                <Label htmlFor="bulk-delete-password">{t.common.deletePasswordLabel}</Label>
                 <Input
                   id="bulk-delete-password"
                   type="password"
@@ -107,18 +112,18 @@ export function BulkDeleteBar({
                   disabled={isPending}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="أدخل كلمة المرور للمتابعة"
+                  placeholder={t.common.deletePasswordPlaceholder}
                 />
               </div>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancel>{ar.common.cancel}</AlertDialogCancel>
+              <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
               <AlertDialogAction
                 disabled={isPending || (requirePassword && !password)}
                 onClick={handleConfirm}
               >
                 {isPending && <Loader2 className="size-4 animate-spin" />}
-                {isPending ? "جاري الحذف..." : ar.common.delete}
+                {isPending ? t.common.deleting : t.common.delete}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

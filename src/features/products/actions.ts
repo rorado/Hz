@@ -9,6 +9,19 @@ import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 
 type ActionResult = { error?: string; success?: boolean };
 
+export async function findProductIdByBarcode(barcode: string) {
+  const session = await auth();
+  if (!session?.user) return null;
+
+  const normalizedBarcode = barcode.trim();
+  if (!normalizedBarcode) return null;
+
+  return prisma.product.findUnique({
+    where: { barcode: normalizedBarcode },
+    select: { id: true },
+  });
+}
+
 export async function createProduct(input: unknown): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };

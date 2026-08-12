@@ -1,4 +1,5 @@
 import {
+  LayoutDashboard,
   Package,
   Users,
   ShoppingCart,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/shared/stat-card";
 import { PageHeader } from "@/components/shared/page-header";
-import { ar } from "@/i18n/ar";
 import { getDashboardStats } from "@/features/dashboard/queries";
 import {
   getAnalyticsSummary,
@@ -31,6 +31,7 @@ import { CategorySalesChart } from "@/features/dashboard/components/category-sal
 import { OrderStatusChart } from "@/features/dashboard/components/order-status-chart";
 import { RankedListCard } from "@/features/dashboard/components/ranked-list-card";
 import { formatCurrency } from "@/lib/currency";
+import { getLocale, getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function DashboardPage({
   const range = resolveDateRange(params);
 
   const [
+    locale,
+    t,
     stats,
     summary,
     trend,
@@ -52,6 +55,8 @@ export default async function DashboardPage({
     topCustomers,
     categorySales,
   ] = await Promise.all([
+    getLocale(),
+    getDictionary(),
     getDashboardStats(),
     getAnalyticsSummary(range),
     getRevenueTrend(range),
@@ -65,82 +70,90 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.dashboard}
-        description="نظرة عامة سريعة على أداء متجرك اليوم"
+        title={t.admin.dashboard}
+        description={t.dashboard.description}
+        icon={LayoutDashboard}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title={ar.dashboardCards.totalProducts}
+          title={t.dashboardCards.totalProducts}
           value={stats.totalProducts}
           icon={Package}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.totalCustomers}
+          title={t.dashboardCards.totalCustomers}
           value={stats.totalCustomers}
           icon={Users}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.orders}
+          title={t.dashboardCards.orders}
           value={stats.activeOrders}
           icon={ShoppingCart}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.lowStockProducts}
+          title={t.dashboardCards.lowStockProducts}
           value={stats.lowStockCount}
           icon={AlertTriangle}
           variant="warning"
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.totalOwedByCustomers}
+          title={t.dashboardCards.totalOwedByCustomers}
           value={stats.totalOwedByCustomers}
           icon={Wallet}
           variant="warning"
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title={ar.dashboardCards.totalInventoryPurchaseValue}
+          title={t.dashboardCards.totalInventoryPurchaseValue}
           value={stats.totalInventoryPurchaseValue}
           icon={Warehouse}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
       </div>
 
-      <AnalyticsFilterBar basePath="/dashboard" range={range} />
+      <AnalyticsFilterBar basePath="/dashboard" range={range} t={t} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title={ar.dashboardCards.periodRevenue}
+          title={t.dashboardCards.periodRevenue}
           value={summary.revenue}
           icon={TrendingUp}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title={ar.dashboardCards.periodInvoices}
+          title={t.dashboardCards.periodInvoices}
           value={summary.invoiceCount}
           icon={Receipt}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.periodOrders}
+          title={t.dashboardCards.periodOrders}
           value={summary.ordersCount}
           icon={ShoppingCart}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.avgInvoice}
+          title={t.dashboardCards.avgInvoice}
           value={summary.avgInvoice}
           icon={Wallet}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title={ar.dashboardCards.newCustomers}
+          title={t.dashboardCards.newCustomers}
           value={summary.newCustomers}
           icon={UserPlus}
+          locale={locale}
         />
         <StatCard
-          title={ar.dashboardCards.periodPurchases}
+          title={t.dashboardCards.periodPurchases}
           value={summary.purchasesTotal}
           icon={Truck}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
       </div>
 
@@ -148,22 +161,26 @@ export default async function DashboardPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <RankedListCard
-          title="الأكثر مبيعاً"
-          emptyLabel="لا توجد مبيعات في هذه الفترة"
+          title={t.dashboard.topSelling}
+          icon={Package}
+          emptyLabel={t.dashboard.noSalesInPeriod}
+          locale={locale}
           items={topProducts.map((product) => ({
             key: product.key,
             label: product.name,
-            sublabel: `${product.quantity.toLocaleString("ar")} قطعة`,
+            sublabel: `${product.quantity.toLocaleString(locale)} ${t.dashboard.unitSuffix}`,
             value: product.revenue,
           }))}
         />
         <RankedListCard
-          title="أفضل العملاء"
-          emptyLabel="لا توجد فواتير في هذه الفترة"
+          title={t.dashboard.topCustomers}
+          icon={Users}
+          emptyLabel={t.dashboard.noInvoicesInPeriod}
+          locale={locale}
           items={topCustomers.map((customer) => ({
             key: customer.id,
             label: customer.name,
-            sublabel: `${customer.invoiceCount.toLocaleString("ar")} فاتورة`,
+            sublabel: `${customer.invoiceCount.toLocaleString(locale)} ${t.dashboard.invoiceSuffix}`,
             value: customer.total,
             href: `/dashboard/customers/${customer.id}`,
           }))}

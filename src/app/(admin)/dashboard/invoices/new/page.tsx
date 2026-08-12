@@ -1,3 +1,4 @@
+import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
 import { getProductPickerOptions } from "@/features/products/queries";
@@ -5,11 +6,13 @@ import { getCustomerOptions } from "@/features/customers/queries";
 import { getCategoryOptions } from "@/features/categories/queries";
 import { getBrandOptions } from "@/features/brands/queries";
 import { InvoiceForm } from "@/features/invoices/components/invoice-form";
+import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewInvoicePage() {
-  const [productRows, customers, categories, brands] = await Promise.all([
+  const [t, productRows, customers, categories, brands] = await Promise.all([
+    getDictionary(),
     getProductPickerOptions(),
     getCustomerOptions(),
     getCategoryOptions(),
@@ -19,6 +22,8 @@ export default async function NewInvoicePage() {
     id: product.id,
     name: product.name,
     sku: product.sku,
+    barcode: product.barcode,
+    quantity: product.quantity,
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
@@ -29,7 +34,8 @@ export default async function NewInvoicePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="إنشاء فاتورة جديدة"
+        title={t.invoices.newTitle}
+        icon={FileText}
         action={<BackButton fallbackHref="/dashboard/invoices" />}
       />
       <InvoiceForm

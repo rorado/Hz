@@ -11,14 +11,13 @@ import {
 } from "@/features/orders/queries";
 import { OrdersTable } from "@/features/orders/components/orders-table";
 import { OrdersFilterBar } from "@/features/orders/components/orders-filter-bar";
-import {
-  ORDER_STATUS_VALUE_BY_LABEL,
-  ORDER_INVOICE_FILTER_VALUE_BY_LABEL,
-} from "@/features/orders/schema";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
 import type { OrderStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
+
+const VALID_ORDER_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "CANCELLED"];
+const VALID_INVOICE_FILTERS = ["NO_INVOICE", "HAS_INVOICE"];
 
 export default async function OrdersPage({
   searchParams,
@@ -35,48 +34,41 @@ export default async function OrdersPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
-  // Filter's Select writes the Arabic label to the URL; translate it back
-  // to the Prisma enum. Falls back to the raw value for old English links.
-  const status = params.status
-    ? ((ORDER_STATUS_VALUE_BY_LABEL[params.status] ??
-        params.status) as OrderStatus)
+  const status = VALID_ORDER_STATUSES.includes(params.status ?? "")
+    ? (params.status as OrderStatus)
     : undefined;
   const from = params.from || undefined;
   const to = params.to || undefined;
-  const invoiceFilter = params.invoiceFilter
-    ? ((ORDER_INVOICE_FILTER_VALUE_BY_LABEL[params.invoiceFilter] ??
-        params.invoiceFilter) as OrderInvoiceFilter)
+  const invoiceFilter = VALID_INVOICE_FILTERS.includes(params.invoiceFilter ?? "")
+    ? (params.invoiceFilter as OrderInvoiceFilter)
     : undefined;
 
-  const { items, total, pageSize } = await getOrdersPage({
-    query,
-    status,
-    from,
-    to,
-    invoiceFilter,
-    page,
-  });
+  const [t, { items, total, pageSize }] = await Promise.all([
+    getDictionary(),
+    getOrdersPage({ query, status, from, to, invoiceFilter, page }),
+  ]);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.orders}
+        title={t.admin.orders}
+        icon={ShoppingCart}
         action={
           <Button nativeButton={false} render={<Link href="/dashboard/orders/new" />}>
             <Plus className="size-4" />
-            إنشاء طلب
+            {t.orders.addButton}
           </Button>
         }
       />
       <div className="space-y-3">
-        <DataTableSearch placeholder="ابحث برقم الطلب أو اسم العميل أو الهاتف..." />
+        <DataTableSearch placeholder={t.orders.searchPlaceholder} />
         <OrdersFilterBar />
       </div>
       {items.length === 0 ? (
         <EmptyState
           icon={ShoppingCart}
-          title="لا توجد طلبات"
-          description="تظهر هنا الطلبات الناتجة عن سلة العملاء في الموقع"
+          title={t.orders.emptyTitle}
+          description={t.orders.emptyDescription}
         />
       ) : (
         <>

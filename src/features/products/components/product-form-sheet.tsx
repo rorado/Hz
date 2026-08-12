@@ -37,11 +37,10 @@ import {
   productSchema,
   type ProductInput,
   type ProductOutput,
-  PRODUCT_STATUS_LABELS,
-  PRODUCT_STATUS_VALUE_BY_LABEL,
 } from "@/features/products/schema";
 import { createProduct, updateProduct } from "@/features/products/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
 
 type Option = { id: string; name: string };
 
@@ -56,6 +55,7 @@ function OptionPickerField({
   options,
   placeholder,
   noneLabel,
+  t,
 }: {
   value: string;
   onChange: (option: Option | null) => void;
@@ -63,6 +63,7 @@ function OptionPickerField({
   placeholder: string;
   /** When provided, adds a leading "no selection" item with this label. */
   noneLabel?: string;
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
   const noneItem = { ...NONE_OPTION, name: noneLabel ?? placeholder };
@@ -85,8 +86,8 @@ function OptionPickerField({
         <ComboboxValue />
       </ComboboxTrigger>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.products.searchOptionsPlaceholder} />
+        <ComboboxEmpty>{t.products.noOptionsResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: Option) => (
             <ComboboxItem key={item.id} value={item}>
@@ -98,6 +99,8 @@ function OptionPickerField({
     </Combobox>
   );
 }
+
+const PRODUCT_STATUSES = ["ACTIVE", "INACTIVE"] as const;
 
 type ProductRecord = {
   id: string;
@@ -134,6 +137,7 @@ export function ProductFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -181,9 +185,7 @@ export function ProductFormSheet({
         return;
       }
 
-      toast.success(
-        product ? "تم تحديث المنتج بنجاح" : "تم إضافة المنتج بنجاح",
-      );
+      toast.success(product ? t.products.toastUpdated : t.products.toastCreated);
       close();
     });
   }
@@ -194,12 +196,12 @@ export function ProductFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={product ? "تعديل المنتج" : "إضافة منتج جديد"}
+      title={product ? t.products.formTitleEdit : t.products.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label>صور المنتج</Label>
+          <Label>{t.products.imagesLabel}</Label>
           <Controller
             control={control}
             name="images"
@@ -213,7 +215,7 @@ export function ProductFormSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="product-name">اسم المنتج</Label>
+          <Label htmlFor="product-name">{t.products.nameLabel}</Label>
           <Input id="product-name" {...register("name")} />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -222,14 +224,14 @@ export function ProductFormSheet({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="product-slug">الرابط (slug)</Label>
+            <Label htmlFor="product-slug">{t.products.slugLabel}</Label>
             <Input id="product-slug" dir="ltr" {...register("slug")} />
             {errors.slug && (
               <p className="text-sm text-destructive">{errors.slug.message}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="product-sku">SKU</Label>
+            <Label htmlFor="product-sku">{t.products.skuLabel}</Label>
             <Input id="product-sku" dir="ltr" {...register("sku")} />
             {errors.sku && (
               <p className="text-sm text-destructive">{errors.sku.message}</p>
@@ -238,12 +240,12 @@ export function ProductFormSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="product-barcode">Barcode (اختياري)</Label>
+          <Label htmlFor="product-barcode">{t.products.barcodeLabel}</Label>
           <Input id="product-barcode" dir="ltr" {...register("barcode")} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="product-description">الوصف</Label>
+          <Label htmlFor="product-description">{t.products.descriptionLabel}</Label>
           <Textarea
             id="product-description"
             rows={3}
@@ -253,7 +255,7 @@ export function ProductFormSheet({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>القسم</Label>
+            <Label>{t.products.categoryLabel}</Label>
             <Controller
               control={control}
               name="categoryId"
@@ -261,8 +263,9 @@ export function ProductFormSheet({
                 <OptionPickerField
                   value={field.value ?? ""}
                   options={categoryOptions}
-                  placeholder="اختر القسم"
+                  placeholder={t.products.categoryPlaceholder}
                   onChange={(option) => field.onChange(option?.id ?? "")}
+                  t={t}
                 />
               )}
             />
@@ -273,7 +276,7 @@ export function ProductFormSheet({
             )}
           </div>
           <div className="space-y-2">
-            <Label>العلامة التجارية</Label>
+            <Label>{t.products.brandLabel}</Label>
             <Controller
               control={control}
               name="brandId"
@@ -281,9 +284,10 @@ export function ProductFormSheet({
                 <OptionPickerField
                   value={field.value ?? ""}
                   options={brandOptions}
-                  placeholder="بدون علامة تجارية"
-                  noneLabel="بدون علامة تجارية"
+                  placeholder={t.products.noBrandOption}
+                  noneLabel={t.products.noBrandOption}
                   onChange={(option) => field.onChange(option?.id ?? null)}
+                  t={t}
                 />
               )}
             />
@@ -292,7 +296,7 @@ export function ProductFormSheet({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="product-quantity">الكمية</Label>
+            <Label htmlFor="product-quantity">{t.products.quantityLabel}</Label>
             <Input
               id="product-quantity"
               type="number"
@@ -306,7 +310,7 @@ export function ProductFormSheet({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="product-min-stock">الحد الأدنى للمخزون</Label>
+            <Label htmlFor="product-min-stock">{t.products.minStockLabel}</Label>
             <Input
               id="product-min-stock"
               type="number"
@@ -323,7 +327,7 @@ export function ProductFormSheet({
 
         <div className="space-y-2">
           <Label htmlFor="product-purchase-price">
-            سعر الشراء (التكلفة) (اختياري)
+            {t.products.purchasePriceLabel}
           </Label>
           <Input
             id="product-purchase-price"
@@ -340,7 +344,7 @@ export function ProductFormSheet({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="product-weight">الوزن (kg) (اختياري)</Label>
+          <Label htmlFor="product-weight">{t.products.weightLabel}</Label>
           <Input
             id="product-weight"
             type="number"
@@ -355,7 +359,7 @@ export function ProductFormSheet({
 
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="product-price1">السعر الأول</Label>
+            <Label htmlFor="product-price1">{t.products.price1Label}</Label>
             <Input
               id="product-price1"
               type="number"
@@ -370,7 +374,7 @@ export function ProductFormSheet({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="product-price2">السعر الثاني</Label>
+            <Label htmlFor="product-price2">{t.products.price2Label}</Label>
             <Input
               id="product-price2"
               type="number"
@@ -385,7 +389,7 @@ export function ProductFormSheet({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="product-price3">السعر الثالث</Label>
+            <Label htmlFor="product-price3">{t.products.price3Label}</Label>
             <Input
               id="product-price3"
               type="number"
@@ -402,29 +406,33 @@ export function ProductFormSheet({
         </div>
 
         <div className="space-y-2">
-          <Label>الحالة</Label>
+          <Label>{t.products.statusLabel}</Label>
           <Controller
             control={control}
             name="status"
             render={({ field }) => (
               <Select
-                value={PRODUCT_STATUS_LABELS[field.value] ?? field.value}
-                onValueChange={(label) => {
-                  if (!label) return;
-                  const value = PRODUCT_STATUS_VALUE_BY_LABEL[label];
-                  if (value) field.onChange(value);
+                value={field.value}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  field.onChange(value);
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) =>
+                      t.statusLabels.productStatus[
+                        value as keyof typeof t.statusLabels.productStatus
+                      ] ?? value
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={PRODUCT_STATUS_LABELS.ACTIVE}>
-                    {PRODUCT_STATUS_LABELS.ACTIVE}
-                  </SelectItem>
-                  <SelectItem value={PRODUCT_STATUS_LABELS.INACTIVE}>
-                    {PRODUCT_STATUS_LABELS.INACTIVE}
-                  </SelectItem>
+                  {PRODUCT_STATUSES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t.statusLabels.productStatus[value]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -437,7 +445,7 @@ export function ProductFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

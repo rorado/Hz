@@ -4,9 +4,10 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ar } from "@/i18n/ar";
+import { useT } from "@/i18n/locale-provider";
 
 export function DataTableSearch({ placeholder }: { placeholder?: string }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -43,7 +44,7 @@ export function DataTableSearch({ placeholder }: { placeholder?: string }) {
       <Input
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder={placeholder ?? ar.common.search}
+        placeholder={placeholder ?? t.common.search}
         className="pe-9"
       />
     </div>

@@ -11,7 +11,8 @@ import { getBrandOptions } from "@/features/brands/queries";
 import { ProductsTable } from "@/features/products/components/products-table";
 import { ProductFormSheet } from "@/features/products/components/product-form-sheet";
 import { ImportProductsDialog } from "@/features/products/components/import-products-dialog";
-import { ar } from "@/i18n/ar";
+import { ProductBarcodeLookup } from "@/features/products/components/product-barcode-lookup";
+import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,13 @@ export default async function ProductsPage({
   const query = params.q?.trim() || undefined;
 
   const [
+    t,
     { items, total, pageSize },
     categoryOptions,
     brandOptions,
     editingProduct,
   ] = await Promise.all([
+    getDictionary(),
     getProductsPage({ query, page }),
     getCategoryOptions(),
     getBrandOptions(),
@@ -54,23 +57,25 @@ export default async function ProductsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.products}
+        title={t.admin.products}
+        icon={Package}
         action={
           <div className="flex gap-2">
+            <ProductBarcodeLookup />
             <ImportProductsDialog />
             <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
               <Plus className="size-4" />
-              إضافة منتج
+              {t.products.addProduct}
             </Button>
           </div>
         }
       />
-      <DataTableSearch placeholder="ابحث بالاسم أو SKU أو الباركود..." />
+      <DataTableSearch placeholder={t.products.searchPlaceholder} />
       {items.length === 0 ? (
         <EmptyState
           icon={Package}
-          title="لا توجد منتجات"
-          description="ابدأ بإضافة أول منتج إلى المخزون"
+          title={t.products.emptyTitle}
+          description={t.products.emptyDescription}
         />
       ) : (
         <>

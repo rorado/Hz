@@ -1,24 +1,11 @@
 import { z } from "zod";
-import { ar, invertLabels } from "@/i18n/ar";
-
-export const ORDER_STATUS_LABELS: Record<string, string> =
-  ar.statusLabels.order;
-export const ORDER_STATUS_VALUE_BY_LABEL = invertLabels(ORDER_STATUS_LABELS);
-
-export const ORDER_INVOICE_FILTER_LABELS: Record<string, string> = {
-  NO_INVOICE: "بدون فاتورة",
-  HAS_INVOICE: "لديها فاتورة",
-};
-export const ORDER_INVOICE_FILTER_VALUE_BY_LABEL = invertLabels(
-  ORDER_INVOICE_FILTER_LABELS,
-);
 
 export const orderItemsSchema = z.object({
   items: z
     .array(
       z.object({
         id: z.string().optional(),
-        productId: z.string().min(1, { error: "الرجاء اختيار منتج" }),
+        productId: z.string(),
         price: z.coerce
           .number()
           .min(0, { error: "السعر يجب أن يكون رقماً موجباً" }),
@@ -28,7 +15,8 @@ export const orderItemsSchema = z.object({
           .min(1, { error: "الكمية يجب أن تكون رقماً موجباً" }),
       }),
     )
-    .min(1),
+    .refine((items) => items.some((item) => item.productId !== ""))
+    .transform((items) => items.filter((item) => item.productId !== "")),
 });
 
 export type OrderItemsInput = z.input<typeof orderItemsSchema>;
@@ -44,7 +32,7 @@ export const createOrderSchema = z.object({
   items: z
     .array(
       z.object({
-        productId: z.string().min(1, { error: "الرجاء اختيار منتج" }),
+        productId: z.string(),
         quantity: z.coerce
           .number()
           .int()
@@ -54,7 +42,10 @@ export const createOrderSchema = z.object({
           .min(0, { error: "السعر يجب أن يكون رقماً موجباً" }),
       }),
     )
-    .min(1, { error: "أضف منتجاً واحداً على الأقل" }),
+    .refine((items) => items.some((item) => item.productId !== ""), {
+      error: "أضف منتجاً واحداً على الأقل",
+    })
+    .transform((items) => items.filter((item) => item.productId !== "")),
 });
 
 export type CreateOrderInput = z.input<typeof createOrderSchema>;

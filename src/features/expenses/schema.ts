@@ -1,11 +1,4 @@
 import { z } from "zod";
-import { ar, invertLabels } from "@/i18n/ar";
-
-export const EXPENSE_CATEGORY_LABELS: Record<string, string> =
-  ar.statusLabels.expenseCategory;
-export const EXPENSE_CATEGORY_VALUE_BY_LABEL = invertLabels(
-  EXPENSE_CATEGORY_LABELS,
-);
 
 export const expenseSchema = z.object({
   category: z.enum([

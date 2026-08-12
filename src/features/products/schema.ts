@@ -1,11 +1,4 @@
 import { z } from "zod";
-import { ar, invertLabels } from "@/i18n/ar";
-
-export const PRODUCT_STATUS_LABELS: Record<string, string> =
-  ar.statusLabels.productStatus;
-export const PRODUCT_STATUS_VALUE_BY_LABEL = invertLabels(
-  PRODUCT_STATUS_LABELS,
-);
 
 export const productImageSchema = z.object({
   publicId: z.string(),

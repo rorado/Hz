@@ -12,14 +12,21 @@ import {
 import { CustomersTable } from "@/features/customers/components/customers-table";
 import { CustomersFilterBar } from "@/features/customers/components/customers-filter-bar";
 import { CustomerFormSheet } from "@/features/customers/components/customer-form-sheet";
-import {
-  DEBT_STATUS_VALUE_BY_LABEL,
-  CUSTOMER_SORT_VALUE_BY_LABEL,
-} from "@/features/customers/schema";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
 import type { DebtFilter, CustomerSort } from "@/features/customers/queries";
 
 export const dynamic = "force-dynamic";
+
+const VALID_DEBT_FILTERS = ["HAS_DEBT", "NO_DEBT"];
+const VALID_CUSTOMER_SORTS = [
+  "newest",
+  "totalPurchased_desc",
+  "totalPurchased_asc",
+  "outstanding_desc",
+  "outstanding_asc",
+  "balance_desc",
+  "balance_asc",
+];
 
 export default async function CustomersPage({
   searchParams,
@@ -36,16 +43,15 @@ export default async function CustomersPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
-  const debtFilter = params.debtFilter
-    ? ((DEBT_STATUS_VALUE_BY_LABEL[params.debtFilter] ??
-        params.debtFilter) as DebtFilter)
+  const debtFilter = VALID_DEBT_FILTERS.includes(params.debtFilter ?? "")
+    ? (params.debtFilter as DebtFilter)
     : undefined;
-  const sort = params.sort
-    ? ((CUSTOMER_SORT_VALUE_BY_LABEL[params.sort] ??
-        params.sort) as CustomerSort)
+  const sort = VALID_CUSTOMER_SORTS.includes(params.sort ?? "")
+    ? (params.sort as CustomerSort)
     : undefined;
 
-  const [{ items, total, pageSize }, editingCustomer] = await Promise.all([
+  const [t, { items, total, pageSize }, editingCustomer] = await Promise.all([
+    getDictionary(),
     getCustomersPage({ query, debtFilter, sort, page }),
     params.edit ? getCustomerById(params.edit) : Promise.resolve(null),
   ]);
@@ -65,23 +71,24 @@ export default async function CustomersPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.customers}
+        title={t.admin.customers}
+        icon={Users}
         action={
           <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
             <Plus className="size-4" />
-            إضافة عميل
+            {t.customers.addButton}
           </Button>
         }
       />
       <div className="space-y-3">
-        <DataTableSearch placeholder="ابحث بالاسم أو الهاتف أو البريد..." />
+        <DataTableSearch placeholder={t.customers.searchPlaceholder} />
         <CustomersFilterBar />
       </div>
       {items.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="لا يوجد عملاء"
-          description="سيظهر هنا العملاء المضافون يدوياً أو الناتجون عن الطلبات"
+          title={t.customers.emptyTitle}
+          description={t.customers.emptyDescription}
         />
       ) : (
         <>

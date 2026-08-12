@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Wifi, WifiOff } from "lucide-react";
+import { useT } from "@/i18n/locale-provider";
 
 type ConnectionStatus = "online" | "offline" | "reconnected";
 
@@ -65,6 +66,7 @@ export function OfflineNotification() {
     getSnapshot,
     getServerSnapshot,
   );
+  const t = useT();
 
   if (connectionStatus === "offline") {
     return (
@@ -73,7 +75,7 @@ export function OfflineNotification() {
         className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-destructive px-4 py-2.5 text-center text-sm font-bold text-destructive-foreground shadow-md print:hidden"
       >
         <WifiOff className="size-4 shrink-0" />
-        <span>لا يوجد اتصال بالإنترنت — تحقق من اتصال جهازك بالشبكة</span>
+        <span>{t.common.offlineMessage}</span>
       </div>
     );
   }
@@ -85,7 +87,7 @@ export function OfflineNotification() {
         className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-green-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-md print:hidden"
       >
         <Wifi className="size-4 shrink-0" />
-        <span>تم استعادة الاتصال بالإنترنت</span>
+        <span>{t.common.reconnectedMessage}</span>
       </div>
     );
   }

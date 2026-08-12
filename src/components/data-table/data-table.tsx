@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkDeleteBar } from "@/components/data-table/bulk-delete-bar";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type DeleteResult = { error?: string } | void;
 
@@ -38,6 +38,7 @@ export function DataTable<TData extends { id: string }, TValue>({
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const selectable = Boolean(onDeleteSelected);
+  const { t } = useLocale();
 
   const selectionColumn: ColumnDef<TData, TValue> = {
     id: "__select__",
@@ -48,14 +49,14 @@ export function DataTable<TData extends { id: string }, TValue>({
           !table.getIsAllPageRowsSelected() && table.getIsSomePageRowsSelected()
         }
         onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
-        aria-label="تحديد الكل"
+        aria-label={t.common.selectAll}
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(checked) => row.toggleSelected(checked)}
-        aria-label="تحديد الصف"
+        aria-label={t.common.selectRow}
         onClick={(event) => event.stopPropagation()}
       />
     ),
@@ -89,7 +90,7 @@ export function DataTable<TData extends { id: string }, TValue>({
           }}
         />
       )}
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-xl border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -124,7 +125,7 @@ export function DataTable<TData extends { id: string }, TValue>({
                   colSpan={columns.length + (selectable ? 1 : 0)}
                   className="h-32 text-center text-muted-foreground"
                 >
-                  {ar.common.noResults}
+                  {t.common.noResults}
                 </TableCell>
               </TableRow>
             )}

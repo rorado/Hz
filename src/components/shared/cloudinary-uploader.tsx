@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useT } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 export type UploadedImage = { publicId: string; secureUrl: string };
 
@@ -25,13 +27,14 @@ export function CloudinaryUploader({
   maxImages?: number;
 }) {
   const [isUploading, setIsUploading] = useState(false);
+  const t = useT();
 
   async function handleFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
 
     const remainingSlots = maxImages - value.length;
     if (remainingSlots <= 0) {
-      toast.error(`الحد الأقصى ${maxImages} صور لكل منتج`);
+      toast.error(formatMessage(t.common.maxImagesTemplate, { max: maxImages }));
       return;
     }
     const files = Array.from(fileList).slice(0, remainingSlots);
@@ -39,7 +42,7 @@ export function CloudinaryUploader({
     setIsUploading(true);
     try {
       const signRes = await fetch("/api/cloudinary/sign", { method: "POST" });
-      if (!signRes.ok) throw new Error("تعذر الحصول على إذن الرفع");
+      if (!signRes.ok) throw new Error(t.common.uploadPermissionError);
       const { timestamp, signature, folder, apiKey, cloudName } =
         (await signRes.json()) as SignResponse;
 
@@ -56,7 +59,7 @@ export function CloudinaryUploader({
           `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
           { method: "POST", body: formData },
         );
-        if (!uploadRes.ok) throw new Error("فشل رفع إحدى الصور");
+        if (!uploadRes.ok) throw new Error(t.common.imageUploadFailedError);
         const data = await uploadRes.json();
         uploaded.push({ publicId: data.public_id, secureUrl: data.secure_url });
       }
@@ -64,7 +67,7 @@ export function CloudinaryUploader({
       onChange([...value, ...uploaded]);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "حدث خطأ أثناء رفع الصور",
+        error instanceof Error ? error.message : t.common.imageUploadGenericError,
       );
     } finally {
       setIsUploading(false);
@@ -105,7 +108,7 @@ export function CloudinaryUploader({
           ) : (
             <ImagePlus className="size-5" />
           )}
-          <span className="text-xs">إضافة صور</span>
+          <span className="text-xs">{t.common.addImages}</span>
           <input
             type="file"
             accept="image/*"

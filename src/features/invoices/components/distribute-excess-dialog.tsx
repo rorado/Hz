@@ -13,7 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 import type { PaymentStatus } from "@/generated/prisma/client";
 
 export type OutstandingInvoiceRow = {
@@ -47,6 +48,7 @@ export function DistributeExcessDialog({
   onConfirm: (invoiceIds: string[]) => void;
   onSkip: () => void;
 }) {
+  const { t, locale } = useLocale();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(invoices.map((inv) => inv.id)),
   );
@@ -77,25 +79,25 @@ export function DistributeExcessDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>توزيع المبلغ الزائد على فواتير أخرى</DialogTitle>
+          <DialogTitle>{t.invoices.distributeTitle}</DialogTitle>
           <DialogDescription>
-            الدفعة تتجاوز إجمالي هذه الفاتورة بمقدار {formatCurrency(excessAmount)}.
-            يمكنك استخدام هذا المبلغ لتغطية فواتير أخرى غير مسددة لهذا العميل
-            بدلاً من إضافته كرصيد مباشرة.
+            {formatMessage(t.invoices.distributeDescription, {
+              excess: formatCurrency(excessAmount, locale),
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">
-              {ar.invoices.selectInvoicesToPayTitle}
+              {t.invoices.selectInvoicesToPayTitle}
             </p>
             <button
               type="button"
               className="cursor-pointer text-xs font-medium text-primary hover:underline"
               onClick={toggleAll}
             >
-              {ar.invoices.selectAllInvoices}
+              {t.invoices.selectAllInvoices}
             </button>
           </div>
           <div
@@ -131,12 +133,12 @@ export function DistributeExcessDialog({
                         {new Date(invoice.createdAt).toLocaleDateString("fr-FR")}
                       </span>
                       <span>
-                        {ar.invoices.invoiceTotalLabel}:{" "}
-                        {formatCurrency(invoice.total)}
+                        {t.invoices.invoiceTotalLabel}:{" "}
+                        {formatCurrency(invoice.total, locale)}
                       </span>
                       <span className="font-medium text-foreground">
-                        {ar.invoices.remainingBalance}:{" "}
-                        {formatCurrency(invoiceRemaining)}
+                        {t.invoices.remainingBalance}:{" "}
+                        {formatCurrency(invoiceRemaining, locale)}
                       </span>
                     </div>
                   </div>
@@ -145,8 +147,8 @@ export function DistributeExcessDialog({
             })}
           </div>
           <p className="text-xs text-muted-foreground">
-            {ar.invoices.selectedInvoicesRemaining}:{" "}
-            {formatCurrency(selectedRemaining)}
+            {t.invoices.selectedInvoicesRemaining}:{" "}
+            {formatCurrency(selectedRemaining, locale)}
           </p>
         </div>
 
@@ -156,14 +158,14 @@ export function DistributeExcessDialog({
             disabled={selectedIds.size === 0}
             onClick={() => onConfirm(Array.from(selectedIds))}
           >
-            توزيع المبلغ على الفواتير المحددة
+            {t.invoices.distributeButton}
           </Button>
           <Button
             variant="outline"
             className="flex-1 cursor-pointer"
             onClick={onSkip}
           >
-            تخطي
+            {t.invoices.skipButton}
           </Button>
         </div>
       </DialogContent>

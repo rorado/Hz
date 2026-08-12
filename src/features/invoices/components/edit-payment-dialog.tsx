@@ -21,10 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PAYMENT_METHOD_LABELS } from "@/features/invoices/schema";
 import { updatePayment } from "@/features/invoices/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 import type { PaymentMethod } from "@/generated/prisma/client";
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  "CASH",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "BALANCE",
+  "OTHER",
+];
 
 export function EditPaymentDialog({
   paymentId,
@@ -44,6 +51,7 @@ export function EditPaymentDialog({
   );
   const [note, setNote] = useState(initialNote ?? "");
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -61,7 +69,7 @@ export function EditPaymentDialog({
 
   function handleSubmit() {
     if (!(amount > 0)) {
-      toast.error(ar.invoices.invalidAmount);
+      toast.error(t.invoices.invalidAmount);
       return;
     }
     startTransition(async () => {
@@ -74,7 +82,7 @@ export function EditPaymentDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تعديل الدفعة بنجاح");
+      toast.success(t.invoices.paymentUpdatedToast);
       setOpen(false);
     });
   }
@@ -90,13 +98,13 @@ export function EditPaymentDialog({
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تعديل الدفعة</DialogTitle>
+          <DialogTitle>{t.invoices.editPaymentTitle}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-payment-amount">
-                {ar.invoices.amountPaid}
+                {t.invoices.amountPaid}
               </Label>
               <Input
                 id="edit-payment-amount"
@@ -111,29 +119,29 @@ export function EditPaymentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>{ar.invoices.paymentMethod}</Label>
-              <Select
-                items={PAYMENT_METHOD_LABELS}
-                value={method}
-                onValueChange={handleMethodChange}
-              >
+              <Label>{t.invoices.paymentMethod}</Label>
+              <Select value={method} onValueChange={handleMethodChange}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) =>
+                      t.statusLabels.paymentMethod[
+                        value as keyof typeof t.statusLabels.paymentMethod
+                      ] ?? value
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(PAYMENT_METHOD_LABELS).map(
-                    ([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
+                  {PAYMENT_METHODS.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t.statusLabels.paymentMethod[value]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-payment-note">
-                {ar.invoices.paymentNote} (اختياري)
+                {t.customers.notesOptionalLabel}
               </Label>
               <Textarea
                 id="edit-payment-note"
@@ -149,7 +157,7 @@ export function EditPaymentDialog({
               onClick={handleSubmit}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              {isPending ? "جاري الحفظ..." : ar.common.save}
+              {isPending ? t.common.saving : t.common.save}
             </Button>
           </fieldset>
         </div>

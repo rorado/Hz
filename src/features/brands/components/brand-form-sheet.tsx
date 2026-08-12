@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { CloudinaryUploader } from "@/components/shared/cloudinary-uploader";
 import { brandSchema, type BrandInput } from "@/features/brands/schema";
 import { createBrand, updateBrand } from "@/features/brands/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type BrandRecord = {
   id: string;
@@ -34,6 +34,7 @@ export function BrandFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -71,9 +72,7 @@ export function BrandFormSheet({
         return;
       }
 
-      toast.success(
-        brand ? "تم تحديث العلامة التجارية" : "تم إضافة العلامة التجارية",
-      );
+      toast.success(brand ? t.brands.toastUpdated : t.brands.toastCreated);
       close();
     });
   }
@@ -84,12 +83,12 @@ export function BrandFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={brand ? "تعديل العلامة التجارية" : "إضافة علامة تجارية"}
+      title={brand ? t.brands.formTitleEdit : t.brands.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label>شعار العلامة التجارية (اختياري)</Label>
+          <Label>{t.brands.logoLabel}</Label>
           <Controller
             control={control}
             name="logo"
@@ -103,14 +102,14 @@ export function BrandFormSheet({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="brand-name">الاسم</Label>
+          <Label htmlFor="brand-name">{t.brands.nameLabel}</Label>
           <Input id="brand-name" {...register("name")} />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="brand-slug">الرابط (slug)</Label>
+          <Label htmlFor="brand-slug">{t.brands.slugLabel}</Label>
           <Input id="brand-slug" dir="ltr" {...register("slug")} />
           {errors.slug && (
             <p className="text-sm text-destructive">{errors.slug.message}</p>
@@ -122,7 +121,7 @@ export function BrandFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

@@ -19,6 +19,7 @@ import {
   type ConflictCustomer,
 } from "@/features/orders/actions";
 import { PhoneConflictDialog } from "@/features/orders/components/phone-conflict-dialog";
+import { useLocale } from "@/i18n/locale-provider";
 
 type CustomerRecord = {
   id: string;
@@ -46,6 +47,7 @@ export function OrderCustomerEditSheet({
   snapshot: { name: string; phone: string; email: string | null };
 }) {
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
   const [conflict, setConflict] = useState<{
     existing: ConflictCustomer;
     values: CustomerInput;
@@ -91,11 +93,7 @@ export function OrderCustomerEditSheet({
         return;
       }
 
-      toast.success(
-        customer
-          ? "تم تحديث بيانات العميل بنجاح"
-          : "تم حفظ بيانات العميل بنجاح",
-      );
+      toast.success(customer ? t.customers.toastUpdated : t.customers.toastCreated);
       onOpenChange(false);
     });
   }
@@ -120,15 +118,15 @@ export function OrderCustomerEditSheet({
       <FormSheet
         open={open}
         onOpenChange={onOpenChange}
-        title={customer ? "تعديل بيانات العميل" : "إضافة بيانات العميل"}
+        title={customer ? t.orders.editCustomerInfoTitle : t.customers.addCustomerInfoTitle}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="order-customer-name">الاسم الكامل</Label>
+              <Label htmlFor="order-customer-name">{t.customers.fullNameLabel}</Label>
               <Input
                 id="order-customer-name"
-                placeholder="الاسم واللقب"
+                placeholder={t.customers.fullNamePlaceholder}
                 {...register("name")}
               />
               {errors.name && (
@@ -138,7 +136,7 @@ export function OrderCustomerEditSheet({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="order-customer-phone">رقم الهاتف / واتساب</Label>
+              <Label htmlFor="order-customer-phone">{t.customers.phoneWhatsappLabel}</Label>
               <Input
                 id="order-customer-phone"
                 dir="ltr"
@@ -152,7 +150,7 @@ export function OrderCustomerEditSheet({
             </div>
             <div className="space-y-2">
               <Label htmlFor="order-customer-email">
-                البريد الإلكتروني (اختياري)
+                {t.customers.emailOptionalLabel}
               </Label>
               <Input
                 id="order-customer-email"
@@ -166,11 +164,11 @@ export function OrderCustomerEditSheet({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="order-customer-address">العنوان (اختياري)</Label>
+              <Label htmlFor="order-customer-address">{t.customers.addressOptionalLabel}</Label>
               <Input id="order-customer-address" {...register("address")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="order-customer-notes">ملاحظات (اختياري)</Label>
+              <Label htmlFor="order-customer-notes">{t.customers.notesOptionalLabel}</Label>
               <Textarea
                 id="order-customer-notes"
                 rows={3}
@@ -183,7 +181,7 @@ export function OrderCustomerEditSheet({
               disabled={isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              {isPending ? "جاري الحفظ..." : "حفظ"}
+              {isPending ? t.common.saving : t.common.save}
             </Button>
           </fieldset>
         </form>

@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 const PAGE_SIZE = 10;
 
@@ -23,6 +24,7 @@ type BalanceHistoryRow = {
 
 export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }) {
   const [page, setPage] = useState(1);
+  const { t, locale } = useLocale();
 
   const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -34,12 +36,12 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{ar.customers.balanceHistory}</CardTitle>
+        <CardTitle>{t.customers.balanceHistory}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {ar.customers.noBalanceHistory}
+            {t.customers.noBalanceHistory}
           </p>
         ) : (
           <>
@@ -52,8 +54,8 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {ar.statusLabels.balanceChangeReason[
-                          entry.reason as keyof typeof ar.statusLabels.balanceChangeReason
+                        {t.statusLabels.balanceChangeReason[
+                          entry.reason as keyof typeof t.statusLabels.balanceChangeReason
                         ] ?? entry.reason}
                       </Badge>
                       {entry.invoiceNumber && (
@@ -63,9 +65,9 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {ar.customers.previousBalance}: {formatCurrency(entry.previousBalance)}
+                      {t.customers.previousBalance}: {formatCurrency(entry.previousBalance, locale)}
                       {" · "}
-                      {ar.customers.newBalance}: {formatCurrency(entry.newBalance)}
+                      {t.customers.newBalance}: {formatCurrency(entry.newBalance, locale)}
                     </p>
                     {entry.note && (
                       <p className="text-xs text-muted-foreground">{entry.note}</p>
@@ -80,7 +82,7 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
                       }
                     >
                       {entry.change > 0 ? "+" : ""}
-                      {formatCurrency(entry.change)}
+                      {formatCurrency(entry.change, locale)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(entry.createdAt).toLocaleDateString("fr-FR")}
@@ -92,9 +94,11 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
             {pageCount > 1 && (
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                  {entries.length.toLocaleString("ar")} نتيجة — صفحة{" "}
-                  {currentPage.toLocaleString("ar")} من{" "}
-                  {pageCount.toLocaleString("ar")}
+                  {formatMessage(t.common.paginationSummary, {
+                    total: entries.length.toLocaleString(locale),
+                    page: currentPage.toLocaleString(locale),
+                    pageCount: pageCount.toLocaleString(locale),
+                  })}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -103,8 +107,8 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
                     disabled={currentPage <= 1}
                     onClick={() => setPage(currentPage - 1)}
                   >
-                    <ChevronRight className="size-4" />
-                    السابق
+                    <ChevronRight className="size-4 rtl:rotate-180" />
+                    {t.common.previous}
                   </Button>
                   <Button
                     variant="outline"
@@ -112,8 +116,8 @@ export function BalanceHistoryCard({ entries }: { entries: BalanceHistoryRow[] }
                     disabled={currentPage >= pageCount}
                     onClick={() => setPage(currentPage + 1)}
                   >
-                    التالي
-                    <ChevronLeft className="size-4" />
+                    {t.common.next}
+                    <ChevronLeft className="size-4 rtl:rotate-180" />
                   </Button>
                 </div>
               </div>

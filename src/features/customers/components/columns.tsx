@@ -10,7 +10,9 @@ import { PasswordConfirmDeleteDialog } from "@/components/shared/password-confir
 import { deleteCustomer, toggleCustomerFavorite } from "@/features/customers/actions";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { ar } from "@/i18n/ar";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/config";
 
 export type CustomerRow = {
   id: string;
@@ -28,9 +30,11 @@ export type CustomerRow = {
 function FavoriteToggle({
   id,
   isFavorite,
+  t,
 }: {
   id: string;
   isFavorite: boolean;
+  t: Dictionary;
 }) {
   const [optimistic, setOptimistic] = useState(isFavorite);
   const [isPending, startTransition] = useTransition();
@@ -54,7 +58,7 @@ function FavoriteToggle({
       className="cursor-pointer"
       disabled={isPending}
       onClick={handleClick}
-      title={optimistic ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}
+      title={optimistic ? t.customers.favoriteRemove : t.customers.favoriteAdd}
     >
       <Star
         className={cn(
@@ -68,6 +72,8 @@ function FavoriteToggle({
 
 export function getCustomerColumns(
   editHref: (id: string) => string,
+  t: Dictionary,
+  locale: Locale,
 ): ColumnDef<CustomerRow>[] {
   return [
     {
@@ -77,52 +83,53 @@ export function getCustomerColumns(
         <FavoriteToggle
           id={row.original.id}
           isFavorite={row.original.isFavorite}
+          t={t}
         />
       ),
     },
-    { accessorKey: "name", header: "الاسم" },
+    { accessorKey: "name", header: t.customers.columnName },
     {
       accessorKey: "phone",
-      header: "الهاتف / واتساب",
+      header: t.customers.columnPhone,
       cell: ({ row }) => <span dir="ltr">{row.original.phone}</span>,
     },
     {
       accessorKey: "email",
-      header: "البريد الإلكتروني",
+      header: t.customers.columnEmail,
       cell: ({ row }) => (
         <span dir="ltr">{row.original.email ?? "—"}</span>
       ),
     },
     {
       id: "ordersCount",
-      header: "عدد الطلبات",
-      cell: ({ row }) => row.original._count.orders.toLocaleString("ar"),
+      header: t.customers.columnOrdersCount,
+      cell: ({ row }) => row.original._count.orders.toLocaleString(locale),
     },
     {
       id: "totalPurchased",
-      header: ar.customers.totalPurchased,
-      cell: ({ row }) => formatCurrency(row.original.totalPurchased),
+      header: t.customers.totalPurchased,
+      cell: ({ row }) => formatCurrency(row.original.totalPurchased, locale),
     },
     {
       id: "totalPaid",
-      header: ar.customers.totalPaid,
-      cell: ({ row }) => formatCurrency(row.original.totalPaid),
+      header: t.customers.totalPaid,
+      cell: ({ row }) => formatCurrency(row.original.totalPaid, locale),
     },
     {
       id: "outstanding",
-      header: ar.customers.outstandingAmount,
+      header: t.customers.outstandingAmount,
       cell: ({ row }) => {
         const outstanding = row.original.outstanding;
         return (
           <span className={outstanding > 0 ? "font-medium text-amber-600 dark:text-amber-400" : undefined}>
-            {formatCurrency(outstanding)}
+            {formatCurrency(outstanding, locale)}
           </span>
         );
       },
     },
     {
       id: "balance",
-      header: ar.customers.balance,
+      header: t.customers.balance,
       cell: ({ row }) => {
         const balance = row.original.balance;
         return (
@@ -135,7 +142,7 @@ export function getCustomerColumns(
                   : undefined
             }
           >
-            {formatCurrency(balance)}
+            {formatCurrency(balance, locale)}
           </span>
         );
       },
@@ -150,7 +157,7 @@ export function getCustomerColumns(
             size="icon-sm"
             nativeButton={false}
             render={<Link href={`/dashboard/customers/${row.original.id}`} />}
-            title={ar.customers.viewProfile}
+            title={t.customers.viewProfile}
           >
             <UserCircle className="size-4" />
           </Button>
@@ -163,7 +170,9 @@ export function getCustomerColumns(
           </Button>
           <PasswordConfirmDeleteDialog
             action={(password) => deleteCustomer(row.original.id, password)}
-            description={`سيتم حذف العميل "${row.original.name}" نهائياً.`}
+            description={formatMessage(t.customers.deleteDescription, {
+              name: row.original.name,
+            })}
           />
         </div>
       ),

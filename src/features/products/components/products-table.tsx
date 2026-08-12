@@ -7,8 +7,10 @@ import {
   type ProductRow,
 } from "@/features/products/components/columns";
 import { deleteProducts } from "@/features/products/actions";
+import { useLocale } from "@/i18n/locale-provider";
 
 export function ProductsTable({ data }: { data: ProductRow[] }) {
+  const { t, locale } = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -21,7 +23,7 @@ export function ProductsTable({ data }: { data: ProductRow[] }) {
 
   return (
     <DataTable
-      columns={getProductColumns(editHref)}
+      columns={getProductColumns(editHref, t, locale)}
       data={data}
       onDeleteSelected={deleteProducts}
     />

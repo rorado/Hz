@@ -12,15 +12,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  ORDER_STATUS_LABELS,
-  ORDER_INVOICE_FILTER_LABELS,
-} from "@/features/orders/schema";
+import { useT } from "@/i18n/locale-provider";
 
-const ALL_STATUSES = "جميع الحالات";
-const ALL_INVOICE_FILTER = "الكل";
+const ALL_STATUSES = "all";
+const ALL_INVOICE_FILTER = "all";
 
 export function OrdersFilterBar() {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -39,10 +37,15 @@ export function OrdersFilterBar() {
     });
   }
 
+  const invoiceFilterLabels: Record<string, string> = {
+    NO_INVOICE: t.orders.invoiceFilterNone,
+    HAS_INVOICE: t.orders.invoiceFilterHas,
+  };
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end lg:flex-nowrap lg:items-center justify-center items-center">
       <div className="min-w-0 space-y-1.5 sm:w-44 sm:shrink-0">
-        <Label className="text-xs text-muted-foreground">الحالة</Label>
+        <Label className="text-xs text-muted-foreground">{t.common.status}</Label>
         <Select
           value={searchParams.get("status") ?? ALL_STATUSES}
           disabled={isPending}
@@ -52,12 +55,18 @@ export function OrdersFilterBar() {
           }}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={ALL_STATUSES} />
+            <SelectValue placeholder={t.orders.allStatuses}>
+              {(value: string) =>
+                value === ALL_STATUSES || !value
+                  ? t.orders.allStatuses
+                  : t.statusLabels.order[value as keyof typeof t.statusLabels.order]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_STATUSES}>{ALL_STATUSES}</SelectItem>
-            {Object.values(ORDER_STATUS_LABELS).map((label) => (
-              <SelectItem key={label} value={label}>
+            <SelectItem value={ALL_STATUSES}>{t.orders.allStatuses}</SelectItem>
+            {Object.entries(t.statusLabels.order).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
                 {label}
               </SelectItem>
             ))}
@@ -65,7 +74,7 @@ export function OrdersFilterBar() {
         </Select>
       </div>
       <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
-        <Label className="text-xs text-muted-foreground">من تاريخ</Label>
+        <Label className="text-xs text-muted-foreground">{t.common.from}</Label>
         <Input
           type="date"
           className="w-full"
@@ -75,7 +84,7 @@ export function OrdersFilterBar() {
         />
       </div>
       <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
-        <Label className="text-xs text-muted-foreground">إلى تاريخ</Label>
+        <Label className="text-xs text-muted-foreground">{t.common.to}</Label>
         <Input
           type="date"
           className="w-full"
@@ -85,7 +94,9 @@ export function OrdersFilterBar() {
         />
       </div>
       <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
-        <Label className="text-xs text-muted-foreground">الفاتورة</Label>
+        <Label className="text-xs text-muted-foreground">
+          {t.orders.invoiceFilterLabel}
+        </Label>
         <Select
           value={searchParams.get("invoiceFilter") ?? ALL_INVOICE_FILTER}
           disabled={isPending}
@@ -98,14 +109,20 @@ export function OrdersFilterBar() {
           }}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={ALL_INVOICE_FILTER} />
+            <SelectValue placeholder={t.orders.allInvoiceFilter}>
+              {(value: string) =>
+                value === ALL_INVOICE_FILTER || !value
+                  ? t.orders.allInvoiceFilter
+                  : invoiceFilterLabels[value]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_INVOICE_FILTER}>
-              {ALL_INVOICE_FILTER}
+              {t.orders.allInvoiceFilter}
             </SelectItem>
-            {Object.values(ORDER_INVOICE_FILTER_LABELS).map((label) => (
-              <SelectItem key={label} value={label}>
+            {Object.entries(invoiceFilterLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
                 {label}
               </SelectItem>
             ))}

@@ -21,10 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PAYMENT_METHOD_LABELS } from "@/features/invoices/schema";
 import { recordSupplierPayment } from "@/features/purchases/actions";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
 import type { PaymentMethod } from "@/generated/prisma/client";
+
+const PAYMENT_METHODS_NO_BALANCE: PaymentMethod[] = [
+  "CASH",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "OTHER",
+];
 
 export function RecordSupplierPaymentDialog({
   purchaseOrderId,
@@ -37,6 +44,7 @@ export function RecordSupplierPaymentDialog({
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [amount, setAmount] = useState(remaining);
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -52,11 +60,11 @@ export function RecordSupplierPaymentDialog({
     const note = String(formData.get("note") ?? "").trim();
 
     if (!(amount > 0)) {
-      toast.error("الرجاء إدخال مبلغ صحيح");
+      toast.error(t.purchases.invalidAmountToast);
       return;
     }
     if (amount > remaining + 0.005) {
-      toast.error("المبلغ أكبر من المبلغ المتبقي");
+      toast.error(t.purchases.amountExceedsRemainingToast);
       return;
     }
 
@@ -70,7 +78,7 @@ export function RecordSupplierPaymentDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تسجيل الدفعة بنجاح");
+      toast.success(t.purchases.paymentRecordedToast);
       setOpen(false);
     });
   }
@@ -81,18 +89,18 @@ export function RecordSupplierPaymentDialog({
         render={
           <Button className="cursor-pointer" size="sm">
             <Wallet className="size-4" />
-            تسجيل دفعة
+            {t.purchases.recordPaymentButton}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تسجيل دفعة للمورد</DialogTitle>
+          <DialogTitle>{t.purchases.recordPaymentDialogTitle}</DialogTitle>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
           <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="supplier-payment-amount">المبلغ المدفوع</Label>
+              <Label htmlFor="supplier-payment-amount">{t.purchases.paymentAmountLabel}</Label>
               <Input
                 id="supplier-payment-amount"
                 name="amount"
@@ -106,32 +114,32 @@ export function RecordSupplierPaymentDialog({
                 required
               />
               <p className="text-xs text-muted-foreground">
-                المبلغ المتبقي: {formatCurrency(remaining)}
+                {t.purchases.remainingAmountLabel}: {formatCurrency(remaining, locale)}
               </p>
             </div>
             <div className="space-y-2">
-              <Label>طريقة الدفع</Label>
-              <Select
-                items={PAYMENT_METHOD_LABELS}
-                value={method}
-                onValueChange={handleMethodChange}
-              >
+              <Label>{t.purchases.paymentMethodLabel}</Label>
+              <Select value={method} onValueChange={handleMethodChange}>
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) =>
+                      t.statusLabels.paymentMethod[
+                        value as keyof typeof t.statusLabels.paymentMethod
+                      ] ?? value
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(PAYMENT_METHOD_LABELS)
-                    .filter(([value]) => value !== "BALANCE")
-                    .map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
+                  {PAYMENT_METHODS_NO_BALANCE.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t.statusLabels.paymentMethod[value]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="supplier-payment-note">ملاحظة (اختياري)</Label>
+              <Label htmlFor="supplier-payment-note">{t.purchases.noteOptionalLabel}</Label>
               <Textarea id="supplier-payment-note" name="note" rows={2} />
             </div>
             <Button
@@ -140,7 +148,7 @@ export function RecordSupplierPaymentDialog({
               disabled={isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              {isPending ? "جاري الحفظ..." : "حفظ"}
+              {isPending ? t.common.saving : t.common.save}
             </Button>
           </fieldset>
         </form>

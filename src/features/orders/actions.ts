@@ -12,6 +12,7 @@ import {
 import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import type { OrderStatus } from "@/generated/prisma/client";
+import { validateAvailableStock } from "@/lib/stock-validation";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -40,6 +41,7 @@ const VALID_STATUSES: OrderStatus[] = [
 export async function updateOrderStatus(
   id: string,
   status: string,
+  options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };
@@ -57,12 +59,9 @@ export async function updateOrderStatus(
   const completingNow = status === "COMPLETED" && order.status !== "COMPLETED";
 
   if (completingNow) {
-    for (const item of order.items) {
-      if (item.quantity > item.product.quantity) {
-        return {
-          error: `الكمية المطلوبة من "${item.product.name}" أكبر من الكمية المتوفرة في المخزون`,
-        };
-      }
+    if (!options?.allowNegativeStock) {
+      const stockError = await validateAvailableStock(order.items);
+      if (stockError) return { error: stockError };
     }
 
     await prisma.$transaction([
@@ -102,15 +101,40 @@ export async function updateOrderStatus(
   return { success: true };
 }
 
+export async function getOrderStockIssue(id: string) {
+  const session = await auth();
+  if (!session?.user) return null;
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: { include: { product: { select: { name: true, quantity: true } } } } },
+  });
+  if (!order) return null;
+  const totals = new Map<string, number>();
+  order.items.forEach((item) => totals.set(item.productId, (totals.get(item.productId) ?? 0) + item.quantity));
+  for (const item of order.items) {
+    const requested = totals.get(item.productId) ?? 0;
+    if (requested > item.product.quantity) {
+      return { product: item.product.name, requested, available: item.product.quantity };
+    }
+  }
+  return null;
+}
+
 export async function updateOrderItems(
   orderId: string,
   input: unknown,
+  options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };
 
   const parsed = orderItemsSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+
+  if (!options?.allowNegativeStock) {
+    const stockError = await validateAvailableStock(parsed.data.items);
+    if (stockError) return { error: stockError };
+  }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -320,12 +344,20 @@ export async function saveOrderCustomerInfo(
   return { success: true };
 }
 
-export async function createOrder(input: unknown): Promise<ActionResult> {
+export async function createOrder(
+  input: unknown,
+  options?: { allowNegativeStock?: boolean },
+): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };
 
   const parsed = createOrderSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+
+  if (!options?.allowNegativeStock) {
+    const stockError = await validateAvailableStock(parsed.data.items);
+    if (stockError) return { error: stockError };
+  }
 
   const customer = await prisma.customer.findUnique({
     where: { id: parsed.data.customerId },
@@ -340,11 +372,6 @@ export async function createOrder(input: unknown): Promise<ActionResult> {
   for (const item of parsed.data.items) {
     const product = productById.get(item.productId);
     if (!product) return { error: "أحد المنتجات غير موجود" };
-    if (item.quantity > product.quantity) {
-      return {
-        error: `الكمية المطلوبة من "${product.name}" أكبر من الكمية المتوفرة في المخزون`,
-      };
-    }
   }
 
   const total = parsed.data.items.reduce(

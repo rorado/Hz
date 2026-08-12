@@ -1,6 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart } from "recharts";
+import { PieChart as PieChartIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/chart";
 import type { CategorySales } from "@/features/dashboard/analytics-queries";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
 
 const PALETTE = [
   "var(--chart-1)",
@@ -22,10 +24,12 @@ const PALETTE = [
 ];
 
 export function CategorySalesChart({ data }: { data: CategorySales[] }) {
+  const { locale, t } = useLocale();
   const top = data.slice(0, 5);
   const rest = data.slice(5);
   const restTotal = rest.reduce((sum, d) => sum + d.revenue, 0);
-  const chartData = restTotal > 0 ? [...top, { category: "أخرى", revenue: restTotal }] : top;
+  const chartData =
+    restTotal > 0 ? [...top, { category: t.dashboard.otherCategory, revenue: restTotal }] : top;
 
   const chartConfig = Object.fromEntries(
     chartData.map((d, i) => [
@@ -37,7 +41,10 @@ export function CategorySalesChart({ data }: { data: CategorySales[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>المبيعات حسب القسم</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <PieChartIcon className="size-4 text-muted-foreground" />
+          {t.dashboard.salesByCategory}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {chartData.length > 0 ? (
@@ -51,7 +58,7 @@ export function CategorySalesChart({ data }: { data: CategorySales[] }) {
                       <div className="flex w-full items-center justify-between gap-4">
                         <span className="text-muted-foreground">{String(name)}</span>
                         <span className="font-mono font-medium tabular-nums">
-                          {formatCurrency(Number(value))}
+                          {formatCurrency(Number(value), locale)}
                         </span>
                       </div>
                     )}
@@ -76,7 +83,7 @@ export function CategorySalesChart({ data }: { data: CategorySales[] }) {
           </ChartContainer>
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            لا توجد مبيعات في هذه الفترة
+            {t.dashboard.noSalesInPeriod}
           </div>
         )}
       </CardContent>

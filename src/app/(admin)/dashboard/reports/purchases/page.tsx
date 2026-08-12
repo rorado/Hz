@@ -1,3 +1,4 @@
+import { Warehouse } from "lucide-react";
 import { BackButton } from "@/components/shared/back-button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,8 +13,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { getPurchasesReportPage } from "@/features/reports/queries";
 import { ReportExportButtons } from "@/features/reports/components/report-export-buttons";
-import { PURCHASE_ORDER_STATUS_LABELS } from "@/features/purchases/schema";
 import { formatCurrency } from "@/lib/currency";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,16 +25,17 @@ export default async function PurchasesReportPage({
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
-  const {
-    items: purchases,
-    total,
-    pageSize,
-  } = await getPurchasesReportPage({ page });
+  const [t, locale, { items: purchases, total, pageSize }] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getPurchasesReportPage({ page }),
+  ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-report-print>
       <PageHeader
-        title="تقرير المشتريات"
+        title={t.reports.purchasesTitle}
+        icon={Warehouse}
         action={
           <BackButton
             fallbackHref="/dashboard/reports"
@@ -41,15 +43,15 @@ export default async function PurchasesReportPage({
           />
         }
       />
-      <ReportExportButtons type="purchases" />
+      <ReportExportButtons type="purchases" total={total} />
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>رقم أمر الشراء</TableHead>
-            <TableHead>المورد</TableHead>
-            <TableHead>الحالة</TableHead>
-            <TableHead>الإجمالي</TableHead>
-            <TableHead>تاريخ الإنشاء</TableHead>
+            <TableHead>{t.reports.columnPurchaseOrderNumber}</TableHead>
+            <TableHead>{t.reports.columnSupplier}</TableHead>
+            <TableHead>{t.common.status}</TableHead>
+            <TableHead>{t.reports.columnTotal}</TableHead>
+            <TableHead>{t.reports.columnCreatedDate}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,10 +65,10 @@ export default async function PurchasesReportPage({
                 <Badge
                   variant={order.status === "RECEIVED" ? "default" : "secondary"}
                 >
-                  {PURCHASE_ORDER_STATUS_LABELS[order.status]}
+                  {t.statusLabels.purchaseOrder[order.status]}
                 </Badge>
               </TableCell>
-              <TableCell>{formatCurrency(Number(order.total))}</TableCell>
+              <TableCell>{formatCurrency(Number(order.total), locale)}</TableCell>
               <TableCell>
                 {new Date(order.createdAt).toLocaleDateString("fr-FR")}
               </TableCell>

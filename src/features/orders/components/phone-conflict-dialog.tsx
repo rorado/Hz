@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import type { ConflictCustomer } from "@/features/orders/actions";
 import type { CustomerInput } from "@/features/customers/schema";
+import { useT } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 export function PhoneConflictDialog({
   existing,
@@ -26,21 +28,24 @@ export function PhoneConflictDialog({
   onCreateNew: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>رقم الهاتف مستخدم بالفعل</DialogTitle>
+          <DialogTitle>{t.customers.phoneConflictTitle}</DialogTitle>
           <DialogDescription>
-            يوجد عميل آخر مسجل بنفس رقم الهاتف (
-            <span dir="ltr">{existing.phone}</span>). كيف تريد المتابعة؟
+            {formatMessage(t.customers.phoneConflictDescription, {
+              phone: existing.phone,
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 text-sm">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              العميل الموجود
+              {t.customers.existingCustomerLabel}
             </p>
             <p className="font-medium">{existing.name}</p>
             {existing.email && (
@@ -51,7 +56,7 @@ export function PhoneConflictDialog({
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              البيانات المدخلة
+              {t.customers.enteredDataLabel}
             </p>
             <p className="font-medium">{incoming.name}</p>
             {incoming.email && (
@@ -64,11 +69,12 @@ export function PhoneConflictDialog({
 
         <div className="flex flex-col gap-2">
           <Button className="cursor-pointer" onClick={onUpdateExisting}>
-            تحديث بيانات العميل الموجود بهذه المعلومات
+            {t.customers.updateExistingButton}
           </Button>
           <p className="text-xs text-muted-foreground">
-            سيتم تحديث بيانات &quot;{existing.name}&quot; بالمعلومات المدخلة،
-            وربط هذا الطلب به.
+            {formatMessage(t.customers.updateExistingHint, {
+              name: existing.name,
+            })}
           </p>
 
           <Button
@@ -76,11 +82,10 @@ export function PhoneConflictDialog({
             className="cursor-pointer"
             onClick={onKeepExisting}
           >
-            استخدام العميل الموجود كما هو
+            {t.customers.keepExistingButton}
           </Button>
           <p className="text-xs text-muted-foreground">
-            سيتم تجاهل التعديلات المدخلة وربط الطلب بالعميل الموجود ببياناته
-            الحالية.
+            {t.customers.keepExistingHint}
           </p>
 
           <Button
@@ -88,14 +93,14 @@ export function PhoneConflictDialog({
             className="cursor-pointer"
             onClick={onCreateNew}
           >
-            حفظ كعميل منفصل رغم تطابق الهاتف
+            {t.customers.createSeparateButton}
           </Button>
           <p className="text-xs text-muted-foreground">
-            سيتم حفظ هذه البيانات كسجل منفصل حتى مع وجود نفس رقم الهاتف.
+            {t.customers.createSeparateHint}
           </p>
 
           <Button variant="ghost" className="cursor-pointer" onClick={onCancel}>
-            إلغاء
+            {t.common.cancel}
           </Button>
         </div>
       </DialogContent>

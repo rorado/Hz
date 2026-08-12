@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Pencil, Package } from "lucide-react";
+import { Pencil, Package, Eye } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { deleteProduct } from "@/features/products/actions";
-import { ar } from "@/i18n/ar";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { formatMessage } from "@/i18n/format";
 
 export type ProductRow = {
   id: string;
@@ -24,6 +25,8 @@ export type ProductRow = {
 
 export function getProductColumns(
   editHref: (id: string) => string,
+  t: Dictionary,
+  locale: string,
 ): ColumnDef<ProductRow>[] {
   return [
     {
@@ -50,7 +53,7 @@ export function getProductColumns(
     },
     {
       accessorKey: "name",
-      header: "اسم المنتج",
+      header: t.products.columnName,
       cell: ({ row }) => <p className="font-medium">{row.original.name}</p>,
     },
     {
@@ -64,34 +67,34 @@ export function getProductColumns(
     },
     {
       id: "category",
-      header: "القسم",
+      header: t.products.columnCategory,
       cell: ({ row }) => row.original.category.name,
     },
     {
       id: "brand",
-      header: "العلامة التجارية",
+      header: t.products.columnBrand,
       cell: ({ row }) => row.original.brand?.name ?? "—",
     },
     {
       id: "quantity",
-      header: "الكمية",
+      header: t.products.columnQuantity,
       cell: ({ row }) => {
         const isLow = row.original.quantity <= row.original.minStockLevel;
         return (
           <span className={isLow ? "font-medium text-destructive" : ""}>
-            {row.original.quantity.toLocaleString("ar")}
+            {row.original.quantity.toLocaleString(locale)}
           </span>
         );
       },
     },
     {
       id: "status",
-      header: "الحالة",
+      header: t.common.status,
       cell: ({ row }) => (
         <Badge
           variant={row.original.status === "ACTIVE" ? "default" : "secondary"}
         >
-          {ar.statusLabels.productStatus[row.original.status]}
+          {t.statusLabels.productStatus[row.original.status]}
         </Badge>
       ),
     },
@@ -104,13 +107,24 @@ export function getProductColumns(
             variant="ghost"
             size="icon-sm"
             nativeButton={false}
+            render={<Link href={`/dashboard/products/${row.original.id}`} />}
+            title={t.customers.viewProfile}
+          >
+            <Eye className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            nativeButton={false}
             render={<Link href={editHref(row.original.id)} />}
           >
             <Pencil className="size-4" />
           </Button>
           <ConfirmDeleteDialog
             action={() => deleteProduct(row.original.id)}
-            description={`سيتم حذف المنتج "${row.original.name}" نهائياً مع جميع صوره.`}
+            description={formatMessage(t.products.deleteDescription, {
+              name: row.original.name,
+            })}
           />
         </div>
       ),

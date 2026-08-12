@@ -13,14 +13,15 @@ import {
 } from "@/components/ui/select";
 import { DataTable } from "@/components/data-table/data-table";
 import {
-  orderColumns,
+  getOrderColumns,
   type OrderRow,
 } from "@/features/orders/components/columns";
-import { ORDER_STATUS_LABELS } from "@/features/orders/schema";
 import { deleteOrders } from "@/features/orders/actions";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 const PAGE_SIZE = 10;
-const ALL_STATUSES = "جميع الحالات";
+const ALL_STATUSES = "all";
 
 export function OrdersTable({
   data,
@@ -29,6 +30,7 @@ export function OrdersTable({
   data: OrderRow[];
   searchable?: boolean;
 }) {
+  const { t, locale } = useLocale();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(ALL_STATUSES);
   const [page, setPage] = useState(1);
@@ -40,9 +42,7 @@ export function OrdersTable({
     return data.filter((order) => {
       const matchesQuery =
         !trimmed || order.orderNumber.toLowerCase().includes(trimmed);
-      const matchesStatus =
-        status === ALL_STATUSES ||
-        (ORDER_STATUS_LABELS[order.status] ?? order.status) === status;
+      const matchesStatus = status === ALL_STATUSES || order.status === status;
       return matchesQuery && matchesStatus;
     });
   }, [data, searchable, trimmed, status]);
@@ -73,18 +73,24 @@ export function OrdersTable({
             <Input
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
-              placeholder="ابحث برقم الطلب..."
+              placeholder={t.orders.searchPlaceholderShort}
               className="pe-9"
             />
           </div>
           <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder={ALL_STATUSES} />
+              <SelectValue placeholder={t.orders.allStatuses}>
+                {(value: string) =>
+                  value === ALL_STATUSES || !value
+                    ? t.orders.allStatuses
+                    : t.statusLabels.order[value as keyof typeof t.statusLabels.order]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_STATUSES}>{ALL_STATUSES}</SelectItem>
-              {Object.values(ORDER_STATUS_LABELS).map((label) => (
-                <SelectItem key={label} value={label}>
+              <SelectItem value={ALL_STATUSES}>{t.orders.allStatuses}</SelectItem>
+              {Object.entries(t.statusLabels.order).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
                   {label}
                 </SelectItem>
               ))}
@@ -93,16 +99,18 @@ export function OrdersTable({
         </div>
       )}
       <DataTable
-        columns={orderColumns}
+        columns={getOrderColumns(t, locale)}
         data={paged}
         onDeleteSelected={deleteOrders}
       />
       {searchable && filtered.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            {filtered.length.toLocaleString("ar")} نتيجة — صفحة{" "}
-            {currentPage.toLocaleString("ar")} من{" "}
-            {pageCount.toLocaleString("ar")}
+            {formatMessage(t.common.paginationSummary, {
+              total: filtered.length.toLocaleString(locale),
+              page: currentPage.toLocaleString(locale),
+              pageCount: pageCount.toLocaleString(locale),
+            })}
           </span>
           <div className="flex gap-2">
             <Button
@@ -111,8 +119,8 @@ export function OrdersTable({
               disabled={currentPage <= 1}
               onClick={() => setPage(currentPage - 1)}
             >
-              <ChevronRight className="size-4" />
-              السابق
+              <ChevronLeft className="size-4 rtl:rotate-180" />
+              {t.common.previous}
             </Button>
             <Button
               variant="outline"
@@ -120,8 +128,8 @@ export function OrdersTable({
               disabled={currentPage >= pageCount}
               onClick={() => setPage(currentPage + 1)}
             >
-              التالي
-              <ChevronLeft className="size-4" />
+              {t.common.next}
+              <ChevronRight className="size-4 rtl:rotate-180" />
             </Button>
           </div>
         </div>

@@ -1,17 +1,4 @@
 import { z } from "zod";
-import { ar, invertLabels } from "@/i18n/ar";
-
-export const PAYMENT_METHOD_LABELS: Record<string, string> =
-  ar.statusLabels.paymentMethod;
-export const PAYMENT_METHOD_VALUE_BY_LABEL = invertLabels(
-  PAYMENT_METHOD_LABELS,
-);
-
-export const PAYMENT_STATUS_LABELS: Record<string, string> =
-  ar.statusLabels.paymentStatus;
-export const PAYMENT_STATUS_VALUE_BY_LABEL = invertLabels(
-  PAYMENT_STATUS_LABELS,
-);
 
 export const invoiceItemSchema = z.object({
   productId: z.string().optional(),
@@ -53,8 +40,23 @@ export const invoiceSchema = z.object({
   notes: z.string().optional(),
   orderId: z.string().optional(),
   items: z
-    .array(invoiceItemSchema)
-    .min(1, { error: "أضف منتجاً واحداً على الأقل" }),
+    .array(
+      invoiceItemSchema.or(
+        z.object({
+          productId: z.literal(""),
+          name: z.literal(""),
+          quantity: z.coerce.number(),
+          unitPrice: z.coerce.number(),
+        }),
+      ),
+    )
+    .refine((items) => items.some((item) => item.name !== ""), {
+      error: "أضف منتجاً واحداً على الأقل",
+    })
+    .transform(
+      (items): z.output<typeof invoiceItemSchema>[] =>
+        items.filter((item) => item.name !== "") as z.output<typeof invoiceItemSchema>[],
+    ),
   payments: z.array(paymentLineSchema).default([]),
 });
 

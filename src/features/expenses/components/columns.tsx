@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { deleteExpense } from "@/features/expenses/actions";
-import { EXPENSE_CATEGORY_LABELS } from "@/features/expenses/schema";
 import { formatCurrency } from "@/lib/currency";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/config";
 
 export type ExpenseRow = {
   id: string;
@@ -20,31 +21,34 @@ export type ExpenseRow = {
 
 export function getExpenseColumns(
   editHref: (id: string) => string,
+  t: Dictionary,
+  locale: Locale,
 ): ColumnDef<ExpenseRow>[] {
   return [
     {
       id: "category",
-      header: "الفئة",
+      header: t.expenses.columnCategory,
       cell: ({ row }) => (
         <Badge variant="secondary">
-          {EXPENSE_CATEGORY_LABELS[row.original.category] ??
-            row.original.category}
+          {t.statusLabels.expenseCategory[
+            row.original.category as keyof typeof t.statusLabels.expenseCategory
+          ] ?? row.original.category}
         </Badge>
       ),
     },
     {
       id: "amount",
-      header: "المبلغ",
-      cell: ({ row }) => formatCurrency(row.original.amount),
+      header: t.expenses.columnAmount,
+      cell: ({ row }) => formatCurrency(row.original.amount, locale),
     },
     {
       id: "description",
-      header: "الوصف",
+      header: t.expenses.columnDescription,
       cell: ({ row }) => row.original.description ?? "—",
     },
     {
       id: "date",
-      header: "التاريخ",
+      header: t.expenses.columnDate,
       cell: ({ row }) =>
         new Date(row.original.date).toLocaleDateString("fr-FR"),
     },
@@ -63,7 +67,7 @@ export function getExpenseColumns(
           </Button>
           <ConfirmDeleteDialog
             action={() => deleteExpense(row.original.id)}
-            description="سيتم حذف هذا المصروف نهائياً."
+            description={t.expenses.deleteDescription}
           />
         </div>
       ),

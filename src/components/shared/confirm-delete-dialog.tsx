@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ar } from "@/i18n/ar";
+import { useT } from "@/i18n/locale-provider";
 
 type DeleteResult = { error?: string } | void;
 
@@ -28,6 +28,7 @@ export function ConfirmDeleteDialog({
   description?: string;
   trigger?: React.ReactElement;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -55,16 +56,16 @@ export function ConfirmDeleteDialog({
       />
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{ar.common.confirmDeleteTitle}</AlertDialogTitle>
+          <AlertDialogTitle>{t.common.confirmDeleteTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            {description ?? ar.common.confirmDeleteDescription}
+            {description ?? t.common.confirmDeleteDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{ar.common.cancel}</AlertDialogCancel>
+          <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
           <AlertDialogAction disabled={isPending} onClick={handleConfirm}>
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحذف..." : ar.common.delete}
+            {isPending ? t.common.deleting : t.common.delete}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

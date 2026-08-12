@@ -23,11 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getOrCreateInvoiceForOrder } from "@/features/invoices/actions";
-import {
-  PAYMENT_METHOD_LABELS,
-  INVOICE_LANGUAGE_LABELS,
-} from "@/features/invoices/schema";
-import { ar } from "@/i18n/ar";
+import { INVOICE_LANGUAGE_LABELS } from "@/features/invoices/schema";
+import { useLocale } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { computePaymentStatus } from "@/lib/money";
@@ -41,6 +38,14 @@ import {
 import type { InvoiceLanguage, PaymentMethod } from "@/generated/prisma/client";
 
 type PaymentLine = { method: PaymentMethod; amount: number };
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  "CASH",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "BALANCE",
+  "OTHER",
+];
 
 export function GenerateInvoiceDialog({
   orderId,
@@ -59,6 +64,7 @@ export function GenerateInvoiceDialog({
     { method: "CASH", amount: orderTotal },
   ]);
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const canUseBalance = hasCustomer && customerBalance > 0.005;
   const totalPaid = lines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
@@ -95,7 +101,7 @@ export function GenerateInvoiceDialog({
 
   function submitPayments(payments: PaymentLine[], excessToBalance?: boolean) {
     if (payments.some((line) => line.method === "BALANCE") && !hasCustomer) {
-      toast.error(ar.invoices.noCustomerForBalance);
+      toast.error(t.invoices.noCustomerForBalance);
       return;
     }
 
@@ -177,23 +183,22 @@ export function GenerateInvoiceDialog({
         render={
           <Button className="w-full cursor-pointer">
             <FileText className="size-4" />
-            توليد فاتورة
+            {t.orders.generateInvoiceButton}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>إنشاء الفاتورة</DialogTitle>
+          <DialogTitle>{t.orders.generateInvoiceDialogTitle}</DialogTitle>
           <DialogDescription>
-            اختر لغة الفاتورة وطرق الدفع والمبالغ، ويمكنك دمج أكثر من طريقة
-            دفع لنفس الفاتورة (مثال: نقدًا + من الرصيد).
+            {t.orders.generateInvoiceDialogDescription}
           </DialogDescription>
         </DialogHeader>
 
         <fieldset disabled={isPending} className="contents">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>لغة الفاتورة</Label>
+            <Label>{t.orders.invoiceLanguageLabel}</Label>
             <Select
               items={INVOICE_LANGUAGE_LABELS}
               value={language}
@@ -211,7 +216,7 @@ export function GenerateInvoiceDialog({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>{ar.invoices.payments}</Label>
+              <Label>{t.invoices.payments}</Label>
               <div className="flex gap-2">
                 {canUseBalance && (
                   <Button
@@ -221,7 +226,7 @@ export function GenerateInvoiceDialog({
                     className="cursor-pointer"
                     onClick={addBalanceLine}
                   >
-                    {ar.invoices.availableBalance}: {formatCurrency(customerBalance)}
+                    {t.invoices.availableBalance}: {formatCurrency(customerBalance, locale)}
                   </Button>
                 )}
                 <Button
@@ -232,14 +237,14 @@ export function GenerateInvoiceDialog({
                   onClick={addLine}
                 >
                   <Plus className="size-4" />
-                  {ar.invoices.addPayment}
+                  {t.invoices.addPayment}
                 </Button>
               </div>
             </div>
 
             {lines.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {ar.invoices.noPaymentLines}
+                {t.invoices.noPaymentLines}
               </p>
             ) : (
               <div className="space-y-2">
@@ -249,9 +254,8 @@ export function GenerateInvoiceDialog({
                     className="grid grid-cols-1 items-start gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]"
                   >
                     <div className="space-y-1">
-                      <Label className="text-xs">{ar.invoices.paymentMethod}</Label>
+                      <Label className="text-xs">{t.invoices.paymentMethod}</Label>
                       <Select
-                        items={PAYMENT_METHOD_LABELS}
                         value={line.method}
                         onValueChange={(value) => {
                           if (!value) return;
@@ -259,16 +263,20 @@ export function GenerateInvoiceDialog({
                         }}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue />
+                          <SelectValue>
+                            {(value: string) =>
+                              t.statusLabels.paymentMethod[
+                                value as keyof typeof t.statusLabels.paymentMethod
+                              ] ?? value
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(PAYMENT_METHOD_LABELS).map(
-                            ([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
+                          {PAYMENT_METHODS.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {t.statusLabels.paymentMethod[value]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {line.method === "BALANCE" && (
@@ -281,13 +289,13 @@ export function GenerateInvoiceDialog({
                           )}
                         >
                           {!hasCustomer
-                            ? ar.invoices.noCustomerForBalance
-                            : `${ar.invoices.availableBalance}: ${formatCurrency(customerBalance)}`}
+                            ? t.invoices.noCustomerForBalance
+                            : `${t.invoices.availableBalance}: ${formatCurrency(customerBalance, locale)}`}
                         </p>
                       )}
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">{ar.invoices.amountPaid}</Label>
+                      <Label className="text-xs">{t.invoices.amountPaid}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -320,15 +328,15 @@ export function GenerateInvoiceDialog({
             <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
               <PaymentStatusBadge status={previewStatus} />
               <span>
-                {ar.invoices.totalPaidLabel}: {formatCurrency(totalPaid)}
+                {t.invoices.totalPaidLabel}: {formatCurrency(totalPaid, locale)}
               </span>
               {remaining > 0.005 && (
                 <span className="text-muted-foreground">
-                  {ar.invoices.remainingAfterPayments}: {formatCurrency(remaining)}
+                  {t.invoices.remainingAfterPayments}: {formatCurrency(remaining, locale)}
                 </span>
               )}
               {remaining < -0.005 && (
-                <Badge variant="secondary">{ar.invoices.overpaidWillBecomeCredit}</Badge>
+                <Badge variant="secondary">{t.invoices.overpaidWillBecomeCredit}</Badge>
               )}
             </div>
           </div>
@@ -339,7 +347,7 @@ export function GenerateInvoiceDialog({
             onClick={handleSubmit}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الإنشاء..." : "إنشاء الفاتورة"}
+            {isPending ? t.orders.generatingInvoice : t.orders.generateInvoiceDialogTitle}
           </Button>
         </div>
         </fieldset>

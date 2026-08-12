@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Printer } from "lucide-react";
+import { FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
@@ -16,7 +16,8 @@ import { InvoiceForm } from "@/features/invoices/components/invoice-form";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { RecordPaymentDialog } from "@/features/invoices/components/record-payment-dialog";
 import { formatCurrency } from "@/lib/currency";
-import { ar } from "@/i18n/ar";
+import { getDictionary, getLocale } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,9 @@ export default async function InvoiceEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [invoice, productRows, customers, categories, brands] = await Promise.all([
+  const [t, locale, invoice, productRows, customers, categories, brands] = await Promise.all([
+    getDictionary(),
+    getLocale(),
     getInvoiceById(id),
     getProductPickerOptions(),
     getCustomerOptions(),
@@ -44,6 +47,8 @@ export default async function InvoiceEditPage({
     id: product.id,
     name: product.name,
     sku: product.sku,
+    barcode: product.barcode,
+    quantity: product.quantity,
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
@@ -61,7 +66,8 @@ export default async function InvoiceEditPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`الفاتورة ${invoice.invoiceNumber}`}
+        title={formatMessage(t.invoices.detailTitle, { number: invoice.invoiceNumber })}
+        icon={FileText}
         action={
           <div className="flex gap-2">
             <BackButton fallbackHref="/dashboard/invoices" />
@@ -70,12 +76,11 @@ export default async function InvoiceEditPage({
               render={
                 <Link
                   href={`/dashboard/invoices/${invoice.id}/print?lang=${invoice.language.toLowerCase()}`}
-                  target="_blank"
                 />
               }
             >
               <Printer className="size-4" />
-              عرض / طباعة
+              {t.invoices.viewPrintButton}
             </Button>
           </div>
         }
@@ -85,9 +90,9 @@ export default async function InvoiceEditPage({
         <PaymentStatusBadge status={invoice.paymentStatus} />
         <p className="text-sm">
           <span className="text-muted-foreground">
-            {ar.invoices.remainingBalance}:{" "}
+            {t.invoices.remainingBalance}:{" "}
           </span>
-          <span className="font-medium">{formatCurrency(remaining)}</span>
+          <span className="font-medium">{formatCurrency(remaining, locale)}</span>
         </p>
         {remaining > 0 && (
           <RecordPaymentDialog

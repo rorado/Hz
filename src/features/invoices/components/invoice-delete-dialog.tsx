@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { formatCurrency } from "@/lib/currency";
-import { ar } from "@/i18n/ar";
+import { useLocale, useT } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 import { deleteInvoice } from "@/features/invoices/actions";
 import type { PaymentStatus } from "@/generated/prisma/client";
 
@@ -53,21 +54,22 @@ type InvoiceDeleteSummary = Pick<
  * "are you sure" step and the رصيد question that can follow it, so the
  * admin sees the same details regardless of which step they're on. */
 function InvoiceSummaryDetails({ invoice }: { invoice: InvoiceDeleteSummary }) {
+  const { t, locale } = useLocale();
   return (
     <>
       <p>
-        {ar.invoices.deleteInvoiceNumber}:{" "}
+        {t.invoices.deleteInvoiceNumber}:{" "}
         <span dir="ltr">{invoice.invoiceNumber}</span>
       </p>
       <p>
-        {ar.invoices.deleteCustomerName}: {invoice.customerName}{" "}
+        {t.invoices.deleteCustomerName}: {invoice.customerName}{" "}
         <span dir="ltr">({invoice.customerPhone})</span>
       </p>
       <p>
-        {ar.invoices.deleteInvoiceTotal}: {formatCurrency(invoice.total)}
+        {t.invoices.deleteInvoiceTotal}: {formatCurrency(invoice.total, locale)}
       </p>
       <p className="flex items-center gap-1.5">
-        {ar.invoices.paymentStatus}:{" "}
+        {t.invoices.paymentStatus}:{" "}
         <PaymentStatusBadge status={invoice.paymentStatus} />
       </p>
       <p>{new Date(invoice.createdAt).toLocaleDateString("fr-FR")}</p>
@@ -92,6 +94,7 @@ export function InvoiceBalanceDeleteContent({
   onConfirm: (applyBalanceChange: boolean) => void;
   onCancel: () => void;
 }) {
+  const { t, locale } = useLocale();
   const [applyChange, setApplyChange] = useState(false);
   // Reversing the invoice's stored effect: giving back a من الرصيد draw
   // increases the balance; clawing back leftover overpayment credit
@@ -102,21 +105,21 @@ export function InvoiceBalanceDeleteContent({
   return (
     <>
       <AlertDialogHeader>
-        <AlertDialogTitle>{ar.common.confirmDeleteTitle}</AlertDialogTitle>
+        <AlertDialogTitle>{t.common.confirmDeleteTitle}</AlertDialogTitle>
         <AlertDialogDescription render={<div />}>
           <InvoiceSummaryDetails invoice={invoice} />
           <p className="pt-2 font-medium text-foreground">
             {isIncrease
-              ? ar.invoices.deleteBalanceIncreasePreview
-              : ar.invoices.deleteBalanceDecreasePreview}{" "}
+              ? t.invoices.deleteBalanceIncreasePreview
+              : t.invoices.deleteBalanceDecreasePreview}{" "}
             {isIncrease ? "+" : "-"}
-            {formatCurrency(Math.abs(pendingChange))}{" "}
+            {formatCurrency(Math.abs(pendingChange), locale)}{" "}
             {isIncrease
-              ? ar.invoices.deleteBalanceIncreaseReason
-              : ar.invoices.deleteBalanceDecreaseReason}
+              ? t.invoices.deleteBalanceIncreaseReason
+              : t.invoices.deleteBalanceDecreaseReason}
             .
           </p>
-          <p className="text-xs">{ar.invoices.deleteBalanceNoAutoChange}</p>
+          <p className="text-xs">{t.invoices.deleteBalanceNoAutoChange}</p>
         </AlertDialogDescription>
       </AlertDialogHeader>
       <div className="flex items-center gap-2 px-1">
@@ -131,18 +134,18 @@ export function InvoiceBalanceDeleteContent({
           className="text-sm font-normal"
         >
           {isIncrease
-            ? ar.invoices.deleteBalanceIncreaseCheckboxLabel
-            : ar.invoices.deleteBalanceDecreaseCheckboxLabel}{" "}
-          ({formatCurrency(Math.abs(pendingChange))})
+            ? t.invoices.deleteBalanceIncreaseCheckboxLabel
+            : t.invoices.deleteBalanceDecreaseCheckboxLabel}{" "}
+          ({formatCurrency(Math.abs(pendingChange), locale)})
         </Label>
       </div>
       <AlertDialogFooter>
         <Button variant="outline" disabled={disabled} onClick={onCancel}>
-          {ar.common.cancel}
+          {t.common.cancel}
         </Button>
         <Button disabled={disabled} onClick={() => onConfirm(applyChange)}>
           {disabled && <Loader2 className="size-4 animate-spin" />}
-          {disabled ? "جاري الحذف..." : ar.invoices.deleteConfirmAndDelete}
+          {disabled ? t.common.deleting : t.invoices.deleteConfirmAndDelete}
         </Button>
       </AlertDialogFooter>
     </>
@@ -163,6 +166,7 @@ export function DeletePasswordStep({
   onConfirm: (password: string) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [password, setPassword] = useState("");
 
   return (
@@ -172,14 +176,14 @@ export function DeletePasswordStep({
           <ShieldAlert className="size-6 text-destructive" />
         </div>
         <AlertDialogTitle className="text-center">
-          {ar.common.confirmDeleteTitle}
+          {t.common.confirmDeleteTitle}
         </AlertDialogTitle>
         <AlertDialogDescription className="text-center">
-          {ar.common.confirmDeleteDescription}
+          {t.common.confirmDeleteDescription}
         </AlertDialogDescription>
       </AlertDialogHeader>
       <div className="space-y-2 px-1">
-        <Label htmlFor="invoice-delete-password">كلمة مرور الحذف</Label>
+        <Label htmlFor="invoice-delete-password">{t.invoices.deletePasswordLabel}</Label>
         <Input
           id="invoice-delete-password"
           type="password"
@@ -194,12 +198,12 @@ export function DeletePasswordStep({
               onConfirm(password);
             }
           }}
-          placeholder="أدخل كلمة المرور للمتابعة"
+          placeholder={t.invoices.deletePasswordPlaceholder}
         />
       </div>
       <AlertDialogFooter>
         <Button variant="outline" disabled={disabled} onClick={onCancel}>
-          {ar.common.cancel}
+          {t.common.cancel}
         </Button>
         <Button
           variant="destructive"
@@ -207,7 +211,7 @@ export function DeletePasswordStep({
           onClick={() => onConfirm(password)}
         >
           {disabled && <Loader2 className="size-4 animate-spin" />}
-          {disabled ? "جاري الحذف..." : ar.common.delete}
+          {disabled ? t.common.deleting : t.common.delete}
         </Button>
       </AlertDialogFooter>
     </>
@@ -219,6 +223,7 @@ export function InvoiceDeleteDialog({
 }: {
   invoice: InvoiceDeleteInfo;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   // "confirm" is always shown first; "balance" only follows it when
   // deleting this invoice would actually change رصيد; "password" is always
@@ -295,20 +300,22 @@ export function InvoiceDeleteDialog({
           <>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {ar.common.confirmDeleteTitle}
+                {t.common.confirmDeleteTitle}
               </AlertDialogTitle>
               <AlertDialogDescription render={<div />}>
                 <InvoiceSummaryDetails invoice={invoice} />
                 <p className="pt-2 font-medium text-foreground">
-                  {`سيتم حذف الفاتورة "${invoice.invoiceNumber}" نهائياً.`}
+                  {formatMessage(t.invoices.deleteConfirmMessage, {
+                    number: invoice.invoiceNumber,
+                  })}
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{ar.common.cancel}</AlertDialogCancel>
+              <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
               <AlertDialogAction disabled={isPending} onClick={handleConfirm}>
                 {isPending && <Loader2 className="size-4 animate-spin" />}
-                {isPending ? "جاري الحذف..." : ar.common.delete}
+                {isPending ? t.common.deleting : t.common.delete}
               </AlertDialogAction>
             </AlertDialogFooter>
           </>

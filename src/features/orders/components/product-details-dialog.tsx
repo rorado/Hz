@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 export type OrderItemProduct = {
   name: string;
@@ -35,6 +37,7 @@ export function ProductDetailsDialog({
   product: OrderItemProduct;
 }) {
   const [open, setOpen] = useState(false);
+  const { t, locale } = useLocale();
   const image = product.images[0];
   const outOfStock = product.quantity <= 0;
 
@@ -50,7 +53,7 @@ export function ProductDetailsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{product.name}</DialogTitle>
-          <DialogDescription>تفاصيل المنتج</DialogDescription>
+          <DialogDescription>{t.products.detailsDialogTitle}</DialogDescription>
         </DialogHeader>
         <div className="flex gap-4">
           <div className="relative size-24 shrink-0 overflow-hidden rounded-lg border bg-muted">
@@ -75,32 +78,34 @@ export function ProductDetailsDialog({
             </dd>
             {product.barcode && (
               <>
-                <dt className="text-muted-foreground">الباركود</dt>
+                <dt className="text-muted-foreground">{t.products.barcodeColumnLabel}</dt>
                 <dd dir="ltr" className="text-start">
                   {product.barcode}
                 </dd>
               </>
             )}
-            <dt className="text-muted-foreground">القسم</dt>
+            <dt className="text-muted-foreground">{t.products.columnCategory}</dt>
             <dd className="text-start">{product.category.name}</dd>
             {product.brand && (
               <>
-                <dt className="text-muted-foreground">العلامة التجارية</dt>
+                <dt className="text-muted-foreground">{t.products.columnBrand}</dt>
                 <dd className="text-start">{product.brand.name}</dd>
               </>
             )}
-            <dt className="text-muted-foreground">السعر الأول</dt>
-            <dd className="text-start">{formatCurrency(product.price1)}</dd>
-            <dt className="text-muted-foreground">السعر الثاني</dt>
-            <dd className="text-start">{formatCurrency(product.price2)}</dd>
-            <dt className="text-muted-foreground">السعر الثالث</dt>
-            <dd className="text-start">{formatCurrency(product.price3)}</dd>
-            <dt className="text-muted-foreground">المخزون</dt>
+            <dt className="text-muted-foreground">{t.reports.columnPrice1}</dt>
+            <dd className="text-start">{formatCurrency(product.price1, locale)}</dd>
+            <dt className="text-muted-foreground">{t.reports.columnPrice2}</dt>
+            <dd className="text-start">{formatCurrency(product.price2, locale)}</dd>
+            <dt className="text-muted-foreground">{t.reports.columnPrice3}</dt>
+            <dd className="text-start">{formatCurrency(product.price3, locale)}</dd>
+            <dt className="text-muted-foreground">{t.products.stockLabel}</dt>
             <dd className="text-start">
               <Badge variant={outOfStock ? "destructive" : "secondary"}>
                 {outOfStock
-                  ? "نفدت الكمية"
-                  : `${product.quantity.toLocaleString("ar")} متوفر`}
+                  ? t.products.outOfStock
+                  : formatMessage(t.products.inStockTemplate, {
+                      quantity: product.quantity.toLocaleString(locale),
+                    })}
               </Badge>
             </dd>
           </dl>

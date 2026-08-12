@@ -11,11 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { PAYMENT_STATUS_LABELS } from "@/features/invoices/schema";
+import { useT } from "@/i18n/locale-provider";
 
-const ALL_STATUSES = "جميع الحالات";
+const ALL_STATUSES = "all";
 
 export function InvoicesFilterBar() {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -37,7 +38,9 @@ export function InvoicesFilterBar() {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">حالة الدفع</Label>
+        <Label className="text-xs text-muted-foreground">
+          {t.invoices.statusFilterLabel}
+        </Label>
         <Select
           value={searchParams.get("paymentStatus") ?? ALL_STATUSES}
           disabled={isPending}
@@ -47,12 +50,20 @@ export function InvoicesFilterBar() {
           }}
         >
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder={ALL_STATUSES} />
+            <SelectValue placeholder={t.invoices.allStatuses}>
+              {(value: string) =>
+                value === ALL_STATUSES || !value
+                  ? t.invoices.allStatuses
+                  : t.statusLabels.paymentStatus[
+                      value as keyof typeof t.statusLabels.paymentStatus
+                    ]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_STATUSES}>{ALL_STATUSES}</SelectItem>
-            {Object.values(PAYMENT_STATUS_LABELS).map((label) => (
-              <SelectItem key={label} value={label}>
+            <SelectItem value={ALL_STATUSES}>{t.invoices.allStatuses}</SelectItem>
+            {Object.entries(t.statusLabels.paymentStatus).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
                 {label}
               </SelectItem>
             ))}

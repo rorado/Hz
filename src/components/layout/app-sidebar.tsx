@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut, Store } from "lucide-react";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -27,8 +28,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { adminNavGroups } from "@/components/layout/admin-nav-items";
-import { ar } from "@/i18n/ar";
+import { LocaleSwitcher } from "@/components/shared/locale-switcher";
+import { BrandMark } from "@/components/shared/brand-mark";
+import { getAdminNavGroups } from "@/components/layout/admin-nav-items";
+import { useT, useLocale } from "@/i18n/locale-provider";
+import { useDirection } from "@/components/ui/direction";
+import { companyConfig } from "@/config/company";
 import { logout } from "@/features/auth/actions";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +50,10 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  const t = useT();
+  const { locale } = useLocale();
+  const direction = useDirection();
+  const adminNavGroups = getAdminNavGroups(t);
   const badgeValues: Record<string, number> = {
     pendingOrders,
     lowStock,
@@ -52,16 +61,33 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar side="right" collapsible="icon">
+    <Sidebar side={direction === "rtl" ? "right" : "left"} collapsible="icon">
+      {/* Decorative dot-grid texture behind the sidebar content. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.15]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, var(--sidebar-foreground) 1px, transparent 1px)",
+          backgroundSize: "18px 18px",
+        }}
+      />
       <SidebarHeader>
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-            <Store className="size-4.5" />
-          </span>
-          <span className="truncate font-semibold tracking-tight">
-            {ar.siteName}
-          </span>
-        </div>
+        <Link
+          href="/dashboard"
+          onClick={() => setOpenMobile(false)}
+          className="flex items-center justify-between gap-2.5 rounded-lg px-2 py-2 outline-hidden transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-base font-bold tracking-tight">
+              {companyConfig.name}
+            </span>
+            <span className="truncate text-xs text-sidebar-foreground/60">
+              {t.sidebar.subtitle}
+            </span>
+          </div>
+          <BrandMark size="lg" />
+        </Link>
       </SidebarHeader>
       <SidebarContent className="gap-1">
         {adminNavGroups.map((group, groupIndex) => (
@@ -70,7 +96,7 @@ export function AppSidebar({
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             )}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1.5">
                 {group.items.map((item) => {
                   const isActive =
                     item.href === "/dashboard"
@@ -86,7 +112,7 @@ export function AppSidebar({
                         isActive={isActive}
                         tooltip={item.label}
                         className={cn(
-                          "data-active:bg-primary/10 data-active:text-primary data-active:hover:bg-primary/15 data-active:hover:text-primary",
+                          "rounded-lg data-active:bg-primary data-active:font-semibold data-active:text-primary-foreground data-active:shadow-sm data-active:hover:bg-primary data-active:hover:text-primary-foreground",
                         )}
                         render={
                           <Link
@@ -101,13 +127,14 @@ export function AppSidebar({
                       {!!badgeValue && badgeValue > 0 && (
                         <SidebarMenuBadge
                           className={cn(
+                            isActive && "peer-data-active/menu-button:text-primary-foreground",
                             item.badgeKey === "lowStock" ||
                               item.badgeKey === "unpaidInvoices"
                               ? "bg-destructive/15 text-destructive"
                               : "bg-primary/15 text-primary",
                           )}
                         >
-                          {badgeValue.toLocaleString("ar")}
+                          {badgeValue.toLocaleString(locale)}
                         </SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>
@@ -121,12 +148,15 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
+            <LocaleSwitcher variant="sidebar" className="w-full" />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <SidebarMenuButton
                     size="lg"
-                    className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
+                    className="text-sidebar-foreground/70 data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
                   >
                     <Avatar className="size-7 rounded-lg">
                       <AvatarFallback className="rounded-lg bg-sidebar-accent text-xs font-medium text-sidebar-accent-foreground">
@@ -134,14 +164,14 @@ export function AppSidebar({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-1 flex-col overflow-hidden text-start">
-                      <span className="truncate text-sm font-medium">
+                      <span className="truncate text-sm font-medium text-sidebar-foreground">
                         {adminName}
                       </span>
                       <span className="truncate text-xs text-sidebar-foreground/60">
-                        مدير النظام
+                        {t.sidebar.adminRole}
                       </span>
                     </div>
-                    <ChevronsUpDown className="size-4 text-sidebar-foreground/50" />
+                    <ChevronsUpDown className="size-4 shrink-0 text-sidebar-foreground/50 transition-transform duration-150 group-data-popup-open/menu-button:rotate-180" />
                   </SidebarMenuButton>
                 }
               />
@@ -159,7 +189,7 @@ export function AppSidebar({
                     render={<button type="submit" className="w-full" />}
                   >
                     <LogOut />
-                    {ar.admin.logout}
+                    {t.admin.logout}
                   </DropdownMenuItem>
                 </form>
               </DropdownMenuContent>
@@ -167,6 +197,7 @@ export function AppSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

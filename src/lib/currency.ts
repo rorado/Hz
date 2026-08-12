@@ -1,4 +1,6 @@
-export const CURRENCY_LABEL = { ar: "درهم", fr: "DH" } as const;
+import { companyConfig } from "@/config/company";
+
+export const CURRENCY_LABEL = companyConfig.currency;
 
 // Left-to-Right Isolate / Pop Directional Isolate: without these, a space-
 // grouped number ("456 583.77") sitting inside RTL Arabic text gets its
@@ -19,7 +21,7 @@ function groupThousands(value: number, decimals: number): string {
 
 export function formatCurrency(
   amount: number | string,
-  lang: "ar" | "fr" = "ar",
+  lang: keyof typeof CURRENCY_LABEL = "ar",
   withoutCurrency = false,
 ): string {
   const value = typeof amount === "string" ? Number(amount) : amount;

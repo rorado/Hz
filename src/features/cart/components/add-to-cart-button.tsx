@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/locale-provider";
 
 interface AddToCartButtonProps extends ComponentProps<typeof Button> {
   productId: string;
@@ -29,6 +30,7 @@ export function AddToCartButton({
   const { addItem } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const t = useT();
 
   const handleAddToCart = () => {
     addItem(productId, productName, quantity);
@@ -44,19 +46,19 @@ export function AddToCartButton({
         onClick={() => setIsOpen(true)}
         {...props}
       >
-        إضافة إلى السلة
+        {t.public.addToCartButton}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>إضافة إلى السلة</DialogTitle>
+            <DialogTitle>{t.public.addToCartButton}</DialogTitle>
             <DialogDescription>{productName}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity">الكمية</Label>
+              <Label htmlFor="quantity">{t.purchases.quantityLabel}</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -76,13 +78,13 @@ export function AddToCartButton({
                 onClick={() => setIsOpen(false)}
                 className="flex-1 cursor-pointer"
               >
-                إلغاء
+                {t.common.cancel}
               </Button>
               <Button
                 onClick={handleAddToCart}
                 className="flex-1 cursor-pointer"
               >
-                إضافة إلى السلة
+                {t.public.addToCartButton}
               </Button>
             </div>
           </div>

@@ -11,7 +11,7 @@ import {
 } from "@/features/brands/queries";
 import { BrandsTable } from "@/features/brands/components/brands-table";
 import { BrandFormSheet } from "@/features/brands/components/brand-form-sheet";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,8 @@ export default async function BrandsPage({
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
 
-  const [{ items, total, pageSize }, editingBrand] = await Promise.all([
+  const [t, { items, total, pageSize }, editingBrand] = await Promise.all([
+    getDictionary(),
     getBrandsPage({ query, page }),
     params.edit ? getBrandById(params.edit) : Promise.resolve(null),
   ]);
@@ -47,20 +48,21 @@ export default async function BrandsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.brands}
+        title={t.admin.brands}
+        icon={Tags}
         action={
           <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
             <Plus className="size-4" />
-            إضافة علامة تجارية
+            {t.brands.addButton}
           </Button>
         }
       />
-      <DataTableSearch placeholder="ابحث عن علامة تجارية..." />
+      <DataTableSearch placeholder={t.brands.searchPlaceholder} />
       {items.length === 0 ? (
         <EmptyState
           icon={Tags}
-          title="لا توجد علامات تجارية"
-          description="ابدأ بإضافة أول علامة تجارية لمنتجاتك"
+          title={t.brands.emptyTitle}
+          description={t.brands.emptyDescription}
         />
       ) : (
         <>

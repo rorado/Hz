@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { PAYMENT_METHOD_LABELS } from "@/features/invoices/schema";
+import { formatDateTime } from "@/lib/date";
 import { EditPaymentDialog } from "@/features/invoices/components/edit-payment-dialog";
 import { PasswordConfirmDeleteDialog } from "@/components/shared/password-confirm-delete-dialog";
 import { deletePayment } from "@/features/invoices/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 type PaymentRow = {
   id: string;
@@ -18,15 +19,17 @@ type PaymentRow = {
 };
 
 export function PaymentHistory({ payments }: { payments: PaymentRow[] }) {
+  const { t, locale } = useLocale();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{ar.customers.paymentsHistory}</CardTitle>
+        <CardTitle>{t.customers.paymentsHistory}</CardTitle>
       </CardHeader>
       <CardContent>
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {ar.invoices.noPayments}
+            {t.invoices.noPayments}
           </p>
         ) : (
           <ul className="space-y-3 text-sm">
@@ -36,9 +39,11 @@ export function PaymentHistory({ payments }: { payments: PaymentRow[] }) {
                 className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
               >
                 <div>
-                  <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                  <p className="font-medium">{formatCurrency(payment.amount, locale)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
+                    {t.statusLabels.paymentMethod[
+                      payment.method as keyof typeof t.statusLabels.paymentMethod
+                    ] ?? payment.method}
                     {payment.invoiceNumber ? ` · ${payment.invoiceNumber}` : ""}
                   </p>
                   {payment.note && (
@@ -49,7 +54,7 @@ export function PaymentHistory({ payments }: { payments: PaymentRow[] }) {
                 </div>
                 <div className="flex items-center gap-1">
                   <p className="text-xs text-muted-foreground">
-                    {new Date(payment.createdAt).toLocaleDateString("fr-FR")}
+                    {formatDateTime(payment.createdAt)}
                   </p>
                   <EditPaymentDialog
                     paymentId={payment.id}
@@ -59,7 +64,9 @@ export function PaymentHistory({ payments }: { payments: PaymentRow[] }) {
                   />
                   <PasswordConfirmDeleteDialog
                     action={(password) => deletePayment(payment.id, password)}
-                    description={`سيتم حذف دفعة بقيمة ${formatCurrency(payment.amount)} نهائياً.`}
+                    description={formatMessage(t.invoices.deletePaymentDescription, {
+                      amount: formatCurrency(payment.amount, locale),
+                    })}
                   />
                 </div>
               </li>

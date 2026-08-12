@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 export function DataTablePagination({
   page,
@@ -19,6 +23,7 @@ export function DataTablePagination({
    * more than one independently-paginated table. */
   pageParam?: string;
 }) {
+  const { locale, t } = useLocale();
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   function hrefForPage(targetPage: number) {
@@ -36,8 +41,11 @@ export function DataTablePagination({
   return (
     <div className="flex items-center justify-between text-sm text-muted-foreground">
       <span>
-        {total.toLocaleString("ar")} نتيجة — صفحة {page.toLocaleString("ar")}{" "}
-        من {pageCount.toLocaleString("ar")}
+        {formatMessage(t.common.paginationSummary, {
+          total: total.toLocaleString(locale),
+          page: page.toLocaleString(locale),
+          pageCount: pageCount.toLocaleString(locale),
+        })}
       </span>
       <div className="flex gap-2">
         {hasPrev ? (
@@ -46,13 +54,13 @@ export function DataTablePagination({
             size="sm"
             nativeButton={false} render={<Link href={hrefForPage(page - 1)} />}
           >
-            <ChevronRight className="size-4" />
-            السابق
+            <ChevronLeft className="size-4 rtl:rotate-180" />
+            {t.common.previous}
           </Button>
         ) : (
           <Button variant="outline" size="sm" disabled>
-            <ChevronRight className="size-4" />
-            السابق
+            <ChevronLeft className="size-4 rtl:rotate-180" />
+            {t.common.previous}
           </Button>
         )}
         {hasNext ? (
@@ -61,13 +69,13 @@ export function DataTablePagination({
             size="sm"
             nativeButton={false} render={<Link href={hrefForPage(page + 1)} />}
           >
-            التالي
-            <ChevronLeft className="size-4" />
+            {t.common.next}
+            <ChevronRight className="size-4 rtl:rotate-180" />
           </Button>
         ) : (
           <Button variant="outline" size="sm" disabled>
-            التالي
-            <ChevronLeft className="size-4" />
+            {t.common.next}
+            <ChevronRight className="size-4 rtl:rotate-180" />
           </Button>
         )}
       </div>

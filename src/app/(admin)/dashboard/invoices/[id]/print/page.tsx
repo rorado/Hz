@@ -6,8 +6,11 @@ import {
 import { InvoicePrintButton } from "@/features/invoices/components/invoice-print-button";
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
 import { InvoicePrintTotals } from "@/features/invoices/components/invoice-print-totals";
-import { ar as arDict } from "@/i18n/ar";
+import { BackButton } from "@/components/shared/back-button";
+import { companyConfig } from "@/config/company";
+import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
+import { formatDateTime } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +34,16 @@ const LABELS: Record<
     oldAccountPrompt: string;
     includeOldAccount: string;
     excludeOldAccount: string;
+    selectInvoicesTitle: string;
+    selectAllInvoices: string;
+    invoiceTotal: string;
+    totalPaid: string;
+    remaining: string;
+    done: string;
     grandTotal: string;
     itemsCount: string;
     totalWeight: string;
     thankYou: string;
-    print: string;
-    openPdf: string;
   }
 > = {
   ar: {
@@ -55,12 +62,16 @@ const LABELS: Record<
     oldAccountPrompt: "يوجد على هذا العميل حساب قديم بقيمة",
     includeOldAccount: "تضمين الحساب القديم",
     excludeOldAccount: "بدون الحساب القديم",
+    selectInvoicesTitle: "اختر الفواتير القديمة المضمَّنة",
+    selectAllInvoices: "تحديد الكل",
+    invoiceTotal: "الإجمالي",
+    totalPaid: "المدفوع",
+    remaining: "المتبقي",
+    done: "تم",
     grandTotal: "الإجمالي الكلي",
     itemsCount: "عدد المنتجات",
     totalWeight: "الوزن الإجمالي (kg)",
     thankYou: "شكراً لتعاملكم معنا",
-    print: "طباعة / حفظ كـ PDF",
-    openPdf: "فتح كملف PDF",
   },
   fr: {
     title: "Facture",
@@ -78,12 +89,16 @@ const LABELS: Record<
     oldAccountPrompt: "Ce client a un ancien compte de",
     includeOldAccount: "Inclure l'ancien compte",
     excludeOldAccount: "Sans l'ancien compte",
+    selectInvoicesTitle: "Choisir les anciennes factures incluses",
+    selectAllInvoices: "Tout sélectionner",
+    invoiceTotal: "Total",
+    totalPaid: "Payé",
+    remaining: "Restant",
+    done: "Terminé",
     grandTotal: "Total général",
     itemsCount: "Nombre de produits",
     totalWeight: "Poids total (kg)",
     thankYou: "Merci pour votre confiance",
-    print: "Imprimer / Enregistrer en PDF",
-    openPdf: "Ouvrir en PDF",
   },
 };
 
@@ -97,7 +112,10 @@ export default async function InvoicePrintPage({
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
-  const invoice = await getInvoiceById(id);
+  const [invoice, uiT] = await Promise.all([
+    getInvoiceById(id),
+    getDictionary(),
+  ]);
   if (!invoice) notFound();
 
   const lang: Lang =
@@ -115,14 +133,23 @@ export default async function InvoicePrintPage({
     0,
   );
 
-  const otherOutstandingInvoices = invoice.customerId
+  const otherOutstandingInvoicesRaw = invoice.customerId
     ? await getOtherOutstandingInvoices(invoice.customerId, invoice.id)
     : [];
-  const previousDebtsTotal = otherOutstandingInvoices.reduce(
-    (sum, other) =>
-      sum + Math.max(0, Number(other.total) - Number(other.paidAmount)),
-    0,
-  );
+  const otherOutstandingInvoices = otherOutstandingInvoicesRaw.map((other) => ({
+    id: other.id,
+    invoiceNumber: other.invoiceNumber,
+    total: Number(other.total),
+    paidAmount: Number(other.paidAmount),
+    paymentStatus: other.paymentStatus,
+    createdAt: other.createdAt,
+    items: other.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+    })),
+  }));
   const isPartiallyPaid = invoice.paymentStatus === "PARTIALLY_PAID";
   const previousPayment = isPartiallyPaid ? Number(invoice.paidAmount) : 0;
 
@@ -132,13 +159,16 @@ export default async function InvoicePrintPage({
       className="mx-auto max-w-2xl space-y-6 p-6 print:max-w-none print:p-0"
     >
       <style>{"@page { size: A5; margin: 5mm; }"}</style>
-      <div className="flex justify-end gap-2 print:hidden">
-        <InvoicePdfButton
-          targetId="invoice-card"
-          fileName={`${invoice.invoiceNumber}.pdf`}
-          label={t.openPdf}
-        />
-        <InvoicePrintButton label={t.print} />
+      <div className="flex items-center justify-between gap-2 print:hidden">
+        <BackButton fallbackHref={`/dashboard/invoices/${invoice.id}`} />
+        <div className="flex gap-2">
+          <InvoicePdfButton
+            targetId="invoice-card"
+            fileName={`${invoice.invoiceNumber}.pdf`}
+            label={uiT.common.openPdf}
+          />
+          <InvoicePrintButton label={uiT.common.printSavePdf} />
+        </div>
       </div>
 
       <div
@@ -161,7 +191,7 @@ export default async function InvoicePrintPage({
                 <div className="flex items-start justify-between">
                   <div>
                     <h1 className="text-2xl font-bold print:text-lg">
-                      {arDict.siteName}
+                      {companyConfig.name}
                     </h1>
                   </div>
                   <div className="text-end">
@@ -174,7 +204,7 @@ export default async function InvoicePrintPage({
                     </p>
                     <p className="text-sm font-semibold text-foreground print:text-xs">
                       {t.date}:{" "}
-                      {new Date(invoice.createdAt).toLocaleDateString("fr-FR")}
+                      {formatDateTime(invoice.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -264,12 +294,18 @@ export default async function InvoicePrintPage({
                     oldAccountPrompt: t.oldAccountPrompt,
                     includeOldAccount: t.includeOldAccount,
                     excludeOldAccount: t.excludeOldAccount,
+                    selectInvoicesTitle: t.selectInvoicesTitle,
+                    selectAllInvoices: t.selectAllInvoices,
+                    invoiceTotal: t.invoiceTotal,
+                    totalPaid: t.totalPaid,
+                    remaining: t.remaining,
+                    done: t.done,
                     grandTotal: t.grandTotal,
                   }}
                   itemsTotal={itemsTotal}
                   previousPayment={previousPayment}
                   showPreviousPayment={isPartiallyPaid}
-                  previousDebtsTotal={previousDebtsTotal}
+                  otherOutstandingInvoices={otherOutstandingInvoices}
                 />
 
                 {invoice.notes && (

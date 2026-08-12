@@ -1,14 +1,18 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 /** Mirrors PageHeader's title/description/action row so route loading
  * states don't shift layout once the real header replaces it. */
 export function PageHeaderSkeleton({ withAction = true }: { withAction?: boolean }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-40" />
-        <Skeleton className="h-4 w-56" />
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
       </div>
       {withAction && <Skeleton className="h-8 w-28" />}
     </div>
@@ -34,6 +38,65 @@ export function StatCardsSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
+/** Mirrors AnalyticsFilterBar's preset pills + custom date-range row. */
+export function AnalyticsFilterBarSkeleton({ presets = 5 }: { presets?: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 ring-1 ring-foreground/10">
+      <div className="flex flex-wrap items-center gap-1">
+        {Array.from({ length: presets }).map((_, index) => (
+          <Skeleton key={index} className="h-9 w-16" />
+        ))}
+      </div>
+      <div className="mx-1 h-6 w-px bg-border" />
+      <Skeleton className="h-9 w-36" />
+      <Skeleton className="h-9 w-36" />
+      <Skeleton className="h-9 w-16" />
+    </div>
+  );
+}
+
+/** A chart-card skeleton: title row + a block matching the chart's height. */
+export function ChartCardSkeleton({ height = "h-64" }: { height?: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded-sm" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className={cn("w-full", height)} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Mirrors RankedListCard: title row + N ranked rows with a progress bar each. */
+export function RankedListCardSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded-sm" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-14" />
+            </div>
+            <Skeleton className="h-1.5 w-full rounded-full" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** A table-shaped skeleton: header bar + N placeholder rows, same row
  * height as real table rows so the swap-in doesn't shift the page. */
 export function TableSkeleton({
@@ -45,7 +108,7 @@ export function TableSkeleton({
 }) {
   return (
     <div className="rounded-lg border">
-      <div className="flex items-center gap-4 border-b bg-sky-50 px-4 py-3 dark:bg-muted/40">
+      <div className="flex items-center gap-4 border-b bg-muted/60 px-4 py-3">
         {Array.from({ length: columns }).map((_, index) => (
           <Skeleton key={index} className="h-4 flex-1" />
         ))}

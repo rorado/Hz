@@ -6,6 +6,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { deleteSupplier } from "@/features/suppliers/actions";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/config";
 
 export type SupplierRow = {
   id: string;
@@ -17,24 +20,26 @@ export type SupplierRow = {
 
 export function getSupplierColumns(
   editHref: (id: string) => string,
+  t: Dictionary,
+  locale: Locale,
 ): ColumnDef<SupplierRow>[] {
   return [
-    { accessorKey: "name", header: "الاسم" },
+    { accessorKey: "name", header: t.suppliers.columnName },
     {
       accessorKey: "phone",
-      header: "الهاتف",
+      header: t.suppliers.columnPhone,
       cell: ({ row }) => <span dir="ltr">{row.original.phone ?? "—"}</span>,
     },
     {
       accessorKey: "email",
-      header: "البريد الإلكتروني",
+      header: t.suppliers.columnEmail,
       cell: ({ row }) => <span dir="ltr">{row.original.email ?? "—"}</span>,
     },
     {
       id: "purchaseOrdersCount",
-      header: "أوامر الشراء",
+      header: t.suppliers.columnPurchaseOrdersCount,
       cell: ({ row }) =>
-        row.original._count.purchaseOrders.toLocaleString("ar"),
+        row.original._count.purchaseOrders.toLocaleString(locale),
     },
     {
       id: "actions",
@@ -46,7 +51,7 @@ export function getSupplierColumns(
             size="icon-sm"
             nativeButton={false}
             render={<Link href={`/dashboard/suppliers/${row.original.id}`} />}
-            title="عرض الملف"
+            title={t.suppliers.viewProfile}
           >
             <UserCircle className="size-4" />
           </Button>
@@ -59,7 +64,9 @@ export function getSupplierColumns(
           </Button>
           <ConfirmDeleteDialog
             action={() => deleteSupplier(row.original.id)}
-            description={`سيتم حذف المورد "${row.original.name}" نهائياً.`}
+            description={formatMessage(t.suppliers.deleteDescription, {
+              name: row.original.name,
+            })}
           />
         </div>
       ),

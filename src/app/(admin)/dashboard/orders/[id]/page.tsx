@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
@@ -13,21 +13,27 @@ import { GenerateInvoiceDialog } from "@/features/orders/components/generate-inv
 import { OrderCustomerCard } from "@/features/orders/components/order-customer-card";
 import { InvoiceLockedNotice } from "@/features/orders/components/invoice-locked-notice";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
 
 export const dynamic = "force-dynamic";
 
-function buildDefaultMessage(order: {
-  customerName: string;
-  orderNumber: string;
-  items: { product: { name: string }; quantity: number }[];
-  total: unknown;
-}) {
+function buildDefaultMessage(
+  order: {
+    customerName: string;
+    orderNumber: string;
+    items: { product: { name: string }; quantity: number }[];
+    total: unknown;
+  },
+  t: Dictionary,
+) {
   const lines = [
-    `مرحباً ${order.customerName}،`,
-    `بخصوص طلبكم رقم ${order.orderNumber}:`,
+    formatMessage(t.orders.whatsappGreeting, { name: order.customerName }),
+    formatMessage(t.orders.whatsappOrderRef, { number: order.orderNumber }),
     ...order.items.map((item) => `- ${item.product.name} × ${item.quantity}`),
-    `الإجمالي: ${order.total}`,
-    "يسعدنا خدمتكم، شكراً لتواصلكم معنا.",
+    formatMessage(t.orders.whatsappTotalLine, { total: String(order.total) }),
+    t.orders.whatsappClosing,
   ];
   return lines.join("\n");
 }
@@ -38,7 +44,8 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [order, customers, productRows] = await Promise.all([
+  const [t, order, customers, productRows] = await Promise.all([
+    getDictionary(),
     getOrderById(id),
     getCustomerOptions(),
     getProductPickerOptions(),
@@ -49,19 +56,26 @@ export default async function OrderDetailPage({
     id: product.id,
     name: product.name,
     sku: product.sku,
+    barcode: product.barcode,
+    quantity: product.quantity,
+    categoryId: product.categoryId,
+    categoryName: product.category.name,
+    brandId: product.brandId,
+    brandName: product.brand?.name ?? null,
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
   }));
 
-  const message = buildDefaultMessage(order);
+  const message = buildDefaultMessage(order, t);
   const whatsappUrl = buildWhatsAppUrl(order.customerPhone, message);
   const locked = Boolean(order.invoice);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`الطلب ${order.orderNumber}`}
+        title={formatMessage(t.orders.detailTitle, { number: order.orderNumber })}
+        icon={ShoppingCart}
         action={<BackButton fallbackHref="/dashboard/orders" />}
       />
 
@@ -69,7 +83,7 @@ export default async function OrderDetailPage({
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>عناصر الطلب</CardTitle>
+              <CardTitle>{t.orders.itemsCardTitle}</CardTitle>
             </CardHeader>
             <CardContent>
               <OrderItemsPriceForm
@@ -97,14 +111,14 @@ export default async function OrderDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>الإجراءات</CardTitle>
+              <CardTitle>{t.orders.actionsCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               {order.invoice ? (
                 <InvoiceLockedNotice
                   invoiceId={order.invoice.id}
                   invoiceNumber={order.invoice.invoiceNumber}
-                  message="تم إصدار فاتورة لهذا الطلب بالفعل. لتسجيل دفعات أو تعديل الفاتورة، يرجى الانتقال إلى صفحتها مباشرة."
+                  message={t.orders.invoiceAlreadyIssuedMessage}
                 />
               ) : (
                 <GenerateInvoiceDialog
@@ -120,11 +134,11 @@ export default async function OrderDetailPage({
                 variant="outline"
                 nativeButton={false}
                 render={
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer" />
+                  <a href={whatsappUrl} />
                 }
               >
                 <MessageCircle className="size-4" />
-                إرسال عبر واتساب
+                {t.orders.sendWhatsapp}
               </Button>
               <Button
                 variant="outline"
@@ -132,7 +146,7 @@ export default async function OrderDetailPage({
                 render={<a href={`tel:${order.customerPhone}`} />}
               >
                 <Phone className="size-4" />
-                الاتصال بالعميل
+                {t.orders.callCustomer}
               </Button>
             </CardContent>
           </Card>
@@ -168,7 +182,7 @@ export default async function OrderDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>الحالة</CardTitle>
+              <CardTitle>{t.orders.statusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent>
               <OrderStatusSelect orderId={order.id} status={order.status} />

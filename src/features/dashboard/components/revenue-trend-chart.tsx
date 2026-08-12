@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -18,19 +19,24 @@ import {
 } from "@/components/ui/chart";
 import type { TrendPoint } from "@/features/dashboard/analytics-queries";
 import { formatCurrency } from "@/lib/currency";
-
-const chartConfig = {
-  sales: { label: "المبيعات", color: "var(--chart-1)" },
-  purchases: { label: "المشتريات", color: "var(--chart-4)" },
-} satisfies ChartConfig;
+import { useLocale } from "@/i18n/locale-provider";
 
 export function RevenueTrendChart({ data }: { data: TrendPoint[] }) {
+  const { locale, t } = useLocale();
   const hasData = data.some((d) => d.sales > 0 || d.purchases > 0);
+
+  const chartConfig = {
+    sales: { label: t.dashboard.sales, color: "var(--chart-1)" },
+    purchases: { label: t.dashboard.purchases, color: "var(--chart-4)" },
+  } satisfies ChartConfig;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>المبيعات مقابل المشتريات</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="size-4 text-muted-foreground" />
+          {t.dashboard.revenueVsPurchases}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -59,7 +65,7 @@ export function RevenueTrendChart({ data }: { data: TrendPoint[] }) {
                 axisLine={false}
                 tickMargin={8}
                 width={48}
-                tickFormatter={(value: number) => value.toLocaleString("ar")}
+                tickFormatter={(value: number) => value.toLocaleString(locale)}
               />
               <ChartTooltip
                 content={
@@ -67,10 +73,10 @@ export function RevenueTrendChart({ data }: { data: TrendPoint[] }) {
                     formatter={(value, name) => (
                       <div className="flex w-full items-center justify-between gap-4">
                         <span className="text-muted-foreground">
-                          {name === "sales" ? "المبيعات" : "المشتريات"}
+                          {name === "sales" ? t.dashboard.sales : t.dashboard.purchases}
                         </span>
                         <span className="font-mono font-medium tabular-nums">
-                          {formatCurrency(Number(value))}
+                          {formatCurrency(Number(value), locale)}
                         </span>
                       </div>
                     )}
@@ -96,7 +102,7 @@ export function RevenueTrendChart({ data }: { data: TrendPoint[] }) {
           </ChartContainer>
         ) : (
           <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
-            لا توجد بيانات لعرضها في هذه الفترة
+            {t.dashboard.noDataInPeriod}
           </div>
         )}
       </CardContent>

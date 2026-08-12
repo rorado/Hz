@@ -46,7 +46,6 @@ import {
 } from "@/components/ui/combobox";
 import {
   createOrderSchema,
-  ORDER_STATUS_LABELS,
   type CreateOrderInput,
   type CreateOrderOutput,
 } from "@/features/orders/schema";
@@ -57,73 +56,88 @@ import {
   type CustomerOption,
 } from "@/features/customers/components/customer-picker";
 import { CustomerFormSheet } from "@/features/customers/components/customer-form-sheet";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
+import type { Locale } from "@/i18n/config";
+import { StockAlertDialog, findStockIssue, type StockIssue } from "@/components/shared/stock-alert-dialog";
+import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
 
 type ProductOption = {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   price1: number;
   price2: number;
   price3: number;
+  quantity: number;
+  categoryId: string;
+  categoryName: string;
+  brandId: string | null;
+  brandName: string | null;
 };
 
-const NONE_PRODUCT: ProductOption = {
-  id: "",
-  name: "اختر منتجاً...",
-  sku: "",
-  price1: 0,
-  price2: 0,
-  price3: 0,
-};
+type PriceTier = "price1" | "price2" | "price3" | "custom";
 
-const CUSTOM_PRICE = "سعر مخصص";
-
-function productLabel(product: ProductOption) {
-  return product.id ? `${product.name} (${product.sku})` : product.name;
+function productLabel(product: ProductOption, none: string) {
+  return product.id ? `${product.name} (${product.sku})` : none;
 }
 
-function priceTierLabel(price: number, product: ProductOption) {
-  if (price === product.price1) return "السعر الأول";
-  if (price === product.price2) return "السعر الثاني";
-  if (price === product.price3) return "السعر الثالث";
-  return CUSTOM_PRICE;
+function priceTierLabel(price: number, product: ProductOption): PriceTier {
+  if (price === product.price1) return "price1";
+  if (price === product.price2) return "price2";
+  if (price === product.price3) return "price3";
+  return "custom";
 }
 
 function PriceTierField({
   price,
   product,
   onChange,
+  t,
+  locale,
 }: {
   price: number;
   product: ProductOption | undefined;
   onChange: (price: number) => void;
+  t: Dictionary;
+  locale: Locale;
 }) {
   if (!product?.id) return null;
+
+  const tierLabels: Record<PriceTier, string> = {
+    price1: t.reports.columnPrice1,
+    price2: t.reports.columnPrice2,
+    price3: t.reports.columnPrice3,
+    custom: t.orders.customPrice,
+  };
 
   return (
     <Select
       value={priceTierLabel(price, product)}
-      onValueChange={(label) => {
-        if (label === "السعر الأول") onChange(product.price1);
-        else if (label === "السعر الثاني") onChange(product.price2);
-        else if (label === "السعر الثالث") onChange(product.price3);
+      onValueChange={(tier) => {
+        if (tier === "price1") onChange(product.price1);
+        else if (tier === "price2") onChange(product.price2);
+        else if (tier === "price3") onChange(product.price3);
       }}
     >
       <SelectTrigger className="w-full">
-        <SelectValue />
+        <SelectValue>
+          {(value: string) => tierLabels[value as PriceTier] ?? value}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="السعر الأول">
-          ({formatCurrency(product.price1)})
+        <SelectItem value="price1">
+          ({formatCurrency(product.price1, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثاني">
-          ({formatCurrency(product.price2)})
+        <SelectItem value="price2">
+          ({formatCurrency(product.price2, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثالث">
-          ({formatCurrency(product.price3)})
+        <SelectItem value="price3">
+          ({formatCurrency(product.price3, locale)})
         </SelectItem>
-        <SelectItem value={CUSTOM_PRICE}>{CUSTOM_PRICE}</SelectItem>
+        <SelectItem value="custom">{t.orders.customPrice}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -133,14 +147,27 @@ function ProductPickerField({
   value,
   onChange,
   products,
+  t,
 }: {
   value: string;
   onChange: (product: ProductOption | null) => void;
   products: ProductOption[];
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
-  const items = [NONE_PRODUCT, ...products];
-  const selected = items.find((item) => item.id === value) ?? NONE_PRODUCT;
+  const noneProduct: ProductOption = {
+    id: "",
+    name: t.orders.selectProductPlaceholder,
+    sku: "",
+    barcode: null,
+    price1: 0,
+    price2: 0,
+    price3: 0,
+    quantity: 0,
+    categoryId: "", categoryName: "", brandId: null, brandName: null,
+  };
+  const items = [noneProduct, ...products];
+  const selected = items.find((item) => item.id === value) ?? noneProduct;
 
   return (
     <Combobox
@@ -149,19 +176,22 @@ function ProductPickerField({
       onValueChange={(product: ProductOption | null) => onChange(product)}
       isItemEqualToValue={(a: ProductOption, b: ProductOption) => a.id === b.id}
       itemToStringValue={(item: ProductOption) => item.id}
-      itemToStringLabel={productLabel}
+      itemToStringLabel={(item: ProductOption) =>
+        productLabel(item, t.orders.selectProductPlaceholder)
+      }
       filter={contains}
     >
-      <ComboboxTrigger className="w-full">
-        <ComboboxValue />
-      </ComboboxTrigger>
+      <div className="flex gap-2">
+        <ComboboxTrigger className="w-full"><ComboboxValue /></ComboboxTrigger>
+        <ProductBarcodeScanner products={products} onSelect={onChange} />
+      </div>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم أو SKU..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.inventory.productSearchPlaceholder} />
+        <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: ProductOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {productLabel(item)}
+              {productLabel(item, t.orders.selectProductPlaceholder)}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -181,6 +211,9 @@ export function OrderForm({
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerOption | null>(null);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [stockIssue, setStockIssue] = useState<StockIssue | null>(null);
+  const [pendingStockValues, setPendingStockValues] = useState<CreateOrderOutput | null>(null);
+  const { t, locale } = useLocale();
 
   const {
     register,
@@ -223,31 +256,49 @@ export function OrderForm({
     0,
   );
 
-  function onSubmit(values: CreateOrderOutput) {
+  function submitOrder(values: CreateOrderOutput, allowNegativeStock = false) {
     startTransition(async () => {
-      const result = await createOrder(values);
-      if (result?.error) {
-        toast.error(result.error);
-      }
+      const result = await createOrder(values, { allowNegativeStock });
+      if (result?.error) toast.error(result.error);
     });
+  }
+
+  function onSubmit(values: CreateOrderOutput) {
+    const issue = findStockIssue(values.items, products);
+    if (issue) {
+      setStockIssue(issue);
+      setPendingStockValues(values);
+      return;
+    }
+    submitOrder(values);
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
+      <StockAlertDialog
+        issue={stockIssue}
+        onClose={() => { setStockIssue(null); setPendingStockValues(null); }}
+        onConfirm={() => {
+          if (pendingStockValues) submitOrder(pendingStockValues, true);
+          setStockIssue(null);
+          setPendingStockValues(null);
+        }}
+      />
       <fieldset disabled={isPending} className="contents">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>عناصر الطلب</CardTitle>
+              <CardTitle>{t.orders.itemsCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="order-notes">ملاحظات (اختياري)</Label>
+                <Label htmlFor="order-notes">{t.customers.notesOptionalLabel}</Label>
                 <Textarea id="order-notes" rows={2} {...register("notes")} />
               </div>
 
-              <Label>المنتجات</Label>
+              <Label>{t.orders.productsLabel}</Label>
+              <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, price: product.price1 }))} />
 
               <DndContext
                 id="order-items-dnd"
@@ -278,7 +329,7 @@ export function OrderForm({
                               {dragHandle}
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">اختر من المنتجات</Label>
+                              <Label className="text-xs">{t.invoices.selectFromProductsLabel}</Label>
                               <Controller
                                 control={control}
                                 name={`items.${index}.productId`}
@@ -293,8 +344,12 @@ export function OrderForm({
                                           `items.${index}.price`,
                                           product.price1,
                                         );
+                                        if (index === fields.length - 1) {
+                                          append({ productId: "", quantity: 1, price: 0 });
+                                        }
                                       }
                                     }}
+                                    t={t}
                                   />
                                 )}
                               />
@@ -305,16 +360,21 @@ export function OrderForm({
                               )}
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">الكمية</Label>
+                              <Label className="text-xs">{t.purchases.quantityLabel}</Label>
                               <Input
                                 type="number"
                                 min={1}
-                                className="w-20"
+                                className={`w-20 ${(() => {
+                                  const product = productsById.get(items?.[index]?.productId ?? "");
+                                  return product && (Number(items?.[index]?.quantity) || 0) > product.quantity
+                                    ? "border-destructive ring-2 ring-destructive/20 focus-visible:border-destructive focus-visible:ring-destructive/30"
+                                    : "";
+                                })()}`}
                                 {...register(`items.${index}.quantity`)}
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">السعر</Label>
+                              <Label className="text-xs">{t.orders.columnPrice}</Label>
                               <div className="flex flex-col gap-1.5">
                                 <PriceTierField
                                   price={Number(items?.[index]?.price) || 0}
@@ -324,6 +384,8 @@ export function OrderForm({
                                   onChange={(price) =>
                                     setValue(`items.${index}.price`, price)
                                   }
+                                  t={t}
+                                  locale={locale}
                                 />
                                 <Input
                                   type="number"
@@ -343,7 +405,6 @@ export function OrderForm({
                                 variant="ghost"
                                 size="icon-sm"
                                 className="cursor-pointer"
-                                disabled={fields.length === 1}
                                 onClick={() => remove(index)}
                               >
                                 <Trash2 className="size-4" />
@@ -372,18 +433,18 @@ export function OrderForm({
                 }
               >
                 <Plus className="size-4" />
-                إضافة منتج
+                {t.products.addProduct}
               </Button>
 
               <div className="flex items-center justify-between border-t pt-4">
-                <p className="font-medium">الإجمالي: {formatCurrency(total)}</p>
+                <p className="font-medium">{t.purchases.totalLabel}: {formatCurrency(total, locale)}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>الإجراءات</CardTitle>
+              <CardTitle>{t.orders.actionsCardTitle}</CardTitle>
             </CardHeader>
             <CardContent>
               <Button
@@ -392,7 +453,7 @@ export function OrderForm({
                 className="w-full cursor-pointer"
               >
                 {isPending && <Loader2 className="size-4 animate-spin" />}
-                {isPending ? "جاري الإنشاء..." : "إنشاء الطلب"}
+                {isPending ? t.orders.creatingOrder : t.orders.createOrderButton}
               </Button>
             </CardContent>
           </Card>
@@ -401,7 +462,7 @@ export function OrderForm({
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>بيانات العميل</CardTitle>
+              <CardTitle>{t.orders.customerInfoTitle}</CardTitle>
               {selectedCustomer && (
                 <Button
                   type="button"
@@ -409,7 +470,7 @@ export function OrderForm({
                   size="icon-sm"
                   className="cursor-pointer"
                   onClick={() => setEditCustomerOpen(true)}
-                  title={ar.customers.editCustomerInfo}
+                  title={t.customers.editCustomerInfo}
                 >
                   <Pencil className="size-4" />
                 </Button>
@@ -418,7 +479,7 @@ export function OrderForm({
             <CardContent className="space-y-3 text-sm">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  اختر عميلاً موجوداً أو أنشئ عميلاً جديداً
+                  {t.orders.selectOrCreateCustomerLabel}
                 </Label>
                 <Controller
                   control={control}
@@ -444,17 +505,17 @@ export function OrderForm({
               {selectedCustomer ? (
                 <div className="space-y-2 border-t pt-3">
                   <p>
-                    <span className="text-muted-foreground">الاسم: </span>
+                    <span className="text-muted-foreground">{t.orders.nameLabel}: </span>
                     {selectedCustomer.name}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">الهاتف: </span>
+                    <span className="text-muted-foreground">{t.orders.phoneLabel}: </span>
                     <span dir="ltr">{selectedCustomer.phone}</span>
                   </p>
                   {selectedCustomer.email && (
                     <p>
                       <span className="text-muted-foreground">
-                        البريد الإلكتروني:{" "}
+                        {t.orders.emailLabel}:{" "}
                       </span>
                       <span dir="ltr">{selectedCustomer.email}</span>
                     </p>
@@ -462,7 +523,7 @@ export function OrderForm({
                 </div>
               ) : (
                 <p className="border-t pt-3 text-muted-foreground">
-                  لم يتم اختيار عميل بعد
+                  {t.orders.noCustomerSelectedYet}
                 </p>
               )}
             </CardContent>
@@ -470,13 +531,12 @@ export function OrderForm({
 
           <Card>
             <CardHeader>
-              <CardTitle>الحالة</CardTitle>
+              <CardTitle>{t.orders.statusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Badge variant="secondary">{ORDER_STATUS_LABELS.PENDING}</Badge>
+              <Badge variant="secondary">{t.statusLabels.order.PENDING}</Badge>
               <p className="text-xs text-muted-foreground">
-                سيتم إنشاء الطلب بهذه الحالة، ويمكن تغييرها لاحقاً من صفحة
-                الطلب.
+                {t.orders.newOrderStatusNote}
               </p>
             </CardContent>
           </Card>

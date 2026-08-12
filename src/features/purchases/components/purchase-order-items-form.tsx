@@ -33,72 +33,86 @@ import {
 } from "@/features/purchases/schema";
 import { updatePurchaseOrderItems } from "@/features/purchases/actions";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
+import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
+import type { Locale } from "@/i18n/config";
 
 type ProductOption = {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
+  categoryId: string;
+  categoryName: string;
+  brandId: string | null;
+  brandName: string | null;
   price1: number;
   price2: number;
   price3: number;
 };
 
-const NONE_PRODUCT: ProductOption = {
-  id: "",
-  name: "اختر منتجاً...",
-  sku: "",
-  price1: 0,
-  price2: 0,
-  price3: 0,
-};
+type PriceTier = "price1" | "price2" | "price3" | "custom";
 
-const CUSTOM_PRICE = "سعر مخصص";
-
-function productLabel(product: ProductOption) {
-  return product.id ? `${product.name} (${product.sku})` : product.name;
+function productLabel(product: ProductOption, none: string) {
+  return product.id ? `${product.name} (${product.sku})` : none;
 }
 
-function priceTierLabel(price: number, product: ProductOption) {
-  if (price === product.price1) return "السعر الأول";
-  if (price === product.price2) return "السعر الثاني";
-  if (price === product.price3) return "السعر الثالث";
-  return CUSTOM_PRICE;
+function priceTierLabel(price: number, product: ProductOption): PriceTier {
+  if (price === product.price1) return "price1";
+  if (price === product.price2) return "price2";
+  if (price === product.price3) return "price3";
+  return "custom";
 }
 
 function PriceTierField({
   price,
   product,
   onChange,
+  t,
+  locale,
 }: {
   price: number;
   product: ProductOption | undefined;
   onChange: (price: number) => void;
+  t: Dictionary;
+  locale: Locale;
 }) {
   if (!product?.id) return null;
+
+  const tierLabels: Record<PriceTier, string> = {
+    price1: t.reports.columnPrice1,
+    price2: t.reports.columnPrice2,
+    price3: t.reports.columnPrice3,
+    custom: t.orders.customPrice,
+  };
 
   return (
     <Select
       value={priceTierLabel(price, product)}
-      onValueChange={(label) => {
-        if (label === "السعر الأول") onChange(product.price1);
-        else if (label === "السعر الثاني") onChange(product.price2);
-        else if (label === "السعر الثالث") onChange(product.price3);
+      onValueChange={(tier) => {
+        if (tier === "price1") onChange(product.price1);
+        else if (tier === "price2") onChange(product.price2);
+        else if (tier === "price3") onChange(product.price3);
       }}
     >
       <SelectTrigger className="w-full">
-        <SelectValue />
+        <SelectValue>
+          {(value: string) => tierLabels[value as PriceTier] ?? value}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="السعر الأول">
-          ({formatCurrency(product.price1)})
+        <SelectItem value="price1">
+          ({formatCurrency(product.price1, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثاني">
-          ({formatCurrency(product.price2)})
+        <SelectItem value="price2">
+          ({formatCurrency(product.price2, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثالث">
-          ({formatCurrency(product.price3)})
+        <SelectItem value="price3">
+          ({formatCurrency(product.price3, locale)})
         </SelectItem>
-        <SelectItem value={CUSTOM_PRICE}>{CUSTOM_PRICE}</SelectItem>
+        <SelectItem value="custom">{t.orders.customPrice}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -108,14 +122,26 @@ function ProductPickerField({
   value,
   onChange,
   products,
+  t,
 }: {
   value: string;
   onChange: (product: ProductOption | null) => void;
   products: ProductOption[];
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
-  const items = [NONE_PRODUCT, ...products];
-  const selected = items.find((item) => item.id === value) ?? NONE_PRODUCT;
+  const noneProduct: ProductOption = {
+    id: "",
+    name: t.orders.selectProductPlaceholder,
+    sku: "",
+    barcode: null,
+    categoryId: "", categoryName: "", brandId: null, brandName: null,
+    price1: 0,
+    price2: 0,
+    price3: 0,
+  };
+  const items = [noneProduct, ...products];
+  const selected = items.find((item) => item.id === value) ?? noneProduct;
 
   return (
     <Combobox
@@ -124,19 +150,22 @@ function ProductPickerField({
       onValueChange={(product: ProductOption | null) => onChange(product)}
       isItemEqualToValue={(a: ProductOption, b: ProductOption) => a.id === b.id}
       itemToStringValue={(item: ProductOption) => item.id}
-      itemToStringLabel={productLabel}
+      itemToStringLabel={(item: ProductOption) =>
+        productLabel(item, t.orders.selectProductPlaceholder)
+      }
       filter={contains}
     >
-      <ComboboxTrigger className="w-full">
-        <ComboboxValue />
-      </ComboboxTrigger>
+      <div className="flex gap-2">
+        <ComboboxTrigger className="w-full"><ComboboxValue /></ComboboxTrigger>
+        <ProductBarcodeScanner products={products} onSelect={onChange} />
+      </div>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم أو SKU..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.inventory.productSearchPlaceholder} />
+        <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: ProductOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {productLabel(item)}
+              {productLabel(item, t.orders.selectProductPlaceholder)}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -155,6 +184,7 @@ export function PurchaseOrderItemsForm({
   products: ProductOption[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const {
     register,
@@ -186,14 +216,15 @@ export function PurchaseOrderItemsForm({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تحديث عناصر أمر الشراء بنجاح");
+      toast.success(t.purchases.itemsUpdatedToast);
     });
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
-        <Label>العناصر</Label>
+        <Label>{t.purchases.itemsLabel}</Label>
+        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: product.price1 }))} />
 
         <div
           className={
@@ -208,7 +239,7 @@ export function PurchaseOrderItemsForm({
               className="grid grid-cols-1 items-end gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_auto_auto_auto]"
             >
               <div className="space-y-1">
-                <Label className="text-xs">المنتج</Label>
+                <Label className="text-xs">{t.purchases.productLabel}</Label>
                 <Controller
                   control={control}
                   name={`items.${index}.productId`}
@@ -220,14 +251,18 @@ export function PurchaseOrderItemsForm({
                         productField.onChange(product?.id ?? "");
                         if (product?.id) {
                           setValue(`items.${index}.unitCost`, product.price1);
+                          if (index === fields.length - 1) {
+                            append({ productId: "", quantity: 1, unitCost: 0 });
+                          }
                         }
                       }}
+                      t={t}
                     />
                   )}
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">الكمية</Label>
+                <Label className="text-xs">{t.purchases.quantityLabel}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -236,7 +271,7 @@ export function PurchaseOrderItemsForm({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">تكلفة الوحدة</Label>
+                <Label className="text-xs">{t.purchases.unitCostLabel}</Label>
                 <div className="flex w-32 flex-col gap-1.5">
                   <PriceTierField
                     price={Number(watchedItems?.[index]?.unitCost) || 0}
@@ -246,6 +281,8 @@ export function PurchaseOrderItemsForm({
                     onChange={(price) =>
                       setValue(`items.${index}.unitCost`, price)
                     }
+                    t={t}
+                    locale={locale}
                   />
                   <Input
                     type="number"
@@ -260,7 +297,6 @@ export function PurchaseOrderItemsForm({
                 variant="ghost"
                 size="icon-sm"
                 className="cursor-pointer"
-                disabled={fields.length === 1}
                 onClick={() => remove(index)}
               >
                 <Trash2 className="size-4" />
@@ -280,14 +316,14 @@ export function PurchaseOrderItemsForm({
           onClick={() => append({ productId: "", quantity: 1, unitCost: 0 })}
         >
           <Plus className="size-4" />
-          إضافة عنصر
+          {t.purchases.addItemButton}
         </Button>
 
         <div className="flex items-center justify-between border-t pt-4">
-          <p className="font-medium">الإجمالي: {formatCurrency(total)}</p>
+          <p className="font-medium">{t.purchases.totalLabel}: {formatCurrency(total, locale)}</p>
           <Button type="submit" className="cursor-pointer" disabled={isPending}>
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحفظ..." : "حفظ التعديلات"}
+            {isPending ? t.common.saving : t.purchases.saveChangesButton}
           </Button>
         </div>
       </fieldset>

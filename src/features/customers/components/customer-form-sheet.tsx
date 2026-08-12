@@ -21,7 +21,7 @@ import {
   findCustomerByPhoneAction,
 } from "@/features/customers/actions";
 import { cn } from "@/lib/utils";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type MatchingCustomer = {
   id: string;
@@ -54,6 +54,7 @@ export function CustomerFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -112,9 +113,7 @@ export function CustomerFormSheet({
         return;
       }
 
-      toast.success(
-        customer ? "تم تحديث بيانات العميل" : "تم إضافة العميل بنجاح",
-      );
+      toast.success(customer ? t.customers.toastUpdated : t.customers.toastCreated);
       close();
     });
   }
@@ -125,15 +124,15 @@ export function CustomerFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={customer ? "تعديل بيانات العميل" : "إضافة عميل جديد"}
+      title={customer ? t.customers.formTitleEdit : t.customers.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="customer-name">الاسم الكامل</Label>
+          <Label htmlFor="customer-name">{t.customers.fullNameLabel}</Label>
           <Input
             id="customer-name"
-            placeholder="الاسم واللقب"
+            placeholder={t.customers.fullNamePlaceholder}
             {...register("name")}
           />
           {errors.name && (
@@ -164,16 +163,16 @@ export function CustomerFormSheet({
                 )}
               />
               <div>
-                <p className="text-sm font-medium">عميل مفضل</p>
+                <p className="text-sm font-medium">{t.customers.favoriteToggleTitle}</p>
                 <p className="text-xs text-muted-foreground">
-                  يظهر العملاء المفضلون أولاً في قائمة العملاء
+                  {t.customers.favoriteToggleDescription}
                 </p>
               </div>
             </button>
           )}
         />
         <div className="space-y-2">
-          <Label htmlFor="customer-phone">رقم الهاتف / واتساب</Label>
+          <Label htmlFor="customer-phone">{t.customers.phoneWhatsappLabel}</Label>
           <Input id="customer-phone" dir="ltr" {...register("phone")} />
           {errors.phone && (
             <p className="text-sm text-destructive">{errors.phone.message}</p>
@@ -181,7 +180,7 @@ export function CustomerFormSheet({
           {matchingCustomers.length > 0 && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-sm">
               <p className="mb-1 font-medium">
-                {ar.customers.matchingPhoneHint}
+                {t.customers.matchingPhoneHint}
               </p>
               <ul className="space-y-1">
                 {matchingCustomers.map((match) => (
@@ -207,18 +206,18 @@ export function CustomerFormSheet({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="customer-email">البريد الإلكتروني (اختياري)</Label>
+          <Label htmlFor="customer-email">{t.customers.emailOptionalLabel}</Label>
           <Input id="customer-email" dir="ltr" {...register("email")} />
           {errors.email && (
             <p className="text-sm text-destructive">{errors.email.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="customer-address">العنوان (اختياري)</Label>
+          <Label htmlFor="customer-address">{t.customers.addressOptionalLabel}</Label>
           <Input id="customer-address" {...register("address")} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="customer-notes">ملاحظات (اختياري)</Label>
+          <Label htmlFor="customer-notes">{t.customers.notesOptionalLabel}</Label>
           <Textarea id="customer-notes" rows={3} {...register("notes")} />
         </div>
         <Button
@@ -227,7 +226,7 @@ export function CustomerFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

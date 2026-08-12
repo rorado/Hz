@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
+import { ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -9,7 +10,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { StatusBreakdown } from "@/features/dashboard/analytics-queries";
-import { ORDER_STATUS_LABELS } from "@/features/orders/schema";
+import { useLocale } from "@/i18n/locale-provider";
 
 const COLORS: Record<string, string> = {
   PENDING: "var(--chart-3)",
@@ -19,14 +20,17 @@ const COLORS: Record<string, string> = {
 };
 
 export function OrderStatusChart({ data }: { data: StatusBreakdown[] }) {
+  const { locale, t } = useLocale();
+  const orderStatusLabels: Record<string, string> = t.statusLabels.order;
+
   const chartData = data.map((d) => ({
     status: d.status,
-    label: ORDER_STATUS_LABELS[d.status] ?? d.status,
+    label: orderStatusLabels[d.status] ?? d.status,
     count: d.count,
   }));
 
   const chartConfig = {
-    count: { label: "عدد الطلبات" },
+    count: { label: t.dashboard.orderCount },
   } satisfies ChartConfig;
 
   const hasData = chartData.some((d) => d.count > 0);
@@ -34,7 +38,10 @@ export function OrderStatusChart({ data }: { data: StatusBreakdown[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>الطلبات حسب الحالة</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <ShoppingCart className="size-4 text-muted-foreground" />
+          {t.dashboard.ordersByStatus}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -45,7 +52,7 @@ export function OrderStatusChart({ data }: { data: StatusBreakdown[] }) {
                 type="number"
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value: number) => value.toLocaleString("ar")}
+                tickFormatter={(value: number) => value.toLocaleString(locale)}
               />
               <YAxis
                 dataKey="label"
@@ -62,7 +69,7 @@ export function OrderStatusChart({ data }: { data: StatusBreakdown[] }) {
                       <div className="flex w-full items-center justify-between gap-4">
                         <span className="text-muted-foreground">{item.payload.label}</span>
                         <span className="font-mono font-medium tabular-nums">
-                          {Number(value).toLocaleString("ar")} طلب
+                          {Number(value).toLocaleString(locale)} {t.dashboard.orderSuffix}
                         </span>
                       </div>
                     )}
@@ -78,7 +85,7 @@ export function OrderStatusChart({ data }: { data: StatusBreakdown[] }) {
           </ChartContainer>
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            لا توجد طلبات في هذه الفترة
+            {t.dashboard.noOrdersInPeriod}
           </div>
         )}
       </CardContent>

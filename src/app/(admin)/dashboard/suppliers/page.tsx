@@ -11,7 +11,7 @@ import {
 } from "@/features/suppliers/queries";
 import { SuppliersTable } from "@/features/suppliers/components/suppliers-table";
 import { SupplierFormSheet } from "@/features/suppliers/components/supplier-form-sheet";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,8 @@ export default async function SuppliersPage({
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
 
-  const [{ items, total, pageSize }, editingSupplier] = await Promise.all([
+  const [t, { items, total, pageSize }, editingSupplier] = await Promise.all([
+    getDictionary(),
     getSuppliersPage({ query, page }),
     params.edit ? getSupplierById(params.edit) : Promise.resolve(null),
   ]);
@@ -47,20 +48,21 @@ export default async function SuppliersPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.suppliers}
+        title={t.admin.suppliers}
+        icon={Truck}
         action={
           <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
             <Plus className="size-4" />
-            إضافة مورد
+            {t.suppliers.addButton}
           </Button>
         }
       />
-      <DataTableSearch placeholder="ابحث عن مورد..." />
+      <DataTableSearch placeholder={t.suppliers.searchPlaceholder} />
       {items.length === 0 ? (
         <EmptyState
           icon={Truck}
-          title="لا يوجد موردون"
-          description="ابدأ بإضافة أول مورد لمتابعة المشتريات"
+          title={t.suppliers.emptyTitle}
+          description={t.suppliers.emptyDescription}
         />
       ) : (
         <>

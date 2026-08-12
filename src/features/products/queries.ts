@@ -68,6 +68,8 @@ export async function getProductById(id: string) {
       description: true,
       categoryId: true,
       brandId: true,
+      category: { select: { name: true } },
+      brand: { select: { name: true } },
       quantity: true,
       minStockLevel: true,
       price1: true,
@@ -129,10 +131,34 @@ export async function getPublicProductsPage({
   return { items, total, pageSize: PUBLIC_PRODUCTS_PAGE_SIZE };
 }
 
+export const RELATED_PRODUCTS_LIMIT = 4;
+
+export async function getRelatedProducts({
+  categoryId,
+  excludeProductId,
+}: {
+  categoryId: string;
+  excludeProductId: string;
+}) {
+  return prisma.product.findMany({
+    where: {
+      categoryId,
+      status: "ACTIVE",
+      NOT: { id: excludeProductId },
+    },
+    include: {
+      category: { select: { name: true, slug: true } },
+      images: { orderBy: { position: "asc" }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+    take: RELATED_PRODUCTS_LIMIT,
+  });
+}
+
 export async function getProductSelectOptions() {
   return prisma.product.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true, sku: true, quantity: true },
+    select: { id: true, name: true, sku: true, barcode: true, quantity: true },
   });
 }
 
@@ -145,11 +171,15 @@ export async function getProductPickerOptions() {
       id: true,
       name: true,
       sku: true,
+      barcode: true,
       price1: true,
       price2: true,
       price3: true,
+      quantity: true,
       categoryId: true,
       brandId: true,
+      category: { select: { name: true } },
+      brand: { select: { name: true } },
     },
   });
 }
@@ -167,7 +197,7 @@ export async function getLowStockProductsPage({ page }: { page: number }) {
       totalCount: bigint;
     }[]
   >`SELECT id, name, sku, quantity, "minStockLevel", COUNT(*) OVER()::bigint AS "totalCount"
-    FROM "Product"
+    FROM public."Product"
     WHERE quantity <= "minStockLevel"
     ORDER BY quantity ASC
     LIMIT ${LOW_STOCK_PAGE_SIZE} OFFSET ${(page - 1) * LOW_STOCK_PAGE_SIZE}`;
@@ -178,5 +208,54 @@ export async function getLowStockProductsPage({ page }: { page: number }) {
     items: rows.map(({ totalCount, ...row }) => row),
     total,
     pageSize: LOW_STOCK_PAGE_SIZE,
+  };
+}
+
+const PRODUCT_PROFILE_HISTORY_SIZE = 20;
+
+export async function getProductProfile(id: string) {
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      category: { select: { name: true } },
+      brand: { select: { name: true } },
+      images: { orderBy: { position: "asc" } },
+    },
+  });
+  if (!product) return null;
+
+  const [movements, orderItems, soldTotal] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where: { productId: id },
+      orderBy: { createdAt: "desc" },
+      take: PRODUCT_PROFILE_HISTORY_SIZE,
+    }),
+    prisma.orderItem.findMany({
+      where: { productId: id },
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            customerName: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { order: { createdAt: "desc" } },
+      take: PRODUCT_PROFILE_HISTORY_SIZE,
+    }),
+    prisma.orderItem.aggregate({
+      where: { productId: id },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  return {
+    product,
+    movements,
+    orderItems,
+    totalSold: soldTotal._sum.quantity ?? 0,
   };
 }

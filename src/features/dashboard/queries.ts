@@ -22,12 +22,12 @@ export async function getDashboardStats() {
     }),
     prisma.$queryRaw<
       { count: bigint }[]
-    >`SELECT COUNT(*)::bigint AS count FROM "Product" WHERE quantity <= "minStockLevel"`,
+    >`SELECT COUNT(*)::bigint AS count FROM public."Product" WHERE quantity <= "minStockLevel"`,
     getOutstandingInvoicesSummary(),
     getCustomersOwingSummary(),
     prisma.$queryRaw<
       { total: string | null }[]
-    >`SELECT SUM(quantity * "purchasePrice")::numeric AS total FROM "Product"`,
+    >`SELECT SUM(quantity * "purchasePrice")::numeric AS total FROM public."Product"`,
   ]);
 
   return {

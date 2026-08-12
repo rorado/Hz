@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 import { adjustCustomerBalanceManual } from "@/features/customers/actions";
 
 type Direction = "increase" | "decrease";
@@ -34,6 +34,7 @@ export function AdjustBalanceDialog({
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const signedDelta = direction === "increase" ? amount : -amount;
   const newBalance = currentBalance + signedDelta;
@@ -49,7 +50,7 @@ export function AdjustBalanceDialog({
 
   function handleSubmit() {
     if (!(amount > 0)) {
-      toast.error(ar.invoices.invalidAmount);
+      toast.error(t.invoices.invalidAmount);
       return;
     }
 
@@ -62,7 +63,7 @@ export function AdjustBalanceDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تعديل الرصيد بنجاح");
+      toast.success(t.customers.adjustBalanceToast);
       handleOpenChange(false);
     });
   }
@@ -73,14 +74,14 @@ export function AdjustBalanceDialog({
         render={
           <Button variant="outline" size="sm" className="w-full cursor-pointer">
             <Wallet className="size-4" />
-            {ar.customers.adjustBalance}
+            {t.customers.adjustBalance}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{ar.customers.adjustBalanceTitle}</DialogTitle>
-          <DialogDescription>{ar.customers.adjustBalanceDescription}</DialogDescription>
+          <DialogTitle>{t.customers.adjustBalanceTitle}</DialogTitle>
+          <DialogDescription>{t.customers.adjustBalanceDescription}</DialogDescription>
         </DialogHeader>
 
         <fieldset disabled={isPending} className="contents">
@@ -97,7 +98,7 @@ export function AdjustBalanceDialog({
               onClick={() => setDirection("increase")}
             >
               <Plus className="size-4" />
-              {ar.customers.increaseBalance}
+              {t.customers.increaseBalance}
             </Button>
             <Button
               type="button"
@@ -106,13 +107,13 @@ export function AdjustBalanceDialog({
               onClick={() => setDirection("decrease")}
             >
               <Minus className="size-4" />
-              {ar.customers.decreaseBalance}
+              {t.customers.decreaseBalance}
             </Button>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="adjust-balance-amount">
-              {ar.customers.adjustmentAmount}
+              {t.customers.adjustmentAmount}
             </Label>
             <Input
               id="adjust-balance-amount"
@@ -128,7 +129,7 @@ export function AdjustBalanceDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="adjust-balance-note">{ar.customers.adjustmentNote}</Label>
+            <Label htmlFor="adjust-balance-note">{t.customers.adjustmentNote}</Label>
             <Textarea
               id="adjust-balance-note"
               rows={2}
@@ -140,13 +141,13 @@ export function AdjustBalanceDialog({
           <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-sm">
             <div>
               <p className="text-xs text-muted-foreground">
-                {ar.customers.currentBalance}
+                {t.customers.currentBalance}
               </p>
-              <p className="font-medium">{formatCurrency(currentBalance)}</p>
+              <p className="font-medium">{formatCurrency(currentBalance, locale)}</p>
             </div>
             <div className="text-end">
               <p className="text-xs text-muted-foreground">
-                {ar.customers.balanceAfterAdjustment}
+                {t.customers.balanceAfterAdjustment}
               </p>
               <p
                 className={cn(
@@ -158,7 +159,7 @@ export function AdjustBalanceDialog({
                       : undefined,
                 )}
               >
-                {formatCurrency(newBalance)}
+                {formatCurrency(newBalance, locale)}
               </p>
             </div>
           </div>
@@ -169,7 +170,7 @@ export function AdjustBalanceDialog({
             onClick={handleSubmit}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحفظ..." : ar.customers.confirmAdjustment}
+            {isPending ? t.common.saving : t.customers.confirmAdjustment}
           </Button>
         </div>
         </fieldset>

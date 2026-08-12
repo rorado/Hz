@@ -7,10 +7,12 @@ import {
   type SupplierRow,
 } from "@/features/suppliers/components/columns";
 import { deleteSuppliers } from "@/features/suppliers/actions";
+import { useLocale } from "@/i18n/locale-provider";
 
 export function SuppliersTable({ data }: { data: SupplierRow[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t, locale } = useLocale();
 
   function editHref(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -21,7 +23,7 @@ export function SuppliersTable({ data }: { data: SupplierRow[] }) {
 
   return (
     <DataTable
-      columns={getSupplierColumns(editHref)}
+      columns={getSupplierColumns(editHref, t, locale)}
       data={data}
       onDeleteSelected={deleteSuppliers}
     />

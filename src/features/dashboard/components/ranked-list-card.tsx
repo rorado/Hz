@@ -1,13 +1,17 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
 
 export function RankedListCard({
   title,
+  icon: Icon,
   items,
   emptyLabel,
+  locale = "ar",
 }: {
   title: string;
+  icon?: LucideIcon;
   items: {
     key: string;
     label: string;
@@ -16,13 +20,17 @@ export function RankedListCard({
     href?: string;
   }[];
   emptyLabel: string;
+  locale?: "ar" | "en" | "fr";
 }) {
   const max = Math.max(1, ...items.map((item) => item.value));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {Icon && <Icon className="size-4 text-muted-foreground" />}
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
@@ -37,7 +45,7 @@ export function RankedListCard({
                   <div className="flex items-center justify-between gap-3 text-sm">
                     <span className="flex items-center gap-2 truncate font-medium">
                       <span className="text-xs text-muted-foreground tabular-nums">
-                        {(index + 1).toLocaleString("ar")}.
+                        {(index + 1).toLocaleString(locale)}.
                       </span>
                       <span className="truncate">{item.label}</span>
                       {item.sublabel && (
@@ -47,7 +55,7 @@ export function RankedListCard({
                       )}
                     </span>
                     <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
-                      {formatCurrency(item.value)}
+                      {formatCurrency(item.value, locale)}
                     </span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">

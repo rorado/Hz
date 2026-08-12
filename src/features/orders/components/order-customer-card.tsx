@@ -12,7 +12,7 @@ import {
 import { OrderCustomerEditSheet } from "@/features/orders/components/order-customer-edit-sheet";
 import { InvoiceLockedNotice } from "@/features/orders/components/invoice-locked-notice";
 import { reassignOrderCustomer } from "@/features/orders/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type OrderCustomer = {
   id: string;
@@ -46,6 +46,7 @@ export function OrderCustomerCard({
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   function handleReassign(customer: CustomerOption | null) {
     if (!customer) return;
@@ -57,7 +58,7 @@ export function OrderCustomerCard({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تغيير العميل بنجاح");
+      toast.success(t.orders.customerChangedToast);
     });
   }
 
@@ -65,39 +66,39 @@ export function OrderCustomerCard({
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>بيانات العميل</CardTitle>
+          <CardTitle>{t.orders.customerInfoTitle}</CardTitle>
           <Button
             variant="ghost"
             size="icon-sm"
             className="cursor-pointer"
             onClick={() => setEditOpen(true)}
-            title={ar.customers.editCustomerInfo}
+            title={t.customers.editCustomerInfo}
           >
             <Pencil className="size-4" />
           </Button>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>
-            <span className="text-muted-foreground">الاسم: </span>
+            <span className="text-muted-foreground">{t.orders.nameLabel}: </span>
             {snapshot.name}
           </p>
           <p>
-            <span className="text-muted-foreground">الهاتف: </span>
+            <span className="text-muted-foreground">{t.orders.phoneLabel}: </span>
             <span dir="ltr">{snapshot.phone}</span>
           </p>
           {snapshot.email && (
             <p>
-              <span className="text-muted-foreground">البريد الإلكتروني: </span>
+              <span className="text-muted-foreground">{t.orders.emailLabel}: </span>
               <span dir="ltr">{snapshot.email}</span>
             </p>
           )}
           <p>
-            <span className="text-muted-foreground">تاريخ الطلب: </span>
+            <span className="text-muted-foreground">{t.orders.orderDateLabel}: </span>
             {new Date(createdAt).toLocaleDateString("fr-FR")}
           </p>
           {notes && (
             <p>
-              <span className="text-muted-foreground">ملاحظات: </span>
+              <span className="text-muted-foreground">{t.orders.notesLabel}: </span>
               {notes}
             </p>
           )}
@@ -107,12 +108,12 @@ export function OrderCustomerCard({
               <InvoiceLockedNotice
                 invoiceId={invoiceId}
                 invoiceNumber={invoiceNumber}
-                message="تم إصدار فاتورة لهذا الطلب، لذلك لا يمكن تغيير العميل بعد الآن."
+                message={t.orders.invoiceLockedCustomerMessage}
               />
             ) : (
               <>
                 <p className="text-xs text-muted-foreground">
-                  {ar.customers.changeCustomer}
+                  {t.customers.changeCustomer}
                 </p>
                 <fieldset disabled={isPending} className="contents">
                   <CustomerPicker
@@ -123,7 +124,7 @@ export function OrderCustomerCard({
                 </fieldset>
                 {isPending && (
                   <p className="text-xs text-muted-foreground">
-                    جاري التحديث...
+                    {t.common.updating}
                   </p>
                 )}
               </>

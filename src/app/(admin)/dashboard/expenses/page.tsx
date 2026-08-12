@@ -7,7 +7,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { getExpensesPage, getExpenseById } from "@/features/expenses/queries";
 import { ExpensesTable } from "@/features/expenses/components/expenses-table";
 import { ExpenseFormSheet } from "@/features/expenses/components/expense-form-sheet";
-import { ar } from "@/i18n/ar";
+import { getDictionary, getLocale } from "@/i18n/server";
 import { formatCurrency } from "@/lib/currency";
 import type { ExpenseCategory } from "@/generated/prisma/client";
 
@@ -27,8 +27,10 @@ export default async function ExpensesPage({
   const page = Math.max(1, Number(params.page) || 1);
   const category = params.category as ExpenseCategory | undefined;
 
-  const [{ items, total, pageSize, totalAmount }, editingExpense] =
+  const [t, locale, { items, total, pageSize, totalAmount }, editingExpense] =
     await Promise.all([
+      getDictionary(),
+      getLocale(),
       getExpensesPage({ category, page }),
       params.edit ? getExpenseById(params.edit) : Promise.resolve(null),
     ]);
@@ -45,20 +47,21 @@ export default async function ExpensesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.expenses}
-        description={`إجمالي المصروفات: ${formatCurrency(Number(totalAmount))}`}
+        title={t.admin.expenses}
+        icon={Receipt}
+        description={`${t.expenses.totalLabel}: ${formatCurrency(Number(totalAmount), locale)}`}
         action={
           <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
             <Plus className="size-4" />
-            إضافة مصروف
+            {t.expenses.addButton}
           </Button>
         }
       />
       {items.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="لا توجد مصروفات مسجلة"
-          description="ابدأ بتسجيل أول مصروف"
+          title={t.expenses.emptyTitle}
+          description={t.expenses.emptyDescription}
         />
       ) : (
         <>

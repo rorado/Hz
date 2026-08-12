@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ar } from "@/i18n/ar";
+import { useT } from "@/i18n/locale-provider";
 
 type DeleteResult = { error?: string } | void;
 
@@ -28,6 +28,7 @@ export function PasswordConfirmDeleteDialog({
   description?: string;
   trigger?: React.ReactElement;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -67,14 +68,14 @@ export function PasswordConfirmDeleteDialog({
             <ShieldAlert className="size-6 text-destructive" />
           </div>
           <AlertDialogTitle className="text-center">
-            {ar.common.confirmDeleteTitle}
+            {t.common.confirmDeleteTitle}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center">
-            {description ?? ar.common.confirmDeleteDescription}
+            {description ?? t.common.confirmDeleteDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="space-y-2 px-1">
-          <Label htmlFor="delete-confirm-password">كلمة مرور الحذف</Label>
+          <Label htmlFor="delete-confirm-password">{t.common.deletePasswordLabel}</Label>
           <Input
             id="delete-confirm-password"
             type="password"
@@ -89,7 +90,7 @@ export function PasswordConfirmDeleteDialog({
                 handleConfirm();
               }
             }}
-            placeholder="أدخل كلمة المرور للمتابعة"
+            placeholder={t.common.deletePasswordPlaceholder}
           />
         </div>
         <AlertDialogFooter>
@@ -98,7 +99,7 @@ export function PasswordConfirmDeleteDialog({
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
           >
-            {ar.common.cancel}
+            {t.common.cancel}
           </Button>
           <Button
             variant="destructive"
@@ -106,7 +107,7 @@ export function PasswordConfirmDeleteDialog({
             onClick={handleConfirm}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحذف..." : ar.common.delete}
+            {isPending ? t.common.deleting : t.common.delete}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

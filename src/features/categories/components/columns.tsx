@@ -7,6 +7,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { deleteCategory } from "@/features/categories/actions";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/config";
 
 export type CategoryRow = {
   id: string;
@@ -19,6 +22,8 @@ export type CategoryRow = {
 
 export function getCategoryColumns(
   editHref: (id: string) => string,
+  t: Dictionary,
+  locale: Locale,
 ): ColumnDef<CategoryRow>[] {
   return [
     {
@@ -41,10 +46,10 @@ export function getCategoryColumns(
           </div>
         ),
     },
-    { accessorKey: "name", header: "الاسم" },
+    { accessorKey: "name", header: t.categories.columnName },
     {
       accessorKey: "slug",
-      header: "الرابط",
+      header: t.categories.columnSlug,
       cell: ({ row }) => (
         <span dir="ltr" className="text-muted-foreground">
           {row.original.slug}
@@ -53,13 +58,13 @@ export function getCategoryColumns(
     },
     {
       id: "parent",
-      header: "قسم الأب",
+      header: t.categories.columnParent,
       cell: ({ row }) => row.original.parent?.name ?? "—",
     },
     {
       id: "productsCount",
-      header: "عدد المنتجات",
-      cell: ({ row }) => row.original._count.products.toLocaleString("ar"),
+      header: t.categories.columnProductsCount,
+      cell: ({ row }) => row.original._count.products.toLocaleString(locale),
     },
     {
       id: "actions",
@@ -76,7 +81,9 @@ export function getCategoryColumns(
           </Button>
           <ConfirmDeleteDialog
             action={() => deleteCategory(row.original.id)}
-            description={`سيتم حذف القسم "${row.original.name}" نهائياً.`}
+            description={formatMessage(t.categories.deleteDescription, {
+              name: row.original.name,
+            })}
           />
         </div>
       ),

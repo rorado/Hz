@@ -2,9 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { PAYMENT_METHOD_LABELS } from "@/features/invoices/schema";
+import { formatDateTime } from "@/lib/date";
 import { PasswordConfirmDeleteDialog } from "@/components/shared/password-confirm-delete-dialog";
 import { deleteSupplierPayment } from "@/features/purchases/actions";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 type SupplierPaymentRow = {
   id: string;
@@ -20,15 +22,17 @@ export function SupplierPaymentHistory({
 }: {
   payments: SupplierPaymentRow[];
 }) {
+  const { t, locale } = useLocale();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>سجل الدفعات</CardTitle>
+        <CardTitle>{t.customers.paymentsHistory}</CardTitle>
       </CardHeader>
       <CardContent>
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            لم يتم تسجيل أي دفعات بعد
+            {t.invoices.noPayments}
           </p>
         ) : (
           <ul className="space-y-3 text-sm">
@@ -38,9 +42,11 @@ export function SupplierPaymentHistory({
                 className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0"
               >
                 <div>
-                  <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                  <p className="font-medium">{formatCurrency(payment.amount, locale)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
+                    {t.statusLabels.paymentMethod[
+                      payment.method as keyof typeof t.statusLabels.paymentMethod
+                    ] ?? payment.method}
                     {payment.orderNumber ? ` · ${payment.orderNumber}` : ""}
                   </p>
                   {payment.note && (
@@ -51,13 +57,15 @@ export function SupplierPaymentHistory({
                 </div>
                 <div className="flex items-center gap-1">
                   <p className="text-xs text-muted-foreground">
-                    {new Date(payment.createdAt).toLocaleDateString("fr-FR")}
+                    {formatDateTime(payment.createdAt)}
                   </p>
                   <PasswordConfirmDeleteDialog
                     action={(password) =>
                       deleteSupplierPayment(payment.id, password)
                     }
-                    description={`سيتم حذف دفعة بقيمة ${formatCurrency(payment.amount)} نهائياً.`}
+                    description={formatMessage(t.invoices.deletePaymentDescription, {
+                      amount: formatCurrency(payment.amount, locale),
+                    })}
                   />
                 </div>
               </li>

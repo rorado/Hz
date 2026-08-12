@@ -14,15 +14,16 @@ import {
 import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog";
 import { DataTable } from "@/components/data-table/data-table";
 import {
-  invoiceColumns,
+  getInvoiceColumns,
   type InvoiceRow,
 } from "@/features/invoices/components/columns";
 import { InvoiceBalanceDeleteContent } from "@/features/invoices/components/invoice-delete-dialog";
-import { PAYMENT_STATUS_LABELS } from "@/features/invoices/schema";
 import { deleteInvoices } from "@/features/invoices/actions";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 const PAGE_SIZE = 10;
-const ALL_STATUSES = "جميع الحالات";
+const ALL_STATUSES = "all";
 
 export function InvoicesTable({
   data,
@@ -31,6 +32,7 @@ export function InvoicesTable({
   data: InvoiceRow[];
   searchable?: boolean;
 }) {
+  const { t, locale } = useLocale();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(ALL_STATUSES);
   const [page, setPage] = useState(1);
@@ -42,10 +44,7 @@ export function InvoicesTable({
     return data.filter((invoice) => {
       const matchesQuery =
         !trimmed || invoice.invoiceNumber.toLowerCase().includes(trimmed);
-      const matchesStatus =
-        status === ALL_STATUSES ||
-        (PAYMENT_STATUS_LABELS[invoice.paymentStatus] ??
-          invoice.paymentStatus) === status;
+      const matchesStatus = status === ALL_STATUSES || invoice.paymentStatus === status;
       return matchesQuery && matchesStatus;
     });
   }, [data, searchable, trimmed, status]);
@@ -110,18 +109,26 @@ export function InvoicesTable({
             <Input
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
-              placeholder="ابحث برقم الفاتورة..."
+              placeholder={t.invoices.searchPlaceholder}
               className="pe-9"
             />
           </div>
           <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder={ALL_STATUSES} />
+              <SelectValue placeholder={t.invoices.allStatuses}>
+                {(value: string) =>
+                  value === ALL_STATUSES || !value
+                    ? t.invoices.allStatuses
+                    : t.statusLabels.paymentStatus[
+                        value as keyof typeof t.statusLabels.paymentStatus
+                      ]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_STATUSES}>{ALL_STATUSES}</SelectItem>
-              {Object.values(PAYMENT_STATUS_LABELS).map((label) => (
-                <SelectItem key={label} value={label}>
+              <SelectItem value={ALL_STATUSES}>{t.invoices.allStatuses}</SelectItem>
+              {Object.entries(t.statusLabels.paymentStatus).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
                   {label}
                 </SelectItem>
               ))}
@@ -130,7 +137,7 @@ export function InvoicesTable({
         </div>
       )}
       <DataTable
-        columns={invoiceColumns}
+        columns={getInvoiceColumns(t, locale)}
         data={paged}
         onDeleteSelected={handleBulkDelete}
         requireDeletePassword
@@ -154,9 +161,11 @@ export function InvoicesTable({
       {searchable && filtered.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            {filtered.length.toLocaleString("ar")} نتيجة — صفحة{" "}
-            {currentPage.toLocaleString("ar")} من{" "}
-            {pageCount.toLocaleString("ar")}
+            {formatMessage(t.common.paginationSummary, {
+              total: filtered.length.toLocaleString(locale),
+              page: currentPage.toLocaleString(locale),
+              pageCount: pageCount.toLocaleString(locale),
+            })}
           </span>
           <div className="flex gap-2">
             <Button
@@ -165,8 +174,8 @@ export function InvoicesTable({
               disabled={currentPage <= 1}
               onClick={() => setPage(currentPage - 1)}
             >
-              <ChevronRight className="size-4" />
-              السابق
+              <ChevronLeft className="size-4 rtl:rotate-180" />
+              {t.common.previous}
             </Button>
             <Button
               variant="outline"
@@ -174,8 +183,8 @@ export function InvoicesTable({
               disabled={currentPage >= pageCount}
               onClick={() => setPage(currentPage + 1)}
             >
-              التالي
-              <ChevronLeft className="size-4" />
+              {t.common.next}
+              <ChevronRight className="size-4 rtl:rotate-180" />
             </Button>
           </div>
         </div>

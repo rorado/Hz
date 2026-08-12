@@ -1,3 +1,5 @@
+import type { Dictionary } from "@/i18n/dictionaries";
+
 export type RangePreset =
   | "today"
   | "7d"
@@ -17,6 +19,22 @@ export const RANGE_PRESETS: { value: RangePreset; label: string }[] = [
   { value: "year", label: "هذه السنة" },
   { value: "all", label: "كل الوقت" },
 ];
+
+/** Locale-aware preset labels for rendering; RANGE_PRESETS above stays
+ * Arabic-only since resolveDateRange only ever matches on `.value`. */
+export function getRangePresetOptions(
+  t: Dictionary,
+): { value: RangePreset; label: string }[] {
+  return [
+    { value: "today", label: t.dateRangePresets.today },
+    { value: "7d", label: t.dateRangePresets["7d"] },
+    { value: "30d", label: t.dateRangePresets["30d"] },
+    { value: "90d", label: t.dateRangePresets["90d"] },
+    { value: "month", label: t.dateRangePresets.month },
+    { value: "year", label: t.dateRangePresets.year },
+    { value: "all", label: t.dateRangePresets.all },
+  ];
+}
 
 export type ResolvedRange = {
   from: Date | null;

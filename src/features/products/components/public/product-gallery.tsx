@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_PRODUCT_IMAGE = "/cart.jpg";
 
 export function ProductGallery({
   images,
@@ -18,20 +19,14 @@ export function ProductGallery({
   return (
     <div className="space-y-3">
       <div className="relative aspect-square overflow-hidden rounded-xl border bg-muted">
-        {active ? (
-          <Image
-            src={active.secureUrl}
-            alt={productName}
-            fill
-            className="object-cover"
-            sizes="(min-width: 1024px) 40vw, 100vw"
-            priority
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <Package className="size-16 text-muted-foreground" />
-          </div>
-        )}
+        <Image
+          src={active?.secureUrl ?? DEFAULT_PRODUCT_IMAGE}
+          alt={productName}
+          fill
+          className="object-cover"
+          sizes="(min-width: 1024px) 40vw, 100vw"
+          priority
+        />
       </div>
       {images.length > 1 && (
         <div className="flex gap-2">

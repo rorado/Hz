@@ -1,6 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart } from "recharts";
+import { Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -11,8 +12,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { StatusBreakdown } from "@/features/dashboard/analytics-queries";
-import { PAYMENT_STATUS_LABELS } from "@/features/invoices/schema";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
 
 const COLORS: Record<string, string> = {
   PAID: "var(--chart-5)",
@@ -21,9 +22,12 @@ const COLORS: Record<string, string> = {
 };
 
 export function PaymentStatusChart({ data }: { data: StatusBreakdown[] }) {
+  const { locale, t } = useLocale();
+  const paymentStatusLabels: Record<string, string> = t.statusLabels.paymentStatus;
+
   const chartData = data.map((d) => ({
     status: d.status,
-    label: PAYMENT_STATUS_LABELS[d.status] ?? d.status,
+    label: paymentStatusLabels[d.status] ?? d.status,
     count: d.count,
     total: d.total,
   }));
@@ -37,7 +41,10 @@ export function PaymentStatusChart({ data }: { data: StatusBreakdown[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>حالة الدفع للفواتير</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="size-4 text-muted-foreground" />
+          {t.dashboard.paymentStatusOfInvoices}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -54,13 +61,13 @@ export function PaymentStatusChart({ data }: { data: StatusBreakdown[] }) {
                             {chartConfig[name as keyof typeof chartConfig]?.label ?? name}
                           </span>
                           <span className="font-mono font-medium tabular-nums">
-                            {item.payload.count.toLocaleString("ar")} فاتورة
+                            {item.payload.count.toLocaleString(locale)} {t.dashboard.invoiceSuffix}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">الإجمالي</span>
+                          <span className="text-muted-foreground">{t.dashboard.total}</span>
                           <span className="font-mono font-medium tabular-nums">
-                            {formatCurrency(Number(value))}
+                            {formatCurrency(Number(value), locale)}
                           </span>
                         </div>
                       </div>
@@ -86,7 +93,7 @@ export function PaymentStatusChart({ data }: { data: StatusBreakdown[] }) {
           </ChartContainer>
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            لا توجد فواتير في هذه الفترة
+            {t.dashboard.noInvoicesInPeriod}
           </div>
         )}
       </CardContent>

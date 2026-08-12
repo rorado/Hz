@@ -22,11 +22,9 @@ import {
   expenseSchema,
   type ExpenseInput,
   type ExpenseOutput,
-  EXPENSE_CATEGORY_LABELS,
-  EXPENSE_CATEGORY_VALUE_BY_LABEL,
 } from "@/features/expenses/schema";
 import { createExpense, updateExpense } from "@/features/expenses/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type ExpenseRecord = {
   id: string;
@@ -35,6 +33,14 @@ type ExpenseRecord = {
   description: string | null;
   date: Date;
 } | null;
+
+const EXPENSE_CATEGORIES = [
+  "RENT",
+  "SALARIES",
+  "TRANSPORTATION",
+  "UTILITIES",
+  "OTHER",
+] as const;
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -51,6 +57,7 @@ export function ExpenseFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -88,9 +95,7 @@ export function ExpenseFormSheet({
         return;
       }
 
-      toast.success(
-        expense ? "تم تحديث المصروف بنجاح" : "تم إضافة المصروف بنجاح",
-      );
+      toast.success(expense ? t.expenses.toastUpdated : t.expenses.toastCreated);
       close();
     });
   }
@@ -101,42 +106,45 @@ export function ExpenseFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={expense ? "تعديل المصروف" : "إضافة مصروف جديد"}
+      title={expense ? t.expenses.formTitleEdit : t.expenses.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label>الفئة</Label>
+          <Label>{t.expenses.categoryLabel}</Label>
           <Controller
             control={control}
             name="category"
             render={({ field }) => (
               <Select
-                value={EXPENSE_CATEGORY_LABELS[field.value] ?? field.value}
-                onValueChange={(label) => {
-                  if (!label) return;
-                  const value = EXPENSE_CATEGORY_VALUE_BY_LABEL[label];
-                  if (value) field.onChange(value);
+                value={field.value}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  field.onChange(value);
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) =>
+                      t.statusLabels.expenseCategory[
+                        value as keyof typeof t.statusLabels.expenseCategory
+                      ] ?? value
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(
-                    ([value, label]) => (
-                      <SelectItem key={value} value={label}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
+                  {EXPENSE_CATEGORIES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t.statusLabels.expenseCategory[value]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="expense-amount">المبلغ</Label>
+          <Label htmlFor="expense-amount">{t.expenses.amountLabel}</Label>
           <Input
             id="expense-amount"
             type="number"
@@ -149,14 +157,14 @@ export function ExpenseFormSheet({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="expense-date">التاريخ</Label>
+          <Label htmlFor="expense-date">{t.expenses.dateLabel}</Label>
           <Input id="expense-date" type="date" {...register("date")} />
           {errors.date && (
             <p className="text-sm text-destructive">{errors.date.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="expense-description">الوصف (اختياري)</Label>
+          <Label htmlFor="expense-description">{t.expenses.descriptionLabel}</Label>
           <Textarea
             id="expense-description"
             rows={3}
@@ -169,7 +177,7 @@ export function ExpenseFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

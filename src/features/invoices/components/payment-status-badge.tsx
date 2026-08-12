@@ -1,5 +1,7 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import { ar } from "@/i18n/ar";
+import { useT } from "@/i18n/locale-provider";
 import type { PaymentStatus } from "@/generated/prisma/client";
 
 const VARIANT_BY_STATUS: Record<
@@ -12,9 +14,10 @@ const VARIANT_BY_STATUS: Record<
 };
 
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  const t = useT();
   return (
     <Badge variant={VARIANT_BY_STATUS[status]}>
-      {ar.statusLabels.paymentStatus[status]}
+      {t.statusLabels.paymentStatus[status]}
     </Badge>
   );
 }

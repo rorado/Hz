@@ -15,7 +15,7 @@ import {
   type SupplierInput,
 } from "@/features/suppliers/schema";
 import { createSupplier, updateSupplier } from "@/features/suppliers/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type SupplierRecord = {
   id: string;
@@ -36,6 +36,7 @@ export function SupplierFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -70,9 +71,7 @@ export function SupplierFormSheet({
         return;
       }
 
-      toast.success(
-        supplier ? "تم تحديث بيانات المورد" : "تم إضافة المورد بنجاح",
-      );
+      toast.success(supplier ? t.suppliers.toastUpdated : t.suppliers.toastCreated);
       close();
     });
   }
@@ -83,30 +82,30 @@ export function SupplierFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={supplier ? "تعديل بيانات المورد" : "إضافة مورد جديد"}
+      title={supplier ? t.suppliers.editSupplierInfo : t.suppliers.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="supplier-name">الاسم</Label>
+          <Label htmlFor="supplier-name">{t.suppliers.nameLabel}</Label>
           <Input id="supplier-name" {...register("name")} />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supplier-phone">الهاتف (اختياري)</Label>
+          <Label htmlFor="supplier-phone">{t.suppliers.phoneOptionalLabel}</Label>
           <Input id="supplier-phone" dir="ltr" {...register("phone")} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supplier-email">البريد الإلكتروني (اختياري)</Label>
+          <Label htmlFor="supplier-email">{t.customers.emailOptionalLabel}</Label>
           <Input id="supplier-email" dir="ltr" {...register("email")} />
           {errors.email && (
             <p className="text-sm text-destructive">{errors.email.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supplier-address">العنوان (اختياري)</Label>
+          <Label htmlFor="supplier-address">{t.customers.addressOptionalLabel}</Label>
           <Input id="supplier-address" {...register("address")} />
         </div>
         <Button
@@ -115,7 +114,7 @@ export function SupplierFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

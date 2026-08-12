@@ -15,10 +15,9 @@ import {
   ComboboxList,
   ComboboxItem,
 } from "@/components/ui/combobox";
+import { useT } from "@/i18n/locale-provider";
 
 type CategoryOption = { slug: string; name: string };
-
-const ALL_CATEGORY: CategoryOption = { slug: "all", name: "الكل" };
 
 export function ProductsFilterBar({
   categories,
@@ -31,6 +30,8 @@ export function ProductsFilterBar({
   const [value, setValue] = useState(searchParams.get("q") ?? "");
   const [isPending, startTransition] = useTransition();
   const { contains } = useComboboxFilter();
+  const t = useT();
+  const ALL_CATEGORY: CategoryOption = { slug: "all", name: t.public.allCategoryOption };
 
   const categoryItems = [ALL_CATEGORY, ...categories];
   const selectedCategory =
@@ -81,7 +82,7 @@ export function ProductsFilterBar({
         <Input
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="ابحث عن منتج..."
+          placeholder={t.public.searchProductsPlaceholder}
           className="pe-9"
         />
       </div>
@@ -99,8 +100,8 @@ export function ProductsFilterBar({
           <ComboboxValue />
         </ComboboxTrigger>
         <ComboboxContent>
-          <ComboboxInput placeholder="ابحث عن قسم..." />
-          <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+          <ComboboxInput placeholder={t.categories.searchPlaceholder} />
+          <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
           <ComboboxList>
             {(item: CategoryOption) => (
               <ComboboxItem key={item.slug} value={item}>

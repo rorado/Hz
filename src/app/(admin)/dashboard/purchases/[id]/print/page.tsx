@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { getPurchaseOrderById } from "@/features/purchases/queries";
 import { InvoicePrintButton } from "@/features/invoices/components/invoice-print-button";
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
-import { ar as arDict } from "@/i18n/ar";
+import { BackButton } from "@/components/shared/back-button";
+import { companyConfig } from "@/config/company";
+import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +26,6 @@ const LABELS: Record<
     total: string;
     itemsCount: string;
     totalWeight: string;
-    print: string;
-    openPdf: string;
     supplierSignature: string;
   }
 > = {
@@ -42,8 +42,6 @@ const LABELS: Record<
     total: "الإجمالي الكلي",
     itemsCount: "عدد المنتجات",
     totalWeight: "الوزن الإجمالي (kg)",
-    print: "طباعة / حفظ كـ PDF",
-    openPdf: "فتح كملف PDF",
     supplierSignature: "توقيع المورد",
   },
   fr: {
@@ -59,8 +57,6 @@ const LABELS: Record<
     total: "Total",
     itemsCount: "Nombre de produits",
     totalWeight: "Poids total (kg)",
-    print: "Imprimer / Enregistrer en PDF",
-    openPdf: "Ouvrir en PDF",
     supplierSignature: "Signature du fournisseur",
   },
 };
@@ -75,7 +71,10 @@ export default async function PurchaseOrderPrintPage({
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
-  const order = await getPurchaseOrderById(id);
+  const [order, uiT] = await Promise.all([
+    getPurchaseOrderById(id),
+    getDictionary(),
+  ]);
   if (!order) notFound();
 
   const lang: Lang =
@@ -99,13 +98,16 @@ export default async function PurchaseOrderPrintPage({
       className="mx-auto max-w-2xl space-y-6 p-6 print:max-w-none print:p-0"
     >
       <style>{"@page { size: A5; margin: 5mm; }"}</style>
-      <div className="flex justify-end gap-2 print:hidden">
-        <InvoicePdfButton
-          targetId="purchase-order-card"
-          fileName={`${order.orderNumber}.pdf`}
-          label={t.openPdf}
-        />
-        <InvoicePrintButton label={t.print} />
+      <div className="flex items-center justify-between gap-2 print:hidden">
+        <BackButton fallbackHref={`/dashboard/purchases/${order.id}`} />
+        <div className="flex gap-2">
+          <InvoicePdfButton
+            targetId="purchase-order-card"
+            fileName={`${order.orderNumber}.pdf`}
+            label={uiT.common.openPdf}
+          />
+          <InvoicePrintButton label={uiT.common.printSavePdf} />
+        </div>
       </div>
 
       <div
@@ -119,7 +121,7 @@ export default async function PurchaseOrderPrintPage({
                 <div className="flex items-start justify-between">
                   <div>
                     <h1 className="text-2xl font-bold print:text-lg">
-                      {arDict.siteName}
+                      {companyConfig.name}
                     </h1>
                   </div>
                   <div className="text-end">

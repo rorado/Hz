@@ -5,8 +5,10 @@ import { authenticate } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n/locale-provider";
 
 export function LoginForm() {
+  const t = useT();
   const [errorMessage, formAction, isPending] = useActionState(
     authenticate,
     undefined,
@@ -15,7 +17,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">البريد الإلكتروني</Label>
+        <Label htmlFor="email">{t.auth.email}</Label>
         <Input
           id="email"
           name="email"
@@ -26,7 +28,7 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">كلمة المرور</Label>
+        <Label htmlFor="password">{t.auth.password}</Label>
         <Input
           id="password"
           name="password"
@@ -45,7 +47,7 @@ export function LoginForm() {
         className={`w-full ${isPending ? "animate-pulse cursor-not-allowed" : "cursor-pointer"}`}
         disabled={isPending}
       >
-        {isPending ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
+        {isPending ? t.auth.loggingIn : t.auth.loginButton}
       </Button>
     </form>
   );

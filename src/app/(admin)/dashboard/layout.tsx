@@ -28,12 +28,12 @@ export default async function DashboardLayout({
         unpaidInvoices={stats.unpaidInvoicesCount}
       />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 print:hidden">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-header/80 px-4 backdrop-blur-sm print:hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 print:p-0">
-          <div className="w-full lg:mx-auto lg:max-w-350">
+        <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 print:p-0">
+          <div className="w-full min-w-0 lg:mx-auto lg:max-w-350">
             {children}
           </div>
         </main>

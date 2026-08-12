@@ -18,8 +18,7 @@ import {
   getProductSelectOptions,
 } from "@/features/products/queries";
 import { RecordMovementDialog } from "@/features/inventory/components/record-movement-dialog";
-import { MOVEMENT_TYPE_LABELS } from "@/features/inventory/schema";
-import { ar } from "@/i18n/ar";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +32,14 @@ export default async function InventoryPage({
   const lowStockPage = Math.max(1, Number(params.lowStockPage) || 1);
 
   const [
+    t,
+    locale,
     { items: lowStockProducts, total: lowStockTotal, pageSize: lowStockPageSize },
     productOptions,
     { items, total, pageSize },
   ] = await Promise.all([
+    getDictionary(),
+    getLocale(),
     getLowStockProductsPage({ page: lowStockPage }),
     getProductSelectOptions(),
     getInventoryMovementsPage({ page }),
@@ -45,7 +48,8 @@ export default async function InventoryPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.inventory}
+        title={t.admin.inventory}
+        icon={Boxes}
         action={<RecordMovementDialog products={productOptions} />}
       />
 
@@ -53,39 +57,39 @@ export default async function InventoryPage({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" />
-            منتجات منخفضة المخزون
+            {t.inventory.lowStockTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {lowStockProducts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              لا توجد منتجات منخفضة المخزون حالياً
+              {t.inventory.lowStockEmpty}
             </p>
           ) : (
             <div className="space-y-4">
               <Table>
                 <TableHeader>
-                  <TableRow dir="rtl">
-                    <TableHead>المنتج</TableHead>
+                  <TableRow>
+                    <TableHead>{t.inventory.columnProduct}</TableHead>
                     <TableHead>SKU</TableHead>
-                    <TableHead>الكمية الحالية</TableHead>
-                    <TableHead>الحد الأدنى</TableHead>
+                    <TableHead>{t.inventory.columnCurrentQuantity}</TableHead>
+                    <TableHead>{t.inventory.columnMinStock}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {lowStockProducts.map((product) => (
-                    <TableRow key={product.id} dir="rtl">
+                    <TableRow key={product.id}>
                       <TableCell className="font-medium">
                         {product.name}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        <span dir="rtl">{product.sku}</span>
+                        <span dir="ltr">{product.sku}</span>
                       </TableCell>
                       <TableCell className="font-medium text-destructive">
-                        {product.quantity.toLocaleString("ar")}
+                        {product.quantity.toLocaleString(locale)}
                       </TableCell>
                       <TableCell>
-                        {product.minStockLevel.toLocaleString("ar")}
+                        {product.minStockLevel.toLocaleString(locale)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -106,35 +110,35 @@ export default async function InventoryPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>سجل حركة المخزون</CardTitle>
+          <CardTitle>{t.inventory.movementsTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {items.length === 0 ? (
             <EmptyState
               icon={Boxes}
-              title="لا توجد حركات مخزون بعد"
-              description="ستظهر هنا عمليات الإدخال والإخراج والتسوية"
+              title={t.inventory.movementsEmptyTitle}
+              description={t.inventory.movementsEmptyDescription}
             />
           ) : (
             <>
               <Table>
                 <TableHeader>
-                  <TableRow dir="rtl">
-                    <TableHead>المنتج</TableHead>
-                    <TableHead>النوع</TableHead>
-                    <TableHead>الكمية</TableHead>
-                    <TableHead>السبب</TableHead>
-                    <TableHead>التاريخ</TableHead>
+                  <TableRow>
+                    <TableHead>{t.inventory.columnProduct}</TableHead>
+                    <TableHead>{t.inventory.columnType}</TableHead>
+                    <TableHead>{t.inventory.columnQuantity}</TableHead>
+                    <TableHead>{t.inventory.columnReason}</TableHead>
+                    <TableHead>{t.inventory.columnDate}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((movement) => (
-                    <TableRow key={movement.id} dir="rtl">
+                    <TableRow key={movement.id}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{movement.product.name}</p>
                           <p
-                            dir="rtl"
+                            dir="ltr"
                             className="text-xs text-muted-foreground"
                           >
                             {movement.product.sku}
@@ -143,11 +147,11 @@ export default async function InventoryPage({
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {MOVEMENT_TYPE_LABELS[movement.type]}
+                          {t.statusLabels.movementType[movement.type]}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {movement.quantity.toLocaleString("ar")}
+                        {movement.quantity.toLocaleString(locale)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {movement.reason ?? "—"}

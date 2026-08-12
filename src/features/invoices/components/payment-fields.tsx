@@ -20,15 +20,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  PAYMENT_METHOD_LABELS,
   type InvoiceInput,
   type InvoiceOutput,
 } from "@/features/invoices/schema";
 import { formatCurrency } from "@/lib/currency";
 import { computePaymentStatus } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
+import type { PaymentMethod } from "@/generated/prisma/client";
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  "CASH",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "BALANCE",
+  "OTHER",
+];
 
 export function PaymentFieldsSection({
   control,
@@ -43,6 +51,7 @@ export function PaymentFieldsSection({
   customerBalance: number;
   hasCustomer: boolean;
 }) {
+  const { t, locale } = useLocale();
   const { fields, append, remove } = useFieldArray({ control, name: "payments" });
   const payments = useWatch({ control, name: "payments" }) ?? [];
 
@@ -63,7 +72,7 @@ export function PaymentFieldsSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label>{ar.invoices.payments}</Label>
+        <Label>{t.invoices.payments}</Label>
         <div className="flex gap-2">
           {canOfferBalanceShortcut && (
             <Button
@@ -73,7 +82,7 @@ export function PaymentFieldsSection({
               className="cursor-pointer"
               onClick={addBalanceLine}
             >
-              {ar.invoices.availableBalance}: {formatCurrency(customerBalance)}
+              {t.invoices.availableBalance}: {formatCurrency(customerBalance, locale)}
             </Button>
           )}
           <Button
@@ -84,14 +93,14 @@ export function PaymentFieldsSection({
             onClick={() => append({ method: "CASH", amount: 0 })}
           >
             <Plus className="size-4" />
-            {ar.invoices.addPayment}
+            {t.invoices.addPayment}
           </Button>
         </div>
       </div>
 
       {fields.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {ar.invoices.noPaymentLines}
+          {t.invoices.noPaymentLines}
         </p>
       ) : (
         <div className="space-y-2">
@@ -103,27 +112,30 @@ export function PaymentFieldsSection({
                 className="grid grid-cols-1 items-start gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]"
               >
                 <div className="space-y-1">
-                  <Label className="text-xs">{ar.invoices.paymentMethod}</Label>
+                  <Label className="text-xs">{t.invoices.paymentMethod}</Label>
                   <Controller
                     control={control}
                     name={`payments.${index}.method`}
                     render={({ field: methodField }) => (
                       <Select
-                        items={PAYMENT_METHOD_LABELS}
                         value={methodField.value}
                         onValueChange={methodField.onChange}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue />
+                          <SelectValue>
+                            {(value: string) =>
+                              t.statusLabels.paymentMethod[
+                                value as keyof typeof t.statusLabels.paymentMethod
+                              ] ?? value
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(PAYMENT_METHOD_LABELS).map(
-                            ([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
+                          {PAYMENT_METHODS.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {t.statusLabels.paymentMethod[value]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -138,13 +150,13 @@ export function PaymentFieldsSection({
                       )}
                     >
                       {!hasCustomer
-                        ? ar.invoices.noCustomerForBalance
-                        : `${ar.invoices.availableBalance}: ${formatCurrency(customerBalance)}`}
+                        ? t.invoices.noCustomerForBalance
+                        : `${t.invoices.availableBalance}: ${formatCurrency(customerBalance, locale)}`}
                     </p>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">{ar.invoices.amountPaid}</Label>
+                  <Label className="text-xs">{t.invoices.amountPaid}</Label>
                   <Controller
                     control={control}
                     name={`payments.${index}.amount`}
@@ -187,15 +199,15 @@ export function PaymentFieldsSection({
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
         <PaymentStatusBadge status={previewStatus} />
         <span>
-          {ar.invoices.totalPaidLabel}: {formatCurrency(totalPaid)}
+          {t.invoices.totalPaidLabel}: {formatCurrency(totalPaid, locale)}
         </span>
         {remaining > 0.005 && (
           <span className="text-muted-foreground">
-            {ar.invoices.remainingAfterPayments}: {formatCurrency(remaining)}
+            {t.invoices.remainingAfterPayments}: {formatCurrency(remaining, locale)}
           </span>
         )}
         {remaining < -0.005 && (
-          <Badge variant="secondary">{ar.invoices.overpaidWillBecomeCredit}</Badge>
+          <Badge variant="secondary">{t.invoices.overpaidWillBecomeCredit}</Badge>
         )}
       </div>
     </div>

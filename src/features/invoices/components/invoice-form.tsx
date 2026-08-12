@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, UserCircle } from "lucide-react";
+import { Plus, Trash2, Loader2, UserCircle, Globe } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -74,76 +74,90 @@ import {
   capPaymentLinesToTotal,
   type BalanceConfirmRequest,
 } from "@/features/invoices/balance-resolution";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
+import {
+  StockAlertDialog,
+  findStockIssue,
+  type StockIssue,
+} from "@/components/shared/stock-alert-dialog";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/config";
+import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 
 type ProductOption = {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   price1: number;
   price2: number;
   price3: number;
+  quantity: number;
   categoryId: string;
   brandId: string | null;
 };
 
-const NONE_PRODUCT: ProductOption = {
-  id: "",
-  name: "بدون منتج محدد",
-  sku: "",
-  price1: 0,
-  price2: 0,
-  price3: 0,
-  categoryId: "",
-  brandId: null,
-};
+type PriceTier = "price1" | "price2" | "price3" | "custom";
 
-const CUSTOM_PRICE = "سعر مخصص";
-
-function productLabel(product: ProductOption) {
-  return product.id ? `${product.name} (${product.sku})` : product.name;
+function productLabel(product: ProductOption, none: string) {
+  return product.id ? `${product.name} (${product.sku})` : none;
 }
 
-function priceTierLabel(price: number, product: ProductOption) {
-  if (price === product.price1) return "السعر الأول";
-  if (price === product.price2) return "السعر الثاني";
-  if (price === product.price3) return "السعر الثالث";
-  return CUSTOM_PRICE;
+function priceTierLabel(price: number, product: ProductOption): PriceTier {
+  if (price === product.price1) return "price1";
+  if (price === product.price2) return "price2";
+  if (price === product.price3) return "price3";
+  return "custom";
 }
 
 function PriceTierField({
   price,
   product,
   onChange,
+  t,
+  locale,
 }: {
   price: number;
   product: ProductOption | undefined;
   onChange: (price: number) => void;
+  t: Dictionary;
+  locale: Locale;
 }) {
   if (!product?.id) return null;
+
+  const tierLabels: Record<PriceTier, string> = {
+    price1: t.reports.columnPrice1,
+    price2: t.reports.columnPrice2,
+    price3: t.reports.columnPrice3,
+    custom: t.orders.customPrice,
+  };
 
   return (
     <Select
       value={priceTierLabel(price, product)}
-      onValueChange={(label) => {
-        if (label === "السعر الأول") onChange(product.price1);
-        else if (label === "السعر الثاني") onChange(product.price2);
-        else if (label === "السعر الثالث") onChange(product.price3);
+      onValueChange={(tier) => {
+        if (tier === "price1") onChange(product.price1);
+        else if (tier === "price2") onChange(product.price2);
+        else if (tier === "price3") onChange(product.price3);
       }}
     >
       <SelectTrigger className="w-full">
-        <SelectValue />
+        <SelectValue>
+          {(value: string) => tierLabels[value as PriceTier] ?? value}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="السعر الأول">
-          ({formatCurrency(product.price1)})
+        <SelectItem value="price1">
+          ({formatCurrency(product.price1, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثاني">
-          ({formatCurrency(product.price2)})
+        <SelectItem value="price2">
+          ({formatCurrency(product.price2, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثالث">
-          ({formatCurrency(product.price3)})
+        <SelectItem value="price3">
+          ({formatCurrency(product.price3, locale)})
         </SelectItem>
-        <SelectItem value={CUSTOM_PRICE}>{CUSTOM_PRICE}</SelectItem>
+        <SelectItem value="custom">{t.orders.customPrice}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -153,14 +167,28 @@ function ProductPickerField({
   value,
   onChange,
   products,
+  t,
 }: {
   value: string;
   onChange: (product: ProductOption | null) => void;
   products: ProductOption[];
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
-  const items = [NONE_PRODUCT, ...products];
-  const selected = items.find((item) => item.id === value) ?? NONE_PRODUCT;
+  const noneProduct: ProductOption = {
+    id: "",
+    name: t.invoices.noProductSelected,
+    sku: "",
+    barcode: null,
+    price1: 0,
+    price2: 0,
+    price3: 0,
+    quantity: 0,
+    categoryId: "",
+    brandId: null,
+  };
+  const items = [noneProduct, ...products];
+  const selected = items.find((item) => item.id === value) ?? noneProduct;
 
   return (
     <Combobox
@@ -169,19 +197,24 @@ function ProductPickerField({
       onValueChange={(product: ProductOption | null) => onChange(product)}
       isItemEqualToValue={(a: ProductOption, b: ProductOption) => a.id === b.id}
       itemToStringValue={(item: ProductOption) => item.id}
-      itemToStringLabel={productLabel}
+      itemToStringLabel={(item: ProductOption) =>
+        productLabel(item, t.invoices.noProductSelected)
+      }
       filter={contains}
     >
-      <ComboboxTrigger className="w-full">
-        <ComboboxValue />
-      </ComboboxTrigger>
+      <div className="flex gap-2">
+        <ComboboxTrigger className="w-full">
+          <ComboboxValue />
+        </ComboboxTrigger>
+        <ProductBarcodeScanner products={products} onSelect={onChange} />
+      </div>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم أو SKU..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.inventory.productSearchPlaceholder} />
+        <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: ProductOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {productLabel(item)}
+              {productLabel(item, t.invoices.noProductSelected)}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -192,27 +225,30 @@ function ProductPickerField({
 
 type CategoryOption = { id: string; name: string };
 
-const NONE_CATEGORY: CategoryOption = { id: "", name: "اختر قسماً..." };
-const NONE_BRAND: CategoryOption = { id: "", name: "اختر علامة تجارية..." };
-
-/**
- * Lets the admin pick a category and/or brand, see the matching products,
- * check off one or more, and add all of them to the invoice's items at
- * once — a faster path than adding rows one by one via the product search
- * above.
- */
 function CategoryQuickAddPanel({
   categories,
   brands,
   products,
   onAddProducts,
+  t,
+  locale,
 }: {
   categories: CategoryOption[];
   brands: CategoryOption[];
   products: ProductOption[];
   onAddProducts: (products: ProductOption[]) => void;
+  t: Dictionary;
+  locale: Locale;
 }) {
   const { contains } = useComboboxFilter();
+  const NONE_CATEGORY: CategoryOption = {
+    id: "",
+    name: t.invoices.selectCategoryPlaceholder,
+  };
+  const NONE_BRAND: CategoryOption = {
+    id: "",
+    name: t.invoices.selectBrandPlaceholder,
+  };
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");
   const [productQuery, setProductQuery] = useState("");
@@ -260,7 +296,7 @@ function CategoryQuickAddPanel({
 
   return (
     <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
-      <Label>إضافة سريعة حسب القسم أو العلامة التجارية</Label>
+      <Label>{t.invoices.quickAddTitle}</Label>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Combobox
           items={categoryItems}
@@ -280,8 +316,8 @@ function CategoryQuickAddPanel({
             <ComboboxValue />
           </ComboboxTrigger>
           <ComboboxContent>
-            <ComboboxInput placeholder="ابحث عن قسم..." />
-            <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+            <ComboboxInput placeholder={t.categories.searchPlaceholder} />
+            <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
             <ComboboxList>
               {(item: CategoryOption) => (
                 <ComboboxItem key={item.id} value={item}>
@@ -310,8 +346,8 @@ function CategoryQuickAddPanel({
             <ComboboxValue />
           </ComboboxTrigger>
           <ComboboxContent>
-            <ComboboxInput placeholder="ابحث عن علامة تجارية..." />
-            <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+            <ComboboxInput placeholder={t.brands.searchPlaceholder} />
+            <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
             <ComboboxList>
               {(item: CategoryOption) => (
                 <ComboboxItem key={item.id} value={item}>
@@ -328,11 +364,11 @@ function CategoryQuickAddPanel({
           <Input
             value={productQuery}
             onChange={(event) => setProductQuery(event.target.value)}
-            placeholder="ابحث بالاسم أو SKU..."
+            placeholder={t.inventory.productSearchPlaceholder}
           />
           {filteredProducts.length === 0 ? (
             <p className="py-2 text-xs text-muted-foreground">
-              لا توجد منتجات مطابقة
+              {t.invoices.noMatchingProducts}
             </p>
           ) : (
             <>
@@ -348,7 +384,7 @@ function CategoryQuickAddPanel({
                     />
                     <span className="flex-1 truncate">{product.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatCurrency(product.price1)}
+                      {formatCurrency(product.price1, locale)}
                     </span>
                   </label>
                 ))}
@@ -361,11 +397,9 @@ function CategoryQuickAddPanel({
                 onClick={handleAdd}
               >
                 <Plus className="size-4" />
-                إضافة{" "}
-                {selectedIds.size > 0
-                  ? selectedIds.size.toLocaleString("ar")
-                  : ""}{" "}
-                إلى الفاتورة
+                {formatMessage(t.invoices.addSelectedToInvoice, {
+                  count: selectedIds.size.toLocaleString(locale),
+                })}
               </Button>
             </>
           )}
@@ -407,8 +441,6 @@ export function InvoiceForm({
   categories: { id: string; name: string }[];
   brands: { id: string; name: string }[];
   orderId?: string;
-  /** Only present when editing an existing invoice — renders the سجل
-   * الدفعات sidebar alongside the quick-add-by-category panel. */
   payments?: {
     id: string;
     amount: number;
@@ -419,6 +451,7 @@ export function InvoiceForm({
   }[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const {
     register,
@@ -462,7 +495,9 @@ export function InvoiceForm({
   });
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -498,7 +533,9 @@ export function InvoiceForm({
     });
 
     toast.success(
-      `تمت إضافة ${selected.length.toLocaleString("ar")} منتج إلى الفاتورة`,
+      formatMessage(t.invoices.addedProductsToast, {
+        count: selected.length.toLocaleString(locale),
+      }),
     );
   }
 
@@ -511,23 +548,40 @@ export function InvoiceForm({
     excessAmount: number;
     invoices: OutstandingInvoiceRow[];
   } | null>(null);
+  const [stockIssue, setStockIssue] = useState<StockIssue | null>(null);
+  const [pendingStockValues, setPendingStockValues] =
+    useState<InvoiceOutput | null>(null);
+  const allowNegativeStockRef = useRef(false);
 
   function submitInvoice(values: InvoiceOutput, excessToBalance?: boolean) {
     startTransition(async () => {
       const result = invoice
-        ? await updateInvoice(invoice.id, values)
-        : await createInvoice(values, { excessToBalance });
+        ? await updateInvoice(invoice.id, values, {
+            allowNegativeStock: allowNegativeStockRef.current,
+          })
+        : await createInvoice(values, {
+            excessToBalance,
+            allowNegativeStock: allowNegativeStockRef.current,
+          });
 
       if (result?.error) {
         toast.error(result.error);
         return;
       }
 
-      if (invoice) toast.success("تم تحديث الفاتورة بنجاح");
+      allowNegativeStockRef.current = false;
+
+      if (invoice) toast.success(t.invoices.updateToast);
     });
   }
 
   async function onSubmit(values: InvoiceOutput) {
+    const issue = findStockIssue(values.items, products);
+    if (issue && !allowNegativeStockRef.current) {
+      setStockIssue(issue);
+      setPendingStockValues(values);
+      return;
+    }
     if (invoice) {
       submitInvoice(values);
       return;
@@ -576,7 +630,10 @@ export function InvoiceForm({
   function handleDistributeConfirm(invoiceIds: string[]) {
     if (!pendingValues || !distributeState || !pendingValues.customerId) return;
     const method = pendingValues.payments[0]?.method ?? "CASH";
-    const cappedPayments = capPaymentLinesToTotal(pendingValues.payments, total);
+    const cappedPayments = capPaymentLinesToTotal(
+      pendingValues.payments,
+      total,
+    );
     const customerId = pendingValues.customerId;
     const excessAmount = distributeState.excessAmount;
     const values = pendingValues;
@@ -588,7 +645,7 @@ export function InvoiceForm({
         invoiceIds,
         amount: excessAmount,
         method,
-        note: "من فائض دفعة فاتورة جديدة",
+        note: t.invoices.excessDistributionNote,
         excessToBalance: true,
       });
       if (distributed.error) {
@@ -664,14 +721,28 @@ export function InvoiceForm({
   }
 
   return (
-    <>
-      <div className="max-w-3xl space-y-6 lg:col-span-2">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="min-w-0 space-y-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <StockAlertDialog
+            issue={stockIssue}
+            onClose={() => {
+              setStockIssue(null);
+              setPendingStockValues(null);
+            }}
+            onConfirm={() => {
+              const values = pendingStockValues;
+              allowNegativeStockRef.current = true;
+              setStockIssue(null);
+              setPendingStockValues(null);
+              if (values) void onSubmit(values);
+            }}
+          />
           <fieldset disabled={isPending} className="contents space-y-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <div className="flex items-center justify-between">
-                  <Label>العميل</Label>
+                  <Label>{t.invoices.customerLabel}</Label>
                   {customerId && (
                     <Button
                       type="button"
@@ -680,14 +751,11 @@ export function InvoiceForm({
                       className="h-auto cursor-pointer gap-1 px-2 py-1 text-xs"
                       nativeButton={false}
                       render={
-                        <Link
-                          href={`/dashboard/customers/${customerId}`}
-                          target="_blank"
-                        />
+                        <Link href={`/dashboard/customers/${customerId}`} />
                       }
                     >
                       <UserCircle className="size-3.5" />
-                      الذهاب إلى صفحة العميل
+                      {t.invoices.goToCustomerPage}
                     </Button>
                   )}
                 </div>
@@ -714,7 +782,7 @@ export function InvoiceForm({
                 )}
               </div>
               <div className="space-y-2">
-                <Label>لغة الفاتورة</Label>
+                <Label>{t.orders.invoiceLanguageLabel}</Label>
                 <Controller
                   control={control}
                   name="language"
@@ -724,7 +792,7 @@ export function InvoiceForm({
                       value={field.value}
                       onValueChange={field.onChange}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full" icon={Globe}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -753,12 +821,18 @@ export function InvoiceForm({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="invoice-notes">ملاحظات (اختياري)</Label>
+              <Label htmlFor="invoice-notes">
+                {t.customers.notesOptionalLabel}
+              </Label>
               <Textarea id="invoice-notes" rows={2} {...register("notes")} />
             </div>
 
             <div className="space-y-3">
-              <Label>المنتجات ({fields.length})</Label>
+              <Label>
+                {formatMessage(t.invoices.productsCountLabel, {
+                  count: fields.length,
+                })}
+              </Label>
 
               <DndContext
                 id="invoice-items-dnd"
@@ -789,7 +863,9 @@ export function InvoiceForm({
                               {dragHandle}
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">اختر من المنتجات</Label>
+                              <Label className="text-xs">
+                                {t.invoices.selectFromProductsLabel}
+                              </Label>
                               <Controller
                                 control={control}
                                 name={`items.${index}.productId`}
@@ -808,15 +884,24 @@ export function InvoiceForm({
                                           `items.${index}.unitPrice`,
                                           product.price1,
                                         );
+                                        if (index === fields.length - 1) {
+                                          append({
+                                            productId: "",
+                                            name: "",
+                                            quantity: 1,
+                                            unitPrice: 0,
+                                          });
+                                        }
                                       }
                                     }}
+                                    t={t}
                                   />
                                 )}
                               />
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">
-                                اسم المنتج في الفاتورة
+                                {t.invoices.productNameInInvoiceLabel}
                               </Label>
                               <Input {...register(`items.${index}.name`)} />
                               {errors.items?.[index]?.name && (
@@ -826,16 +911,29 @@ export function InvoiceForm({
                               )}
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">الكمية</Label>
+                              <Label className="text-xs">
+                                {t.purchases.quantityLabel}
+                              </Label>
                               <Input
                                 type="number"
                                 min={1}
-                                className="w-20"
+                                className={`w-20 ${(() => {
+                                  const product = productsById.get(
+                                    items?.[index]?.productId ?? "",
+                                  );
+                                  return product &&
+                                    (Number(items?.[index]?.quantity) || 0) >
+                                      product.quantity
+                                    ? "border-destructive ring-2 ring-destructive/20 focus-visible:border-destructive focus-visible:ring-destructive/30"
+                                    : "";
+                                })()}`}
                                 {...register(`items.${index}.quantity`)}
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">السعر</Label>
+                              <Label className="text-xs">
+                                {t.orders.columnPrice}
+                              </Label>
                               <div className="flex flex-col gap-1.5">
                                 <PriceTierField
                                   price={Number(items?.[index]?.unitPrice) || 0}
@@ -845,6 +943,8 @@ export function InvoiceForm({
                                   onChange={(price) =>
                                     setValue(`items.${index}.unitPrice`, price)
                                   }
+                                  t={t}
+                                  locale={locale}
                                 />
                                 <Input
                                   type="number"
@@ -864,7 +964,6 @@ export function InvoiceForm({
                                 variant="ghost"
                                 size="icon-sm"
                                 className="cursor-pointer"
-                                disabled={fields.length === 1}
                                 onClick={() => remove(index)}
                               >
                                 <Trash2 className="size-4" />
@@ -898,21 +997,25 @@ export function InvoiceForm({
                 }
               >
                 <Plus className="size-4" />
-                إضافة منتج
+                {t.products.addProduct}
               </Button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:hidden">
               <CategoryQuickAddPanel
                 categories={categories}
                 brands={brands}
                 products={products}
                 onAddProducts={handleAddFromCategory}
+                t={t}
+                locale={locale}
               />
             </div>
 
             <div className="flex items-center justify-between border-t pt-4">
-              <p className="font-medium">الإجمالي: {formatCurrency(total)}</p>
+              <p className="font-medium">
+                {t.purchases.totalLabel}: {formatCurrency(total, locale)}
+              </p>
               <Button
                 type="submit"
                 disabled={isPending}
@@ -920,10 +1023,10 @@ export function InvoiceForm({
               >
                 {isPending && <Loader2 className="size-4 animate-spin" />}
                 {isPending
-                  ? "جاري الحفظ..."
+                  ? t.common.saving
                   : invoice
-                    ? "حفظ التعديلات"
-                    : "إنشاء الفاتورة"}
+                    ? t.purchases.saveChangesButton
+                    : t.orders.generateInvoiceDialogTitle}
               </Button>
             </div>
           </fieldset>
@@ -951,13 +1054,36 @@ export function InvoiceForm({
         </form>
       </div>
 
-      <div className="space-y-6 lg:col-span-1">
-        {invoice && (
-          <div className="space-y-6">
-            <PaymentHistory payments={payments ?? []} />
+      <aside className="space-y-6 lg:sticky lg:top-20">
+        {invoice ? (
+          <>
+            <div className="space-y-6">
+              <PaymentHistory payments={payments ?? []} />
+            </div>
+            <div className="space-y-6 hidden lg:block">
+              <CategoryQuickAddPanel
+                categories={categories}
+                brands={brands}
+                products={products}
+                onAddProducts={handleAddFromCategory}
+                t={t}
+                locale={locale}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="space-y-6 hidden lg:block">
+            <CategoryQuickAddPanel
+              categories={categories}
+              brands={brands}
+              products={products}
+              onAddProducts={handleAddFromCategory}
+              t={t}
+              locale={locale}
+            />
           </div>
         )}
-      </div>
-    </>
+      </aside>
+    </div>
   );
 }

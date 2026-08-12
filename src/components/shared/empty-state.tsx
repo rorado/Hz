@@ -12,8 +12,12 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center">
-      {Icon && <Icon className="size-8 text-muted-foreground" />}
+    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
+      {Icon && (
+        <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="size-6" />
+        </span>
+      )}
       <div className="space-y-1">
         <p className="font-medium">{title}</p>
         {description && (

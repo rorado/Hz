@@ -12,7 +12,7 @@ import {
 } from "@/features/categories/queries";
 import { CategoriesTable } from "@/features/categories/components/categories-table";
 import { CategoryFormSheet } from "@/features/categories/components/category-form-sheet";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +30,9 @@ export default async function CategoriesPage({
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
 
-  const [{ items, total, pageSize }, categoryOptions, editingCategory] =
+  const [t, { items, total, pageSize }, categoryOptions, editingCategory] =
     await Promise.all([
+      getDictionary(),
       getCategoriesPage({ query, page }),
       getCategoryOptions(),
       params.edit ? getCategoryById(params.edit) : Promise.resolve(null),
@@ -50,20 +51,21 @@ export default async function CategoriesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={ar.admin.categories}
+        title={t.admin.categories}
+        icon={FolderTree}
         action={
           <Button nativeButton={false} render={<Link href={buildHref({ new: "1" })} />}>
             <Plus className="size-4" />
-            إضافة قسم
+            {t.categories.addButton}
           </Button>
         }
       />
-      <DataTableSearch placeholder="ابحث عن قسم..." />
+      <DataTableSearch placeholder={t.categories.searchPlaceholder} />
       {items.length === 0 ? (
         <EmptyState
           icon={FolderTree}
-          title="لا توجد أقسام"
-          description="ابدأ بإضافة أول قسم لمنتجاتك"
+          title={t.categories.emptyTitle}
+          description={t.categories.emptyDescription}
         />
       ) : (
         <>

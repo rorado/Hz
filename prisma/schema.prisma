@@ -63,7 +63,7 @@ model Product {
   price2        Decimal             @default(0) @db.Decimal(10, 2)
   price3        Decimal             @default(0) @db.Decimal(10, 2)
   purchasePrice Decimal             @default(0) @db.Decimal(10, 2)
-  weight        Decimal?             @default(0) @db.Decimal(10, 3)
+  weight        Decimal?            @default(0) @db.Decimal(10, 3)
   status        ProductStatus       @default(ACTIVE)
   images        ProductImage[]
   orderItems    OrderItem[]
@@ -133,13 +133,13 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   quantity  Int
-  price     Decimal @db.Decimal(10, 2)
+  price     Decimal  @db.Decimal(10, 2)
 
   @@index([orderId])
   @@index([productId])
@@ -153,8 +153,8 @@ enum InventoryMovementType {
 
 model InventoryMovement {
   id        String                @id @default(cuid())
-  productId String
-  product   Product               @relation(fields: [productId], references: [id])
+  productId String?
+  product   Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
   type      InventoryMovementType
   quantity  Int
   reason    String?
@@ -280,18 +280,7 @@ model Invoice {
   paymentStatus        PaymentStatus   @default(UNPAID)
   paidAmount           Decimal         @default(0) @db.Decimal(10, 2)
   payments             Payment[]
-  /// Cumulative signed effect this invoice's payments have had on its
-  /// customer's رصيد so far (من الرصيد draws are negative, any excess paid
-  /// beyond the total is positive credit; real cash that just settles the
-  /// total contributes nothing). Recomputed and diffed against on every
-  /// payment/edit so deletes and edits can reverse exactly what was applied,
-  /// no matter how many separate payments were recorded over time.
   balanceEffectApplied Decimal         @default(0) @db.Decimal(10, 2)
-  /// Cumulative remaining debt merged in from other outstanding invoices for
-  /// the same customer, when the admin chose to merge just the price rather
-  /// than the products (see mergeOldInvoicesIntoInvoice). Included in
-  /// `total` but kept separate so the print view can show it as its own
-  /// "previous debts" line instead of folding it into the items table.
   mergedDebtAmount     Decimal         @default(0) @db.Decimal(10, 2)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
@@ -306,11 +295,6 @@ model Payment {
   amount    Decimal       @db.Decimal(10, 2)
   method    PaymentMethod
   note      String?
-  /// Shared across every Payment row created by the same
-  /// recordPaymentAcrossInvoices call (and the invoice this excess was
-  /// distributed from, when applicable) — lets us find "which other
-  /// invoices were settled together with this one" instead of just
-  /// whatever's currently unpaid.
   batchId   String?
   createdAt DateTime      @default(now())
 

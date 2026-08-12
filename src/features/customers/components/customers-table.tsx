@@ -7,10 +7,12 @@ import {
   type CustomerRow,
 } from "@/features/customers/components/columns";
 import { deleteCustomers } from "@/features/customers/actions";
+import { useLocale } from "@/i18n/locale-provider";
 
 export function CustomersTable({ data }: { data: CustomerRow[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t, locale } = useLocale();
 
   function editHref(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -21,7 +23,7 @@ export function CustomersTable({ data }: { data: CustomerRow[] }) {
 
   return (
     <DataTable
-      columns={getCustomerColumns(editHref)}
+      columns={getCustomerColumns(editHref, t, locale)}
       data={data}
       onDeleteSelected={deleteCustomers}
       requireDeletePassword

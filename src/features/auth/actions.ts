@@ -2,6 +2,7 @@
 
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/lib/auth";
+import { getDictionary } from "@/i18n/server";
 
 export async function authenticate(
   prevState: string | undefined,
@@ -15,11 +16,12 @@ export async function authenticate(
     });
   } catch (error) {
     if (error instanceof AuthError) {
+      const t = await getDictionary();
       switch (error.type) {
         case "CredentialsSignin":
-          return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+          return t.auth.invalidCredentials;
         default:
-          return "حدث خطأ أثناء تسجيل الدخول، حاول مرة أخرى.";
+          return t.auth.genericError;
       }
     }
     throw error;

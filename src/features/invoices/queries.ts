@@ -79,6 +79,9 @@ export async function getOtherOutstandingInvoices(
       paidAmount: true,
       paymentStatus: true,
       createdAt: true,
+      items: {
+        select: { id: true, name: true, quantity: true, unitPrice: true },
+      },
     },
   });
 }

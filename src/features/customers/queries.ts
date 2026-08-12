@@ -5,6 +5,12 @@ import { Prisma } from "@/generated/prisma/client";
 
 export const CUSTOMERS_PAGE_SIZE = 10;
 
+/** Total customer count with no PII — safe to show on the public storefront
+ * (e.g. an About page "happy customers" stat). */
+export async function getCustomerCount() {
+  return prisma.customer.count();
+}
+
 export type DebtFilter = "HAS_DEBT" | "NO_DEBT";
 
 export type CustomerSort =
@@ -77,20 +83,20 @@ export async function getCustomersPage({
       COALESCE(inv.outstanding, 0)::numeric AS "outstanding",
       c.balance::numeric AS "balance",
       COUNT(*) OVER()::bigint AS "totalCount"
-    FROM "Customer" c
+    FROM public."Customer" c
     LEFT JOIN (
       SELECT
         "customerId",
         SUM(total) AS total_purchased,
         SUM("paidAmount") AS total_paid,
         SUM(CASE WHEN "paymentStatus" IN ('UNPAID', 'PARTIALLY_PAID') THEN total - "paidAmount" ELSE 0 END) AS outstanding
-      FROM "Invoice"
+      FROM public."Invoice"
       WHERE "customerId" IS NOT NULL
       GROUP BY "customerId"
     ) inv ON inv."customerId" = c.id
     LEFT JOIN (
       SELECT "customerId", COUNT(*) AS orders_count
-      FROM "Order"
+      FROM public."Order"
       WHERE "customerId" IS NOT NULL
       GROUP BY "customerId"
     ) ord ON ord."customerId" = c.id
@@ -136,10 +142,10 @@ export async function getCustomersOwingSummary() {
         c.id,
         GREATEST(0, -c.balance) AS balance_debt,
         COALESCE(inv.outstanding, 0) AS invoice_debt
-      FROM "Customer" c
+      FROM public."Customer" c
       LEFT JOIN (
         SELECT "customerId", SUM(total - "paidAmount") AS outstanding
-        FROM "Invoice"
+        FROM public."Invoice"
         WHERE "paymentStatus" IN ('UNPAID', 'PARTIALLY_PAID')
         GROUP BY "customerId"
       ) inv ON inv."customerId" = c.id
@@ -205,7 +211,7 @@ export async function searchCustomers(query: string, excludeId?: string) {
     { id: string; name: string; phone: string; email: string | null }[]
   >`
     SELECT id, name, phone, email
-    FROM "Customer"
+    FROM public."Customer"
     WHERE (phone ILIKE ${"%" + trimmed + "%"} OR similarity("nameNormalized", ${normalized}) > 0.2)
       ${excludeClause}
     ORDER BY similarity("nameNormalized", ${normalized}) DESC
@@ -230,7 +236,7 @@ export async function findCustomerByPhone(phone: string, excludeId?: string) {
     { id: string; name: string; phone: string; email: string | null }[]
   >`
     SELECT id, name, phone, email
-    FROM "Customer"
+    FROM public."Customer"
     WHERE phone = ${trimmed}
       ${excludeClause}
     LIMIT 5

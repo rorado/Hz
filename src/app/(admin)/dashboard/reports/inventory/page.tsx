@@ -1,3 +1,4 @@
+import { Boxes } from "lucide-react";
 import { BackButton } from "@/components/shared/back-button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +13,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { getInventoryReportPage } from "@/features/reports/queries";
 import { ReportExportButtons } from "@/features/reports/components/report-export-buttons";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,16 +24,17 @@ export default async function InventoryReportPage({
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
-  const {
-    items: products,
-    total,
-    pageSize,
-  } = await getInventoryReportPage({ page });
+  const [t, locale, { items: products, total, pageSize }] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getInventoryReportPage({ page }),
+  ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-report-print>
       <PageHeader
-        title="تقرير المخزون"
+        title={t.reports.inventoryTitle}
+        icon={Boxes}
         action={
           <BackButton
             fallbackHref="/dashboard/reports"
@@ -39,17 +42,17 @@ export default async function InventoryReportPage({
           />
         }
       />
-      <ReportExportButtons type="inventory" />
+      <ReportExportButtons type="inventory" total={total} />
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>اسم المنتج</TableHead>
+            <TableHead>{t.products.columnName}</TableHead>
             <TableHead>SKU</TableHead>
-            <TableHead>القسم</TableHead>
-            <TableHead>العلامة التجارية</TableHead>
-            <TableHead>الكمية</TableHead>
-            <TableHead>الحد الأدنى</TableHead>
-            <TableHead>الحالة</TableHead>
+            <TableHead>{t.products.columnCategory}</TableHead>
+            <TableHead>{t.products.columnBrand}</TableHead>
+            <TableHead>{t.products.columnQuantity}</TableHead>
+            <TableHead>{t.reports.columnMinStock}</TableHead>
+            <TableHead>{t.common.status}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -68,14 +71,14 @@ export default async function InventoryReportPage({
                     : ""
                 }
               >
-                {product.quantity.toLocaleString("ar")}
+                {product.quantity.toLocaleString(locale)}
               </TableCell>
               <TableCell>
-                {product.minStockLevel.toLocaleString("ar")}
+                {product.minStockLevel.toLocaleString(locale)}
               </TableCell>
               <TableCell>
                 <Badge variant={product.status === "ACTIVE" ? "default" : "secondary"}>
-                  {product.status === "ACTIVE" ? "نشط" : "غير نشط"}
+                  {t.statusLabels.productStatus[product.status]}
                 </Badge>
               </TableCell>
             </TableRow>

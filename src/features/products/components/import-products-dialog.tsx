@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/format";
 
 type ProgressState = {
   processed: number;
@@ -54,11 +56,13 @@ function StatTile({
   label,
   value,
   tone,
+  locale,
 }: {
   icon: typeof Package;
   label: string;
   value: number;
   tone: "neutral" | "success" | "warning" | "danger";
+  locale: string;
 }) {
   return (
     <div
@@ -76,7 +80,7 @@ function StatTile({
       <Icon className="size-4 shrink-0" />
       <div className="min-w-0">
         <p className="text-base font-semibold leading-tight">
-          {value.toLocaleString("ar")}
+          {value.toLocaleString(locale)}
         </p>
         <p className="truncate text-xs opacity-80">{label}</p>
       </div>
@@ -85,6 +89,7 @@ function StatTile({
 }
 
 export function ImportProductsDialog() {
+  const { t, locale } = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -128,10 +133,12 @@ export function ImportProductsDialog() {
         router.refresh();
         if (event.imported > 0) {
           toast.success(
-            `تم استيراد ${event.imported.toLocaleString("ar")} منتج بنجاح`,
+            formatMessage(t.products.import.successToast, {
+              count: event.imported.toLocaleString(locale),
+            }),
           );
         } else {
-          toast.error("لم يتم استيراد أي منتج، راجع تفاصيل الأخطاء أدناه");
+          toast.error(t.products.import.noneImportedToast);
         }
         return;
       }
@@ -146,7 +153,7 @@ export function ImportProductsDialog() {
         method: "POST",
         body: formData,
       });
-      if (!response.body) throw new Error("تعذّر الاتصال بالخادم");
+      if (!response.body) throw new Error(t.products.import.connectionError);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -164,7 +171,7 @@ export function ImportProductsDialog() {
       }
       if (buffer.trim()) handleEvent(JSON.parse(buffer));
     } catch {
-      const message = "حدث خطأ أثناء الاستيراد، الرجاء المحاولة مرة أخرى";
+      const message = t.products.import.genericError;
       setFatalError(message);
       toast.error(message);
     } finally {
@@ -196,17 +203,15 @@ export function ImportProductsDialog() {
         render={
           <Button variant="outline">
             <Upload className="size-4" />
-            استيراد من Excel
+            {t.products.import.button}
           </Button>
         }
       />
       <DialogContent>
         {stage !== "result" && (
           <DialogHeader>
-            <DialogTitle>استيراد المنتجات من Excel</DialogTitle>
-            <DialogDescription>
-              ارفع ملف Excel (.xlsx). سيتم إنشاء أي قسم غير موجود تلقائياً.
-            </DialogDescription>
+            <DialogTitle>{t.products.import.title}</DialogTitle>
+            <DialogDescription>{t.products.import.description}</DialogDescription>
           </DialogHeader>
         )}
 
@@ -222,61 +227,72 @@ export function ImportProductsDialog() {
               )}
               <DialogTitle className="text-lg">
                 {isFullSuccess
-                  ? "تم الاستيراد بنجاح!"
+                  ? t.products.import.successTitle
                   : isTotalFailure
-                    ? "لم يتم استيراد أي منتج"
-                    : "اكتمل الاستيراد مع بعض الملاحظات"}
+                    ? t.products.import.noneImportedTitle
+                    : t.products.import.partialTitle}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
                 {isFullSuccess
-                  ? `تم استيراد جميع المنتجات (${summary.total.toLocaleString("ar")}) بنجاح بدون أي مشاكل.`
-                  : `تم استيراد ${summary.imported.toLocaleString("ar")} من أصل ${summary.total.toLocaleString("ar")} منتج.`}
+                  ? formatMessage(t.products.import.successDescription, {
+                      total: summary.total.toLocaleString(locale),
+                    })
+                  : formatMessage(t.products.import.partialDescription, {
+                      imported: summary.imported.toLocaleString(locale),
+                      total: summary.total.toLocaleString(locale),
+                    })}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <StatTile
                 icon={Package}
-                label="إجمالي الملف"
+                label={t.products.import.statTotal}
                 value={summary.total}
                 tone="neutral"
+                locale={locale}
               />
               <StatTile
                 icon={CheckCircle2}
-                label="تم استيراده"
+                label={t.products.import.statImported}
                 value={summary.imported}
                 tone="success"
+                locale={locale}
               />
               {summary.skipped > 0 && (
                 <StatTile
                   icon={AlertTriangle}
-                  label="مكرر (تم تخطيه)"
+                  label={t.products.import.statSkipped}
                   value={summary.skipped}
                   tone="warning"
+                  locale={locale}
                 />
               )}
               {summary.validationErrors > 0 && (
                 <StatTile
                   icon={AlertTriangle}
-                  label="أخطاء تحقق"
+                  label={t.products.import.statValidationErrors}
                   value={summary.validationErrors}
                   tone="warning"
+                  locale={locale}
                 />
               )}
               {summary.failed > 0 && (
                 <StatTile
                   icon={XCircle}
-                  label="فشل الحفظ"
+                  label={t.products.import.statFailed}
                   value={summary.failed}
                   tone="danger"
+                  locale={locale}
                 />
               )}
               {summary.failedImages > 0 && (
                 <StatTile
                   icon={ImageOff}
-                  label="صور فشل رفعها"
+                  label={t.products.import.statFailedImages}
                   value={summary.failedImages}
                   tone="danger"
+                  locale={locale}
                 />
               )}
             </div>
@@ -289,7 +305,9 @@ export function ImportProductsDialog() {
                   onClick={() => setShowErrors((value) => !value)}
                 >
                   <span>
-                    تفاصيل الأخطاء ({summary.errors.length.toLocaleString("ar")})
+                    {formatMessage(t.products.import.errorDetails, {
+                      count: summary.errors.length.toLocaleString(locale),
+                    })}
                   </span>
                   {showErrors ? (
                     <ChevronUp className="size-4" />
@@ -301,7 +319,9 @@ export function ImportProductsDialog() {
                   <div className="max-h-48 space-y-1 overflow-y-auto border-t p-2.5">
                     {summary.errors.map((error, index) => (
                       <p key={index} className="text-xs text-muted-foreground">
-                        سطر {error.row.toLocaleString("ar")}
+                        {formatMessage(t.products.import.rowLabel, {
+                          row: error.row.toLocaleString(locale),
+                        })}
                         {error.name ? ` — ${error.name}` : ""}: {error.reason}
                       </p>
                     ))}
@@ -316,13 +336,13 @@ export function ImportProductsDialog() {
                 className="flex-1 cursor-pointer"
                 onClick={reset}
               >
-                استيراد ملف آخر
+                {t.products.import.importAnotherFile}
               </Button>
               <Button
                 className="flex-1 cursor-pointer"
                 onClick={() => handleOpenChange(false)}
               >
-                إغلاق
+                {t.products.import.close}
               </Button>
             </div>
           </div>
@@ -332,7 +352,7 @@ export function ImportProductsDialog() {
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-2 py-2 text-center">
               <XCircle className="size-12 text-destructive" />
-              <DialogTitle className="text-lg">فشل الاستيراد</DialogTitle>
+              <DialogTitle className="text-lg">{t.products.import.importFailedTitle}</DialogTitle>
               <p className="text-sm text-muted-foreground">{fatalError}</p>
             </div>
             <div className="flex gap-2">
@@ -341,13 +361,13 @@ export function ImportProductsDialog() {
                 className="flex-1 cursor-pointer"
                 onClick={reset}
               >
-                المحاولة مرة أخرى
+                {t.products.import.tryAgain}
               </Button>
               <Button
                 className="flex-1 cursor-pointer"
                 onClick={() => handleOpenChange(false)}
               >
-                إغلاق
+                {t.products.import.close}
               </Button>
             </div>
           </div>
@@ -356,7 +376,7 @@ export function ImportProductsDialog() {
         {stage !== "result" && (
           <div className="space-y-4">
             <fieldset disabled={isImporting} className="contents space-y-2">
-              <Label htmlFor="import-file">ملف Excel</Label>
+              <Label htmlFor="import-file">{t.products.import.fileLabel}</Label>
               <Input
                 key={inputKey}
                 id="import-file"
@@ -370,7 +390,7 @@ export function ImportProductsDialog() {
               <div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
                 {progress.currentName && (
                   <p className="truncate text-muted-foreground">
-                    المنتج الحالي:{" "}
+                    {t.products.import.currentProduct}{" "}
                     <span className="font-medium text-foreground">
                       {progress.currentName}
                     </span>
@@ -384,12 +404,12 @@ export function ImportProductsDialog() {
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>
-                    المعالجة: {progress.processed.toLocaleString("ar")} /{" "}
-                    {progress.total.toLocaleString("ar")}
+                    {t.products.import.processingLabel} {progress.processed.toLocaleString(locale)} /{" "}
+                    {progress.total.toLocaleString(locale)}
                   </span>
                   <span>
-                    تم الحفظ: {progress.imported.toLocaleString("ar")} /{" "}
-                    {progress.total.toLocaleString("ar")}
+                    {t.products.import.savedLabel} {progress.imported.toLocaleString(locale)} /{" "}
+                    {progress.total.toLocaleString(locale)}
                   </span>
                 </div>
               </div>
@@ -401,7 +421,7 @@ export function ImportProductsDialog() {
               onClick={handleImport}
             >
               {isImporting && <Loader2 className="size-4 animate-spin" />}
-              {isImporting ? "جاري الاستيراد..." : "بدء الاستيراد"}
+              {isImporting ? t.products.import.importing : t.products.import.startImport}
             </Button>
           </div>
         )}

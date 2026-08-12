@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
 /** Goes to the actual previous page (browser history) instead of a fixed
@@ -11,13 +12,14 @@ import { cn } from "@/lib/utils";
  * there's no history to go back to (e.g. the page was opened directly). */
 export function BackButton({
   fallbackHref,
-  label = "رجوع",
+  label,
   className,
 }: {
   fallbackHref: string;
   label?: string;
   className?: string;
 }) {
+  const t = useT();
   const router = useRouter();
 
   function handleClick() {
@@ -34,8 +36,8 @@ export function BackButton({
       className={cn("cursor-pointer", className)}
       onClick={handleClick}
     >
-      <ArrowRight className="size-4" />
-      {label}
+      <ArrowLeft className="size-4 rtl:rotate-180" />
+      {label ?? t.common.back}
     </Button>
   );
 }

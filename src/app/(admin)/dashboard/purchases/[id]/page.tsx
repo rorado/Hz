@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Printer, UserCircle } from "lucide-react";
+import { ClipboardList, Printer, UserCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,9 @@ import { PurchaseOrderItemsForm } from "@/features/purchases/components/purchase
 import { RecordSupplierPaymentDialog } from "@/features/purchases/components/record-supplier-payment-dialog";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
-import { PURCHASE_ORDER_STATUS_LABELS } from "@/features/purchases/schema";
 import { formatCurrency } from "@/lib/currency";
+import { getDictionary, getLocale } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,9 @@ export default async function PurchaseOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [order, productRows] = await Promise.all([
+  const [t, locale, order, productRows] = await Promise.all([
+    getDictionary(),
+    getLocale(),
     getPurchaseOrderById(id),
     getProductPickerOptions(),
   ]);
@@ -34,6 +37,11 @@ export default async function PurchaseOrderDetailPage({
     id: product.id,
     name: product.name,
     sku: product.sku,
+    barcode: product.barcode,
+    categoryId: product.categoryId,
+    categoryName: product.category.name,
+    brandId: product.brandId,
+    brandName: product.brand?.name ?? null,
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
@@ -46,34 +54,29 @@ export default async function PurchaseOrderDetailPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`أمر الشراء ${order.orderNumber}`}
+        title={formatMessage(t.purchases.detailTitle, { number: order.orderNumber })}
+        icon={ClipboardList}
         action={
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               nativeButton={false}
               render={
-                <Link
-                  href={`/dashboard/purchases/${order.id}/print?lang=ar`}
-                  target="_blank"
-                />
+                <Link href={`/dashboard/purchases/${order.id}/print?lang=ar`} />
               }
             >
               <Printer className="size-4" />
-              فاتورة بالعربية
+              {t.purchases.printArabicButton}
             </Button>
             <Button
               variant="outline"
               nativeButton={false}
               render={
-                <Link
-                  href={`/dashboard/purchases/${order.id}/print?lang=fr`}
-                  target="_blank"
-                />
+                <Link href={`/dashboard/purchases/${order.id}/print?lang=fr`} />
               }
             >
               <Printer className="size-4" />
-              Facture en Français
+              {t.purchases.printFrenchButton}
             </Button>
             <BackButton fallbackHref="/dashboard/purchases" />
           </div>
@@ -84,14 +87,12 @@ export default async function PurchaseOrderDetailPage({
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>العناصر</CardTitle>
+              <CardTitle>{t.purchases.itemsCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {order.status === "RECEIVED" && (
                 <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-400">
-                  تم استلام هذا الأمر بالفعل وأُضيفت كمياته إلى المخزون. تعديل
-                  العناصر هنا يُحدّث سجل أمر الشراء فقط، ولا يُعدّل كميات
-                  المخزون التي أُضيفت مسبقاً.
+                  {t.purchases.receivedNotice}
                 </p>
               )}
               <PurchaseOrderItemsForm
@@ -110,36 +111,33 @@ export default async function PurchaseOrderDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <CardTitle>بيانات المورد</CardTitle>
+              <CardTitle>{t.purchases.supplierInfoCardTitle}</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-auto cursor-pointer gap-1 px-2 py-1 text-xs"
                 nativeButton={false}
                 render={
-                  <Link
-                    href={`/dashboard/suppliers/${order.supplierId}`}
-                    target="_blank"
-                  />
+                  <Link href={`/dashboard/suppliers/${order.supplierId}`} />
                 }
               >
                 <UserCircle className="size-3.5" />
-                الذهاب إلى صفحة المورد
+                {t.purchases.goToSupplierPage}
               </Button>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">الاسم: </span>
+                <span className="text-muted-foreground">{t.suppliers.nameLabel}: </span>
                 {order.supplier.name}
               </p>
               {order.supplier.phone && (
                 <p>
-                  <span className="text-muted-foreground">الهاتف: </span>
+                  <span className="text-muted-foreground">{t.orders.phoneLabel}: </span>
                   <span dir="ltr">{order.supplier.phone}</span>
                 </p>
               )}
               <p>
-                <span className="text-muted-foreground">التاريخ: </span>
+                <span className="text-muted-foreground">{t.reports.columnDate}: </span>
                 {new Date(order.createdAt).toLocaleDateString("fr-FR")}
               </p>
             </CardContent>
@@ -147,16 +145,16 @@ export default async function PurchaseOrderDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>الحالة</CardTitle>
+              <CardTitle>{t.purchases.statusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Badge>{PURCHASE_ORDER_STATUS_LABELS[order.status]}</Badge>
+              <Badge>{t.statusLabels.purchaseOrder[order.status]}</Badge>
               {order.status === "PENDING" && (
                 <PurchaseOrderActions purchaseOrderId={order.id} />
               )}
               {order.receivedAt && (
                 <p className="text-xs text-muted-foreground">
-                  تم الاستلام في{" "}
+                  {t.purchases.receivedAtLabel}{" "}
                   {new Date(order.receivedAt).toLocaleDateString("fr-FR")}
                 </p>
               )}
@@ -165,19 +163,19 @@ export default async function PurchaseOrderDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>حالة الدفع</CardTitle>
+              <CardTitle>{t.purchases.paymentStatusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
                 <PaymentStatusBadge status={order.paymentStatus} />
               </div>
               <p className="text-sm">
-                <span className="text-muted-foreground">المبلغ المدفوع: </span>
-                <span className="font-medium">{formatCurrency(paidAmount)}</span>
+                <span className="text-muted-foreground">{t.purchases.paidAmountLabel}: </span>
+                <span className="font-medium">{formatCurrency(paidAmount, locale)}</span>
               </p>
               <p className="text-sm">
-                <span className="text-muted-foreground">المبلغ المتبقي: </span>
-                <span className="font-medium">{formatCurrency(remaining)}</span>
+                <span className="text-muted-foreground">{t.purchases.remainingAmountLabel}: </span>
+                <span className="font-medium">{formatCurrency(remaining, locale)}</span>
               </p>
               {remaining > 0 && (
                 <RecordSupplierPaymentDialog

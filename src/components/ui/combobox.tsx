@@ -23,21 +23,24 @@ function ComboboxValue({
 function ComboboxTrigger({
   className,
   size = "default",
+  icon: Icon,
   children,
   ...props
 }: ComboboxPrimitive.Trigger.Props & {
   size?: "sm" | "default"
+  icon?: React.ComponentType<{ className?: string }>
 }) {
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pe-2 ps-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=combobox-value]:line-clamp-1 *:data-[slot=combobox-value]:flex *:data-[slot=combobox-value]:items-center *:data-[slot=combobox-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex w-fit cursor-pointer items-center justify-between gap-2 rounded-lg border border-input bg-transparent py-2.5 pe-2.5 ps-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow,border-color] outline-none select-none hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:hover:border-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-input data-placeholder:text-muted-foreground data-[size=default]:h-10 data-[size=sm]:h-9 data-[size=sm]:rounded-[min(var(--radius-md),12px)] *:data-[slot=combobox-value]:line-clamp-1 *:data-[slot=combobox-value]:flex *:data-[slot=combobox-value]:items-center *:data-[slot=combobox-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
     >
+      {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
       {children}
       <ComboboxPrimitive.Icon
         render={
@@ -92,7 +95,7 @@ function ComboboxInput({ className, ...props }: ComboboxPrimitive.Input.Props) {
       <ComboboxPrimitive.Input
         data-slot="combobox-input"
         className={cn(
-          "h-7 w-full rounded-md bg-transparent px-2 ps-7 text-sm text-foreground outline-none placeholder:text-muted-foreground",
+          "h-9 w-full rounded-md bg-transparent px-2 ps-7 text-sm text-foreground outline-none placeholder:text-muted-foreground",
           className
         )}
         {...props}
@@ -136,7 +139,7 @@ function ComboboxItem({
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1.5 pe-8 ps-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pe-8 ps-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
         className
       )}
       {...props}

@@ -1,3 +1,4 @@
+import { Truck } from "lucide-react";
 import { BackButton } from "@/components/shared/back-button";
 import {
   Table,
@@ -12,6 +13,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { getSuppliersReportPage } from "@/features/reports/queries";
 import { ReportExportButtons } from "@/features/reports/components/report-export-buttons";
 import { formatCurrency } from "@/lib/currency";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,16 +24,17 @@ export default async function SuppliersReportPage({
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
-  const {
-    items: suppliers,
-    total,
-    pageSize,
-  } = await getSuppliersReportPage({ page });
+  const [t, locale, { items: suppliers, total, pageSize }] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getSuppliersReportPage({ page }),
+  ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-report-print>
       <PageHeader
-        title="تقرير الموردون"
+        title={t.reports.suppliersTitle}
+        icon={Truck}
         action={
           <BackButton
             fallbackHref="/dashboard/reports"
@@ -39,15 +42,15 @@ export default async function SuppliersReportPage({
           />
         }
       />
-      <ReportExportButtons type="suppliers" />
+      <ReportExportButtons type="suppliers" total={total} />
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>الاسم</TableHead>
-            <TableHead>الهاتف</TableHead>
-            <TableHead>البريد الإلكتروني</TableHead>
-            <TableHead>عدد أوامر الشراء</TableHead>
-            <TableHead>إجمالي المشتريات منه</TableHead>
+            <TableHead>{t.reports.columnName}</TableHead>
+            <TableHead>{t.reports.columnPhone}</TableHead>
+            <TableHead>{t.reports.columnEmail}</TableHead>
+            <TableHead>{t.reports.columnPurchaseOrdersCount}</TableHead>
+            <TableHead>{t.reports.columnTotalPurchasedFromSupplier}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,8 +63,8 @@ export default async function SuppliersReportPage({
               <TableCell>
                 <span dir="ltr">{supplier.email ?? "—"}</span>
               </TableCell>
-              <TableCell>{supplier.ordersCount.toLocaleString("ar")}</TableCell>
-              <TableCell>{formatCurrency(supplier.totalPurchased)}</TableCell>
+              <TableCell>{supplier.ordersCount.toLocaleString(locale)}</TableCell>
+              <TableCell>{formatCurrency(supplier.totalPurchased, locale)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

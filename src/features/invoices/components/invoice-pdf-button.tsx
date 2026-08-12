@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/locale-provider";
 
 export function InvoicePdfButton({
   targetId,
@@ -14,6 +15,7 @@ export function InvoicePdfButton({
   fileName: string;
   label: string;
 }) {
+  const t = useT();
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function handleClick() {
@@ -63,7 +65,7 @@ export function InvoicePdfButton({
       window.open(blobUrl, "_blank");
     } catch (error) {
       console.error(error);
-      toast.error("تعذر إنشاء ملف PDF، حاول مرة أخرى");
+      toast.error(t.common.pdfError);
     } finally {
       setIsGenerating(false);
     }

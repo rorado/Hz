@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCustomer } from "@/features/customers/actions";
 import { normalizeArabicName } from "@/lib/arabic-name";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 import { toast } from "sonner";
 
 export type CustomerOption = {
@@ -36,8 +36,6 @@ export type CustomerOption = {
   balance?: number;
   isFavorite?: boolean;
 };
-
-const NONE_CUSTOMER: CustomerOption = { id: "", name: "اختر عميلاً...", phone: "" };
 
 function customerLabel(customer: CustomerOption) {
   return customer.id ? `${customer.name} — ${customer.phone}` : customer.name;
@@ -52,6 +50,12 @@ export function CustomerPicker({
   value: string;
   onChange: (customer: CustomerOption | null) => void;
 }) {
+  const { t } = useLocale();
+  const NONE_CUSTOMER: CustomerOption = {
+    id: "",
+    name: t.customers.selectCustomerPlaceholder,
+    phone: "",
+  };
   const [options, setOptions] = useState(customers);
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -77,7 +81,7 @@ export function CustomerPicker({
     startTransition(async () => {
       const result = await createCustomer({ name, phone, email });
       if (result.error || !result.customerId) {
-        toast.error(result.error ?? "حدث خطأ أثناء إنشاء العميل");
+        toast.error(result.error ?? t.customers.createErrorToast);
         return;
       }
       const newCustomer: CustomerOption = {
@@ -91,7 +95,7 @@ export function CustomerPicker({
       setOptions((prev) => [newCustomer, ...prev]);
       onChange(newCustomer);
       setCreateOpen(false);
-      toast.success("تم إنشاء العميل بنجاح");
+      toast.success(t.customers.createSuccessToast);
     });
   }
 
@@ -114,7 +118,7 @@ export function CustomerPicker({
             <ComboboxValue />
           </ComboboxTrigger>
           <ComboboxContent>
-            <ComboboxInput placeholder={ar.customers.searchCustomerPlaceholder} />
+            <ComboboxInput placeholder={t.customers.searchCustomerPlaceholder} />
             <ComboboxEmpty>
               <button
                 type="button"
@@ -122,7 +126,7 @@ export function CustomerPicker({
                 onClick={() => setCreateOpen(true)}
               >
                 <UserPlus className="size-4" />
-                {ar.customers.createNewCustomer}
+                {t.customers.createNewCustomer}
               </button>
             </ComboboxEmpty>
             <ComboboxList>
@@ -140,7 +144,7 @@ export function CustomerPicker({
           size="icon"
           className="shrink-0 cursor-pointer"
           onClick={() => setCreateOpen(true)}
-          title={ar.customers.createNewCustomer}
+          title={t.customers.createNewCustomer}
         >
           <UserPlus className="size-4" />
         </Button>
@@ -149,21 +153,21 @@ export function CustomerPicker({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{ar.customers.createNewCustomer}</DialogTitle>
+            <DialogTitle>{t.customers.createNewCustomer}</DialogTitle>
           </DialogHeader>
           <form action={handleCreate} className="space-y-4">
             <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="picker-customer-name">الاسم الكامل</Label>
+              <Label htmlFor="picker-customer-name">{t.customers.fullNameLabel}</Label>
               <Input
                 id="picker-customer-name"
                 name="name"
-                placeholder="الاسم واللقب"
+                placeholder={t.customers.fullNamePlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="picker-customer-phone">رقم الهاتف</Label>
+              <Label htmlFor="picker-customer-phone">{t.customers.phoneOnlyLabel}</Label>
               <Input
                 id="picker-customer-phone"
                 name="phone"
@@ -173,7 +177,7 @@ export function CustomerPicker({
             </div>
             <div className="space-y-2">
               <Label htmlFor="picker-customer-email">
-                البريد الإلكتروني (اختياري)
+                {t.customers.emailOptionalLabel}
               </Label>
               <Input id="picker-customer-email" name="email" dir="ltr" />
             </div>
@@ -183,7 +187,7 @@ export function CustomerPicker({
               disabled={isPending}
             >
               {isPending && <Loader2 className="size-4 animate-spin" />}
-              {isPending ? "جاري الحفظ..." : ar.common.save}
+              {isPending ? t.common.saving : t.common.save}
             </Button>
             </fieldset>
           </form>

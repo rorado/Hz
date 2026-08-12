@@ -8,40 +8,42 @@ export function StatCard({
   icon: Icon,
   variant = "default",
   formatValue,
+  locale = "ar",
 }: {
   title: string;
   value: number;
   icon: LucideIcon;
   variant?: "default" | "warning" | "balance";
   formatValue?: (value: number) => string;
+  locale?: string;
 }) {
   const isWarning = variant === "warning" && value > 0;
   const isNegativeBalance = variant === "balance" && value < 0;
   const isPositiveBalance = variant === "balance" && value > 0;
 
   return (
-    <Card className="gap-3 transition-shadow hover:shadow-md">
+    <Card className="gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md">
       <CardContent className="flex items-center justify-between gap-3">
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p
             className={cn(
-              "text-3xl font-bold tracking-tight",
+              "text-3xl font-bold tracking-tight tabular-nums",
               (isWarning || isNegativeBalance) && "text-destructive",
               isPositiveBalance && "text-emerald-600 dark:text-emerald-400",
             )}
           >
-            {formatValue ? formatValue(value) : value.toLocaleString("ar")}
+            {formatValue ? formatValue(value) : value.toLocaleString(locale)}
           </p>
         </div>
         <div
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-xl",
+            "flex size-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset",
             isWarning || isNegativeBalance
-              ? "bg-destructive/10 text-destructive"
+              ? "bg-destructive/10 text-destructive ring-destructive/15"
               : isPositiveBalance
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-primary/10 text-primary",
+                ? "bg-emerald-500/10 text-emerald-600 ring-emerald-500/15 dark:text-emerald-400"
+                : "bg-primary/10 text-primary ring-primary/15",
           )}
         >
           <Icon className="size-5" />

@@ -38,36 +38,45 @@ import {
   inventoryMovementSchema,
   type InventoryMovementInput,
   type InventoryMovementOutput,
-  MOVEMENT_TYPE_LABELS,
-  MOVEMENT_TYPE_VALUE_BY_LABEL,
 } from "@/features/inventory/schema";
 import { recordInventoryMovement } from "@/features/inventory/actions";
+import { useLocale } from "@/i18n/locale-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 
 type ProductOption = {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   quantity: number;
 };
 
-const NONE_PRODUCT: ProductOption = { id: "", name: "اختر منتجاً...", sku: "", quantity: 0 };
-
-function productLabel(product: ProductOption) {
-  return product.id ? `${product.name} (${product.sku})` : product.name;
+function productLabel(product: ProductOption, none: string) {
+  return product.id ? `${product.name} (${product.sku})` : none;
 }
 
 function ProductPickerField({
   value,
   onChange,
   products,
+  t,
 }: {
   value: string;
   onChange: (product: ProductOption | null) => void;
   products: ProductOption[];
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
-  const items = [NONE_PRODUCT, ...products];
-  const selected = items.find((item) => item.id === value) ?? NONE_PRODUCT;
+  const noneProduct: ProductOption = {
+    id: "",
+    name: t.inventory.productPickerPlaceholder,
+    sku: "",
+    barcode: null,
+    quantity: 0,
+  };
+  const items = [noneProduct, ...products];
+  const selected = items.find((item) => item.id === value) ?? noneProduct;
 
   return (
     <Combobox
@@ -76,19 +85,22 @@ function ProductPickerField({
       onValueChange={(product: ProductOption | null) => onChange(product)}
       isItemEqualToValue={(a: ProductOption, b: ProductOption) => a.id === b.id}
       itemToStringValue={(item: ProductOption) => item.id}
-      itemToStringLabel={productLabel}
+      itemToStringLabel={(item: ProductOption) =>
+        productLabel(item, t.inventory.productPickerPlaceholder)
+      }
       filter={contains}
     >
-      <ComboboxTrigger className="w-full">
-        <ComboboxValue />
-      </ComboboxTrigger>
+      <div className="flex gap-2">
+        <ComboboxTrigger className="w-full"><ComboboxValue /></ComboboxTrigger>
+        <ProductBarcodeScanner products={products} onSelect={onChange} />
+      </div>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم أو SKU..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.inventory.productSearchPlaceholder} />
+        <ComboboxEmpty>{t.inventory.noResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: ProductOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {productLabel(item)}
+              {productLabel(item, t.inventory.productPickerPlaceholder)}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -97,6 +109,8 @@ function ProductPickerField({
   );
 }
 
+const MOVEMENT_TYPES = ["IN", "OUT", "ADJUSTMENT"] as const;
+
 export function RecordMovementDialog({
   products,
 }: {
@@ -104,6 +118,7 @@ export function RecordMovementDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const {
     register,
@@ -130,7 +145,7 @@ export function RecordMovementDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("تم تسجيل حركة المخزون بنجاح");
+      toast.success(t.inventory.toastRecorded);
       reset();
       setOpen(false);
     });
@@ -142,21 +157,21 @@ export function RecordMovementDialog({
         render={
           <Button>
             <Plus className="size-4" />
-            تسجيل حركة مخزون
+            {t.inventory.recordMovementButton}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تسجيل حركة مخزون</DialogTitle>
+          <DialogTitle>{t.inventory.recordMovementButton}</DialogTitle>
           <DialogDescription>
-            سجل عملية إدخال أو إخراج أو تسوية لكمية أحد المنتجات
+            {t.inventory.recordMovementDescription}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <fieldset disabled={isPending} className="contents space-y-4">
           <div className="space-y-2">
-            <Label>المنتج</Label>
+            <Label>{t.inventory.productLabel}</Label>
             <Controller
               control={control}
               name="productId"
@@ -165,6 +180,7 @@ export function RecordMovementDialog({
                   value={field.value ?? ""}
                   products={products}
                   onChange={(product) => field.onChange(product?.id ?? "")}
+                  t={t}
                 />
               )}
             />
@@ -175,36 +191,40 @@ export function RecordMovementDialog({
             )}
             {selectedProduct && (
               <p className="text-xs text-muted-foreground">
-                الكمية الحالية: {selectedProduct.quantity.toLocaleString("ar")}
+                {t.inventory.currentQuantityPrefix}{" "}
+                {selectedProduct.quantity.toLocaleString(locale)}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label>نوع الحركة</Label>
+            <Label>{t.inventory.movementTypeLabel}</Label>
             <Controller
               control={control}
               name="type"
               render={({ field }) => (
                 <Select
-                  value={MOVEMENT_TYPE_LABELS[field.value] ?? field.value}
-                  onValueChange={(label) => {
-                    if (!label) return;
-                    const value = MOVEMENT_TYPE_VALUE_BY_LABEL[label];
-                    if (value) field.onChange(value);
+                  value={field.value}
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    field.onChange(value);
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value: string) =>
+                        t.statusLabels.movementType[
+                          value as keyof typeof t.statusLabels.movementType
+                        ] ?? value
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(MOVEMENT_TYPE_LABELS).map(
-                      ([value, label]) => (
-                        <SelectItem key={value} value={label}>
-                          {label}
-                        </SelectItem>
-                      ),
-                    )}
+                    {MOVEMENT_TYPES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {t.statusLabels.movementType[value]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
@@ -213,7 +233,9 @@ export function RecordMovementDialog({
 
           <div className="space-y-2">
             <Label htmlFor="movement-quantity">
-              {selectedType === "ADJUSTMENT" ? "الكمية الجديدة" : "الكمية"}
+              {selectedType === "ADJUSTMENT"
+                ? t.inventory.newQuantityLabel
+                : t.inventory.quantityLabel}
             </Label>
             <Input
               id="movement-quantity"
@@ -229,7 +251,7 @@ export function RecordMovementDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="movement-reason">السبب (اختياري)</Label>
+            <Label htmlFor="movement-reason">{t.inventory.reasonLabel}</Label>
             <Input id="movement-reason" {...register("reason")} />
           </div>
 
@@ -239,7 +261,7 @@ export function RecordMovementDialog({
             disabled={isPending}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحفظ..." : "حفظ"}
+            {isPending ? t.common.saving : t.common.save}
           </Button>
         </fieldset>
         </form>

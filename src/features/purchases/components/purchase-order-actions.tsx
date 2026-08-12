@@ -8,6 +8,7 @@ import {
   receivePurchaseOrder,
   cancelPurchaseOrder,
 } from "@/features/purchases/actions";
+import { useT } from "@/i18n/locale-provider";
 
 export function PurchaseOrderActions({
   purchaseOrderId,
@@ -15,6 +16,7 @@ export function PurchaseOrderActions({
   purchaseOrderId: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const t = useT();
 
   function handleReceive() {
     startTransition(async () => {
@@ -23,7 +25,7 @@ export function PurchaseOrderActions({
         toast.error(result.error);
         return;
       }
-      toast.success("تم استلام البضاعة وتحديث المخزون بنجاح");
+      toast.success(t.purchases.receivedToast);
     });
   }
 
@@ -34,7 +36,7 @@ export function PurchaseOrderActions({
         toast.error(result.error);
         return;
       }
-      toast.success("تم إلغاء أمر الشراء");
+      toast.success(t.purchases.cancelledToast);
     });
   }
 
@@ -46,7 +48,7 @@ export function PurchaseOrderActions({
         ) : (
           <PackageCheck className="size-4" />
         )}
-        استلام البضاعة
+        {t.purchases.receiveGoodsButton}
       </Button>
       <Button variant="outline" onClick={handleCancel} disabled={isPending}>
         {isPending ? (
@@ -54,7 +56,7 @@ export function PurchaseOrderActions({
         ) : (
           <XCircle className="size-4" />
         )}
-        إلغاء الأمر
+        {t.purchases.cancelOrderButton}
       </Button>
     </div>
   );

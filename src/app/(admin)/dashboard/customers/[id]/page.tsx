@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   FileClock,
   FileX2,
+  UserCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { PaymentHistory } from "@/features/invoices/components/payment-history";
 import { BalanceHistoryCard } from "@/features/customers/components/balance-history-card";
 import { AdjustBalanceDialog } from "@/features/customers/components/adjust-balance-dialog";
 import { formatCurrency } from "@/lib/currency";
-import { ar } from "@/i18n/ar";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,11 @@ export default async function CustomerProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const profile = await getCustomerProfile(id);
+  const [t, locale, profile] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getCustomerProfile(id),
+  ]);
   if (!profile) notFound();
 
   const { customer, orders, invoices, payments, balanceHistory, totals } =
@@ -59,30 +64,31 @@ export default async function CustomerProfilePage({
     <div className="space-y-6">
       <PageHeader
         title={customer.name}
-        description={ar.customers.profile}
+        icon={UserCircle}
+        description={t.customers.profile}
         action={<BackButton fallbackHref="/dashboard/customers" />}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          title={ar.customers.totalPurchased}
+          title={t.customers.totalPurchased}
           value={totals.totalPurchased}
           icon={ShoppingCart}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title={ar.customers.totalPaid}
+          title={t.customers.totalPaid}
           value={totals.totalPaid}
           icon={Wallet}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <div className="space-y-2">
           <StatCard
-            title={ar.customers.balance}
+            title={t.customers.balance}
             value={totals.balance}
             icon={Receipt}
             variant="balance"
-            formatValue={(value) => formatCurrency(value)}
+            formatValue={(value) => formatCurrency(value, locale)}
           />
           <AdjustBalanceDialog
             customerId={customer.id}
@@ -93,28 +99,28 @@ export default async function CustomerProfilePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>الفواتير غير المسددة</CardTitle>
+          <CardTitle>{t.customers.outstandingInvoicesTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard
-              title="فواتير مدفوعة جزئياً"
+              title={t.customers.partiallyPaidInvoicesLabel}
               value={partiallyPaidInvoices.length}
               icon={FileClock}
               variant="warning"
             />
             <StatCard
-              title="فواتير غير مدفوعة"
+              title={t.customers.unpaidInvoicesLabel}
               value={unpaidInvoices.length}
               icon={FileX2}
               variant="warning"
             />
             <StatCard
-              title="إجمالي المبلغ المتبقي"
+              title={t.customers.totalRemainingLabel}
               value={totalOutstanding}
               icon={CircleDollarSign}
               variant="warning"
-              formatValue={(value) => formatCurrency(value)}
+              formatValue={(value) => formatCurrency(value, locale)}
             />
           </div>
         </CardContent>
@@ -122,37 +128,37 @@ export default async function CustomerProfilePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{ar.customers.personalInfo}</CardTitle>
+          <CardTitle>{t.customers.personalInfo}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
-            <span className="text-muted-foreground">الاسم: </span>
+            <span className="text-muted-foreground">{t.customers.columnName}: </span>
             {customer.name}
           </p>
           <p>
-            <span className="text-muted-foreground">الهاتف: </span>
+            <span className="text-muted-foreground">{t.orders.phoneLabel}: </span>
             <span dir="ltr">{customer.phone}</span>
           </p>
           {customer.email && (
             <p>
-              <span className="text-muted-foreground">البريد الإلكتروني: </span>
+              <span className="text-muted-foreground">{t.orders.emailLabel}: </span>
               <span dir="ltr">{customer.email}</span>
             </p>
           )}
           {customer.address && (
             <p>
-              <span className="text-muted-foreground">العنوان: </span>
+              <span className="text-muted-foreground">{t.customers.addressLabel}: </span>
               {customer.address}
             </p>
           )}
           {customer.notes && (
             <p>
-              <span className="text-muted-foreground">ملاحظات: </span>
+              <span className="text-muted-foreground">{t.orders.notesLabel}: </span>
               {customer.notes}
             </p>
           )}
           <p>
-            <span className="text-muted-foreground">تاريخ التسجيل: </span>
+            <span className="text-muted-foreground">{t.customers.registeredAtLabel}: </span>
             {new Date(customer.createdAt).toLocaleDateString("fr-FR")}
           </p>
           <Button
@@ -161,18 +167,18 @@ export default async function CustomerProfilePage({
             nativeButton={false}
             render={<Link href={`/dashboard/customers?edit=${customer.id}`} />}
           >
-            {ar.customers.editCustomerInfo}
+            {t.customers.editCustomerInfo}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{ar.customers.ordersHistory}</CardTitle>
+          <CardTitle>{t.customers.ordersHistory}</CardTitle>
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
-            <EmptyState icon={ShoppingCart} title={ar.customers.noOrders} />
+            <EmptyState icon={ShoppingCart} title={t.customers.noOrders} />
           ) : (
             <OrdersTable
               searchable
@@ -191,11 +197,11 @@ export default async function CustomerProfilePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{ar.customers.invoicesHistory}</CardTitle>
+          <CardTitle>{t.customers.invoicesHistory}</CardTitle>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <EmptyState icon={Receipt} title={ar.customers.noInvoices} />
+            <EmptyState icon={Receipt} title={t.customers.noInvoices} />
           ) : (
             <InvoicesTable
               searchable

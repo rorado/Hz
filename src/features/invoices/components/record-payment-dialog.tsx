@@ -23,17 +23,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
-import { PAYMENT_METHOD_LABELS } from "@/features/invoices/schema";
 import { recordPayment, recordPaymentAcrossInvoices } from "@/features/invoices/actions";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 import { BalanceConfirmDialog } from "@/features/invoices/components/balance-confirm-dialog";
 import {
   checkMultiInvoicePaymentConfirmation,
   type BalanceConfirmRequest,
 } from "@/features/invoices/balance-resolution";
 import type { PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
+
+const PAYMENT_METHODS: PaymentMethod[] = [
+  "CASH",
+  "BANK_TRANSFER",
+  "CREDIT_CARD",
+  "BALANCE",
+  "OTHER",
+];
 
 export type OutstandingInvoiceRow = {
   id: string;
@@ -82,6 +89,7 @@ export function RecordPaymentDialog({
       : remaining,
   );
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const canDistribute = Boolean(customerId) && outstandingInvoices.length > 0;
 
@@ -166,7 +174,7 @@ export function RecordPaymentDialog({
           toast.error(result.error);
           return;
         }
-        toast.success("تم تسجيل الدفعة بنجاح");
+        toast.success(t.purchases.paymentRecordedToast);
         setOpen(false);
         return;
       }
@@ -196,7 +204,7 @@ export function RecordPaymentDialog({
         }
       }
 
-      toast.success("تم تسجيل الدفعة بنجاح");
+      toast.success(t.purchases.paymentRecordedToast);
       setOpen(false);
     });
   }
@@ -205,17 +213,17 @@ export function RecordPaymentDialog({
     const note = String(formData.get("note") ?? "").trim();
 
     if (canDistribute && selectedIds.size === 0) {
-      toast.error(ar.invoices.selectAtLeastOneInvoice);
+      toast.error(t.invoices.selectAtLeastOneInvoice);
       return;
     }
 
     if (!(amount > 0)) {
-      toast.error(ar.invoices.invalidAmount);
+      toast.error(t.invoices.invalidAmount);
       return;
     }
 
     if (method === "BALANCE" && !hasCustomer) {
-      toast.error(ar.invoices.noCustomerForBalance);
+      toast.error(t.invoices.noCustomerForBalance);
       return;
     }
 
@@ -226,7 +234,7 @@ export function RecordPaymentDialog({
       // fall back to the simple single-invoice flow, capped at its own
       // remaining — there's no رصيد to route an excess into.
       if (amount > remaining + 0.005) {
-        toast.error(ar.invoices.invalidAmount);
+        toast.error(t.invoices.invalidAmount);
         return;
       }
       submitPayment(invoiceIds, amount, method, note);
@@ -316,26 +324,26 @@ export function RecordPaymentDialog({
         render={
           <Button className="cursor-pointer" size="sm">
             <Wallet className="size-4" />
-            {ar.invoices.recordPayment}
+            {t.invoices.recordPayment}
           </Button>
         }
       />
       <DialogContent className={canDistribute ? "sm:max-w-lg" : undefined}>
         <DialogHeader>
-          <DialogTitle>{ar.invoices.recordPayment}</DialogTitle>
+          <DialogTitle>{t.invoices.recordPayment}</DialogTitle>
         </DialogHeader>
         <form action={handleSubmit} className="space-y-4">
         <fieldset disabled={isPending} className="contents space-y-4">
           {canDistribute && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>{ar.invoices.selectInvoicesToPayTitle}</Label>
+                <Label>{t.invoices.selectInvoicesToPayTitle}</Label>
                 <button
                   type="button"
                   className="cursor-pointer text-xs font-medium text-primary hover:underline"
                   onClick={toggleSelectAll}
                 >
-                  {ar.invoices.selectAllInvoices}
+                  {t.invoices.selectAllInvoices}
                 </button>
               </div>
               <div
@@ -373,16 +381,16 @@ export function RecordPaymentDialog({
                             )}
                           </span>
                           <span>
-                            {ar.invoices.invoiceTotalLabel}:{" "}
-                            {formatCurrency(invoice.total)}
+                            {t.invoices.invoiceTotalLabel}:{" "}
+                            {formatCurrency(invoice.total, locale)}
                           </span>
                           <span>
-                            {ar.invoices.totalPaidLabel}:{" "}
-                            {formatCurrency(invoice.paidAmount)}
+                            {t.invoices.totalPaidLabel}:{" "}
+                            {formatCurrency(invoice.paidAmount, locale)}
                           </span>
                           <span className="font-medium text-foreground">
-                            {ar.invoices.remainingBalance}:{" "}
-                            {formatCurrency(invoiceRemaining)}
+                            {t.invoices.remainingBalance}:{" "}
+                            {formatCurrency(invoiceRemaining, locale)}
                           </span>
                         </div>
                       </div>
@@ -394,24 +402,24 @@ export function RecordPaymentDialog({
               <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/30 p-2.5 text-center text-xs">
                 <div>
                   <p className="text-muted-foreground">
-                    {ar.invoices.selectedInvoicesTotal}
+                    {t.invoices.selectedInvoicesTotal}
                   </p>
-                  <p className="font-medium">{formatCurrency(selectedTotal)}</p>
+                  <p className="font-medium">{formatCurrency(selectedTotal, locale)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">
-                    {ar.invoices.selectedInvoicesPaidSoFar}
+                    {t.invoices.selectedInvoicesPaidSoFar}
                   </p>
                   <p className="font-medium">
-                    {formatCurrency(selectedPaidSoFar)}
+                    {formatCurrency(selectedPaidSoFar, locale)}
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">
-                    {ar.invoices.selectedInvoicesRemaining}
+                    {t.invoices.selectedInvoicesRemaining}
                   </p>
                   <p className="font-medium">
-                    {formatCurrency(selectedRemaining)}
+                    {formatCurrency(selectedRemaining, locale)}
                   </p>
                 </div>
               </div>
@@ -419,7 +427,7 @@ export function RecordPaymentDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="payment-amount">{ar.invoices.amountPaid}</Label>
+            <Label htmlFor="payment-amount">{t.invoices.amountPaid}</Label>
             <Input
               id="payment-amount"
               name="amount"
@@ -433,40 +441,42 @@ export function RecordPaymentDialog({
             {canDistribute ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 <span>
-                  {ar.invoices.currentPaymentAmount}: {formatCurrency(amount)}
+                  {t.invoices.currentPaymentAmount}: {formatCurrency(amount, locale)}
                 </span>
                 {excessFromPayment > 0.005 ? (
                   <span className="font-medium text-amber-600 dark:text-amber-400">
-                    {ar.invoices.excessFromThisPayment}:{" "}
-                    {formatCurrency(excessFromPayment)}
+                    {t.invoices.excessFromThisPayment}:{" "}
+                    {formatCurrency(excessFromPayment, locale)}
                   </span>
                 ) : (
                   <span>
-                    {ar.invoices.remainingAfterThisPayment}:{" "}
-                    {formatCurrency(remainingAfterPayment)}
+                    {t.invoices.remainingAfterThisPayment}:{" "}
+                    {formatCurrency(remainingAfterPayment, locale)}
                   </span>
                 )}
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {ar.invoices.remainingBalance}: {formatCurrency(remaining)}
+                {t.invoices.remainingBalance}: {formatCurrency(remaining, locale)}
               </p>
             )}
           </div>
           <div className="space-y-2">
-            <Label>{ar.invoices.paymentMethod}</Label>
-            <Select
-              items={PAYMENT_METHOD_LABELS}
-              value={method}
-              onValueChange={handleMethodChange}
-            >
+            <Label>{t.invoices.paymentMethod}</Label>
+            <Select value={method} onValueChange={handleMethodChange}>
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: string) =>
+                    t.statusLabels.paymentMethod[
+                      value as keyof typeof t.statusLabels.paymentMethod
+                    ] ?? value
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                {PAYMENT_METHODS.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {t.statusLabels.paymentMethod[value]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -481,14 +491,14 @@ export function RecordPaymentDialog({
                 )}
               >
                 {!hasCustomer
-                  ? ar.invoices.noCustomerForBalance
-                  : `${ar.invoices.availableBalance}: ${formatCurrency(customerBalance)}`}
+                  ? t.invoices.noCustomerForBalance
+                  : `${t.invoices.availableBalance}: ${formatCurrency(customerBalance, locale)}`}
               </p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="payment-note">
-              {ar.invoices.paymentNote} (اختياري)
+              {t.customers.notesOptionalLabel}
             </Label>
             <Textarea id="payment-note" name="note" rows={2} />
           </div>
@@ -498,7 +508,7 @@ export function RecordPaymentDialog({
             disabled={isPending}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            {isPending ? "جاري الحفظ..." : ar.common.save}
+            {isPending ? t.common.saving : t.common.save}
           </Button>
         </fieldset>
         </form>

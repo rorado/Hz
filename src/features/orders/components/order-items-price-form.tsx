@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -23,7 +23,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -62,26 +61,29 @@ import {
 } from "@/features/orders/components/product-details-dialog";
 import { InvoiceLockedNotice } from "@/features/orders/components/invoice-locked-notice";
 import { formatCurrency } from "@/lib/currency";
+import { useLocale } from "@/i18n/locale-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
+import type { Locale } from "@/i18n/config";
+import { StockAlertDialog, findStockIssue, type StockIssue } from "@/components/shared/stock-alert-dialog";
+import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
 
 type ProductOption = {
   id: string;
   name: string;
   sku: string;
+  barcode: string | null;
   price1: number;
   price2: number;
   price3: number;
+  quantity: number;
+  categoryId: string;
+  categoryName: string;
+  brandId: string | null;
+  brandName: string | null;
 };
 
-const NONE_PRODUCT: ProductOption = {
-  id: "",
-  name: "اختر منتجاً...",
-  sku: "",
-  price1: 0,
-  price2: 0,
-  price3: 0,
-};
-
-const CUSTOM_PRICE = "سعر مخصص";
+type PriceTier = "price1" | "price2" | "price3" | "custom";
 
 function SortableTableRow({
   id,
@@ -120,54 +122,67 @@ function SortableTableRow({
   );
 }
 
-function productLabel(product: ProductOption) {
-  return product.id ? `${product.name} (${product.sku})` : product.name;
+function productLabel(product: ProductOption, none: string) {
+  return product.id ? `${product.name} (${product.sku})` : none;
 }
 
 function priceTierLabel(
   price: number,
   product: { price1: number; price2: number; price3: number },
-) {
-  if (price === product.price1) return "السعر الأول";
-  if (price === product.price2) return "السعر الثاني";
-  if (price === product.price3) return "السعر الثالث";
-  return CUSTOM_PRICE;
+): PriceTier {
+  if (price === product.price1) return "price1";
+  if (price === product.price2) return "price2";
+  if (price === product.price3) return "price3";
+  return "custom";
 }
 
 function PriceTierField({
   price,
   product,
   onChange,
+  t,
+  locale,
 }: {
   price: number;
   product: { price1: number; price2: number; price3: number } | undefined;
   onChange: (price: number) => void;
+  t: Dictionary;
+  locale: Locale;
 }) {
   if (!product) return null;
+
+  const tierLabels: Record<PriceTier, string> = {
+    price1: t.reports.columnPrice1,
+    price2: t.reports.columnPrice2,
+    price3: t.reports.columnPrice3,
+    custom: t.orders.customPrice,
+  };
 
   return (
     <Select
       value={priceTierLabel(price, product)}
-      onValueChange={(label) => {
-        if (label === "السعر الأول") onChange(product.price1);
-        else if (label === "السعر الثاني") onChange(product.price2);
-        else if (label === "السعر الثالث") onChange(product.price3);
+      onValueChange={(tier) => {
+        if (tier === "price1") onChange(product.price1);
+        else if (tier === "price2") onChange(product.price2);
+        else if (tier === "price3") onChange(product.price3);
       }}
     >
       <SelectTrigger className="w-36">
-        <SelectValue />
+        <SelectValue>
+          {(value: string) => tierLabels[value as PriceTier] ?? value}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="السعر الأول">
-          ({formatCurrency(product.price1)})
+        <SelectItem value="price1">
+          ({formatCurrency(product.price1, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثاني">
-          ({formatCurrency(product.price2)})
+        <SelectItem value="price2">
+          ({formatCurrency(product.price2, locale)})
         </SelectItem>
-        <SelectItem value="السعر الثالث">
-          ({formatCurrency(product.price3)})
+        <SelectItem value="price3">
+          ({formatCurrency(product.price3, locale)})
         </SelectItem>
-        <SelectItem value={CUSTOM_PRICE}>{CUSTOM_PRICE}</SelectItem>
+        <SelectItem value="custom">{t.orders.customPrice}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -177,14 +192,27 @@ function ProductPickerField({
   value,
   onChange,
   products,
+  t,
 }: {
   value: string;
   onChange: (product: ProductOption | null) => void;
   products: ProductOption[];
+  t: Dictionary;
 }) {
   const { contains } = useComboboxFilter();
-  const items = [NONE_PRODUCT, ...products];
-  const selected = items.find((item) => item.id === value) ?? NONE_PRODUCT;
+  const noneProduct: ProductOption = {
+    id: "",
+    name: t.orders.selectProductPlaceholder,
+    sku: "",
+    barcode: null,
+    price1: 0,
+    price2: 0,
+    price3: 0,
+    quantity: 0,
+    categoryId: "", categoryName: "", brandId: null, brandName: null,
+  };
+  const items = [noneProduct, ...products];
+  const selected = items.find((item) => item.id === value) ?? noneProduct;
 
   return (
     <Combobox
@@ -193,19 +221,22 @@ function ProductPickerField({
       onValueChange={(product: ProductOption | null) => onChange(product)}
       isItemEqualToValue={(a: ProductOption, b: ProductOption) => a.id === b.id}
       itemToStringValue={(item: ProductOption) => item.id}
-      itemToStringLabel={productLabel}
+      itemToStringLabel={(item: ProductOption) =>
+        productLabel(item, t.orders.selectProductPlaceholder)
+      }
       filter={contains}
     >
-      <ComboboxTrigger className="w-full">
-        <ComboboxValue />
-      </ComboboxTrigger>
+      <div className="flex gap-2">
+        <ComboboxTrigger className="w-full"><ComboboxValue /></ComboboxTrigger>
+        <ProductBarcodeScanner products={products} onSelect={onChange} />
+      </div>
       <ComboboxContent>
-        <ComboboxInput placeholder="ابحث بالاسم أو SKU..." />
-        <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+        <ComboboxInput placeholder={t.inventory.productSearchPlaceholder} />
+        <ComboboxEmpty>{t.common.noResults}</ComboboxEmpty>
         <ComboboxList>
           {(item: ProductOption) => (
             <ComboboxItem key={item.id} value={item}>
-              {productLabel(item)}
+              {productLabel(item, t.orders.selectProductPlaceholder)}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -236,7 +267,10 @@ export function OrderItemsPriceForm({
   invoiceId?: string;
   invoiceNumber?: string;
 }) {
+  const [stockIssue, setStockIssue] = useState<StockIssue | null>(null);
+  const [pendingStockValues, setPendingStockValues] = useState<OrderItemsOutput | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { t, locale } = useLocale();
 
   const {
     control,
@@ -288,15 +322,22 @@ export function OrderItemsPriceForm({
     return sum + price * quantity;
   }, 0);
 
-  function onSubmit(values: OrderItemsOutput) {
+  function submitItems(values: OrderItemsOutput, allowNegativeStock = false) {
     startTransition(async () => {
-      const result = await updateOrderItems(orderId, values);
-      if (result?.error) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("تم تحديث الطلب بنجاح");
+      const result = await updateOrderItems(orderId, values, { allowNegativeStock });
+      if (result?.error) { toast.error(result.error); return; }
+      toast.success(t.orders.itemsUpdatedToast);
     });
+  }
+
+  function onSubmit(values: OrderItemsOutput) {
+    const issue = findStockIssue(values.items, products);
+    if (issue) {
+      setStockIssue(issue);
+      setPendingStockValues(values);
+      return;
+    }
+    submitItems(values);
   }
 
   if (locked) {
@@ -310,17 +351,17 @@ export function OrderItemsPriceForm({
           <InvoiceLockedNotice
             invoiceId={invoiceId}
             invoiceNumber={invoiceNumber}
-            message="تم إصدار فاتورة لهذا الطلب، لذلك لا يمكن تعديل عناصره بعد الآن. لإجراء أي تعديل، يرجى التعامل مع الفاتورة مباشرة."
+            message={t.orders.invoiceLockedItemsMessage}
           />
         )}
         <div className={items.length > 5 ? "max-h-120 overflow-y-auto" : undefined}>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>المنتج</TableHead>
-              <TableHead>الكمية</TableHead>
-              <TableHead>السعر</TableHead>
-              <TableHead>الإجمالي</TableHead>
+              <TableHead>{t.orders.columnProduct}</TableHead>
+              <TableHead>{t.orders.columnQuantity}</TableHead>
+              <TableHead>{t.orders.columnPrice}</TableHead>
+              <TableHead>{t.orders.columnTotal}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -329,8 +370,8 @@ export function OrderItemsPriceForm({
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.productName}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
-                <TableCell>{formatCurrency(item.price)}</TableCell>
-                <TableCell>{formatCurrency(item.price * item.quantity)}</TableCell>
+                <TableCell>{formatCurrency(item.price, locale)}</TableCell>
+                <TableCell>{formatCurrency(item.price * item.quantity, locale)}</TableCell>
                 <TableCell>
                   <ProductDetailsDialog product={item.product} />
                 </TableCell>
@@ -340,7 +381,7 @@ export function OrderItemsPriceForm({
         </Table>
         </div>
         <div className="border-t pt-4">
-          <p className="font-medium">الإجمالي الكلي: {formatCurrency(lockedTotal)}</p>
+          <p className="font-medium">{t.orders.grandTotalLabel}: {formatCurrency(lockedTotal, locale)}</p>
         </div>
       </div>
     );
@@ -348,7 +389,17 @@ export function OrderItemsPriceForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <StockAlertDialog
+        issue={stockIssue}
+        onClose={() => { setStockIssue(null); setPendingStockValues(null); }}
+        onConfirm={() => {
+          if (pendingStockValues) submitItems(pendingStockValues, true);
+          setStockIssue(null);
+          setPendingStockValues(null);
+        }}
+      />
       <fieldset disabled={isPending} className="contents space-y-4">
+      <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, price: product.price1 }))} />
       <div className={fields.length > 5 ? "max-h-120 overflow-y-auto" : undefined}>
       <DndContext
         id="order-items-price-dnd"
@@ -360,10 +411,10 @@ export function OrderItemsPriceForm({
         <TableHeader>
           <TableRow>
             <TableHead></TableHead>
-            <TableHead>المنتج</TableHead>
-            <TableHead>الكمية</TableHead>
-            <TableHead>السعر</TableHead>
-            <TableHead>الإجمالي</TableHead>
+            <TableHead>{t.orders.columnProduct}</TableHead>
+            <TableHead>{t.orders.columnQuantity}</TableHead>
+            <TableHead>{t.orders.columnPrice}</TableHead>
+            <TableHead>{t.orders.columnTotal}</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
@@ -406,8 +457,12 @@ export function OrderItemsPriceForm({
                               productField.onChange(product?.id ?? "");
                               if (product?.id) {
                                 setValue(`items.${index}.price`, product.price1);
+                                if (index === fields.length - 1) {
+                                  append({ productId: "", quantity: 1, price: 0 });
+                                }
                               }
                             }}
+                            t={t}
                           />
                         )}
                       />
@@ -423,7 +478,11 @@ export function OrderItemsPriceForm({
                   <Input
                     type="number"
                     min={1}
-                    className="w-20"
+                    className={`w-20 ${
+                      selectedProduct && quantity > selectedProduct.quantity
+                        ? "border-destructive ring-2 ring-destructive/20 focus-visible:border-destructive focus-visible:ring-destructive/30"
+                        : ""
+                    }`}
                     {...register(`items.${index}.quantity`)}
                   />
                 </TableCell>
@@ -435,6 +494,8 @@ export function OrderItemsPriceForm({
                       onChange={(nextPrice) =>
                         setValue(`items.${index}.price`, nextPrice)
                       }
+                      t={t}
+                      locale={locale}
                     />
                     <Input
                       type="number"
@@ -445,7 +506,7 @@ export function OrderItemsPriceForm({
                     />
                   </div>
                 </TableCell>
-                <TableCell>{formatCurrency(price * quantity)}</TableCell>
+                <TableCell>{formatCurrency(price * quantity, locale)}</TableCell>
                 <TableCell>
                   {isExisting ? (
                     <ProductDetailsDialog product={existingItem.product} />
@@ -480,14 +541,14 @@ export function OrderItemsPriceForm({
         onClick={() => append({ productId: "", quantity: 1, price: 0 })}
       >
         <Plus className="size-4" />
-        إضافة منتج
+        {t.products.addProduct}
       </Button>
 
       <div className="flex items-center justify-between border-t pt-4">
-        <p className="font-medium">الإجمالي الكلي: {formatCurrency(total)}</p>
+        <p className="font-medium">{t.orders.grandTotalLabel}: {formatCurrency(total, locale)}</p>
         <Button type="submit" disabled={isPending} className="cursor-pointer">
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
+          {isPending ? t.common.saving : t.orders.saveChangesButton}
         </Button>
       </div>
       </fieldset>

@@ -11,20 +11,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import {
-  DEBT_STATUS_LABELS,
-  CUSTOMER_SORT_LABELS,
-} from "@/features/customers/schema";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
-const ALL_STATUSES = ar.customers.debtFilterAll;
-const DEFAULT_SORT = CUSTOMER_SORT_LABELS.newest;
+const ALL_STATUSES = "all";
+const DEFAULT_SORT = "newest";
+
+const DEBT_STATUS_VALUES = ["HAS_DEBT", "NO_DEBT"] as const;
+const CUSTOMER_SORT_VALUES = [
+  "newest",
+  "totalPurchased_desc",
+  "totalPurchased_asc",
+  "outstanding_desc",
+  "outstanding_asc",
+  "balance_desc",
+  "balance_asc",
+] as const;
 
 export function CustomersFilterBar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -43,7 +51,7 @@ export function CustomersFilterBar() {
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">
-          {ar.customers.debtFilterLabel}
+          {t.customers.debtFilterLabel}
         </Label>
         <Select
           value={searchParams.get("debtFilter") ?? ALL_STATUSES}
@@ -54,13 +62,21 @@ export function CustomersFilterBar() {
           }}
         >
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder={ALL_STATUSES} />
+            <SelectValue placeholder={t.customers.debtFilterAll}>
+              {(value: string) =>
+                value === ALL_STATUSES || !value
+                  ? t.customers.debtFilterAll
+                  : t.statusLabels.debtStatus[
+                      value as keyof typeof t.statusLabels.debtStatus
+                    ]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_STATUSES}>{ALL_STATUSES}</SelectItem>
-            {Object.values(DEBT_STATUS_LABELS).map((label) => (
-              <SelectItem key={label} value={label}>
-                {label}
+            <SelectItem value={ALL_STATUSES}>{t.customers.debtFilterAll}</SelectItem>
+            {DEBT_STATUS_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t.statusLabels.debtStatus[value]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -68,7 +84,7 @@ export function CustomersFilterBar() {
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">
-          {ar.customers.sortLabel}
+          {t.customers.sortLabel}
         </Label>
         <Select
           value={searchParams.get("sort") ?? DEFAULT_SORT}
@@ -79,12 +95,18 @@ export function CustomersFilterBar() {
           }}
         >
           <SelectTrigger className="w-full sm:w-64">
-            <SelectValue placeholder={DEFAULT_SORT} />
+            <SelectValue placeholder={t.statusLabels.customerSort.newest}>
+              {(value: string) =>
+                t.statusLabels.customerSort[
+                  value as keyof typeof t.statusLabels.customerSort
+                ] ?? t.statusLabels.customerSort.newest
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {Object.values(CUSTOMER_SORT_LABELS).map((label) => (
-              <SelectItem key={label} value={label}>
-                {label}
+            {CUSTOMER_SORT_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t.statusLabels.customerSort[value]}
               </SelectItem>
             ))}
           </SelectContent>

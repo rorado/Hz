@@ -4,13 +4,14 @@ import type { Prisma } from "@/generated/prisma/client";
 
 export const REPORTS_PAGE_SIZE = 10;
 
-export async function getInventoryReportData() {
+export async function getInventoryReportData(limit?: number) {
   return prisma.product.findMany({
     include: {
       category: { select: { name: true } },
       brand: { select: { name: true } },
     },
     orderBy: { name: "asc" },
+    take: limit,
   });
 }
 
@@ -31,7 +32,7 @@ export async function getInventoryReportPage({ page }: { page: number }) {
   return { items, total, pageSize: REPORTS_PAGE_SIZE };
 }
 
-export async function getProductsReportData() {
+export async function getProductsReportData(limit?: number) {
   return prisma.product.findMany({
     include: {
       category: { select: { name: true } },
@@ -39,6 +40,7 @@ export async function getProductsReportData() {
       images: { orderBy: { position: "asc" }, select: { secureUrl: true } },
     },
     orderBy: { name: "asc" },
+    take: limit,
   });
 }
 
@@ -59,10 +61,11 @@ export async function getProductsReportPage({ page }: { page: number }) {
   return { items, total, pageSize: REPORTS_PAGE_SIZE };
 }
 
-export async function getPurchasesReportData() {
+export async function getPurchasesReportData(limit?: number) {
   return prisma.purchaseOrder.findMany({
     include: { supplier: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
+    take: limit,
   });
 }
 
@@ -80,10 +83,11 @@ export async function getPurchasesReportPage({ page }: { page: number }) {
   return { items, total, pageSize: REPORTS_PAGE_SIZE };
 }
 
-export async function getSuppliersReportData() {
+export async function getSuppliersReportData(limit?: number) {
   const suppliers = await prisma.supplier.findMany({
     include: { purchaseOrders: { select: { total: true } } },
     orderBy: { createdAt: "desc" },
+    take: limit,
   });
 
   return suppliers.map(mapSupplierReportRow);
@@ -129,9 +133,10 @@ function mapSupplierReportRow(supplier: {
   };
 }
 
-export async function getOrdersReportData() {
+export async function getOrdersReportData(limit?: number) {
   return prisma.order.findMany({
     orderBy: { createdAt: "desc" },
+    take: limit,
   });
 }
 
@@ -148,10 +153,11 @@ export async function getOrdersReportPage({ page }: { page: number }) {
   return { items, total, pageSize: REPORTS_PAGE_SIZE };
 }
 
-export async function getCustomersReportData() {
+export async function getCustomersReportData(limit?: number) {
   const customers = await prisma.customer.findMany({
     include: { orders: { select: { total: true } } },
     orderBy: { createdAt: "desc" },
+    take: limit,
   });
 
   return customers.map(mapCustomerReportRow);

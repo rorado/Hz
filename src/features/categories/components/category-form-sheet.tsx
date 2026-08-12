@@ -23,7 +23,7 @@ import {
   type CategoryInput,
 } from "@/features/categories/schema";
 import { createCategory, updateCategory } from "@/features/categories/actions";
-import { ar } from "@/i18n/ar";
+import { useLocale } from "@/i18n/locale-provider";
 
 type CategoryOption = { id: string; name: string };
 type CategoryRecord = {
@@ -48,6 +48,7 @@ export function CategoryFormSheet({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t } = useLocale();
 
   const {
     register,
@@ -91,7 +92,7 @@ export function CategoryFormSheet({
         return;
       }
 
-      toast.success(category ? "تم تحديث القسم بنجاح" : "تم إضافة القسم بنجاح");
+      toast.success(category ? t.categories.toastUpdated : t.categories.toastCreated);
       close();
     });
   }
@@ -104,12 +105,12 @@ export function CategoryFormSheet({
       onOpenChange={(next) => {
         if (!next) close();
       }}
-      title={category ? "تعديل القسم" : "إضافة قسم جديد"}
+      title={category ? t.categories.formTitleEdit : t.categories.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <div className="space-y-2">
-          <Label>صورة القسم</Label>
+          <Label>{t.categories.imageLabel}</Label>
           <Controller
             control={control}
             name="image"
@@ -123,21 +124,21 @@ export function CategoryFormSheet({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="category-name">اسم القسم</Label>
+          <Label htmlFor="category-name">{t.categories.nameLabel}</Label>
           <Input id="category-name" {...register("name")} />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="category-slug">الرابط (slug)</Label>
+          <Label htmlFor="category-slug">{t.categories.slugLabel}</Label>
           <Input id="category-slug" dir="ltr" {...register("slug")} />
           {errors.slug && (
             <p className="text-sm text-destructive">{errors.slug.message}</p>
           )}
         </div>
         <div className="space-y-2">
-          <Label>قسم الأب (اختياري)</Label>
+          <Label>{t.categories.parentLabel}</Label>
           <Select
             value={parentId ?? "none"}
             onValueChange={(value) =>
@@ -145,10 +146,17 @@ export function CategoryFormSheet({
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="بدون قسم أب" />
+              <SelectValue placeholder={t.categories.noParentOption}>
+                {(value: string) =>
+                  value === "none" || !value
+                    ? t.categories.noParentOption
+                    : (categoryOptions.find((option) => option.id === value)
+                        ?.name ?? t.categories.noParentOption)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">بدون قسم أب</SelectItem>
+              <SelectItem value="none">{t.categories.noParentOption}</SelectItem>
               {categoryOptions
                 .filter((option) => option.id !== category?.id)
                 .map((option) => (
@@ -165,7 +173,7 @@ export function CategoryFormSheet({
           disabled={isPending}
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? "جاري الحفظ..." : ar.common.save}
+          {isPending ? t.common.saving : t.common.save}
         </Button>
       </fieldset>
       </form>

@@ -9,7 +9,8 @@ import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
 import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
 import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
-import { ar } from "@/i18n/ar";
+import { getDictionary } from "@/i18n/server";
+import { validateAvailableStock } from "@/lib/stock-validation";
 import type {
   InvoiceLanguage,
   PaymentMethod,
@@ -59,6 +60,7 @@ export async function createInvoice(
      * overpayment on this new invoice was distributed to older ones via
      * recordPaymentAcrossInvoices under the same batch). */
     batchId?: string;
+    allowNegativeStock?: boolean;
   },
 ): Promise<ActionResult> {
   const session = await auth();
@@ -66,6 +68,11 @@ export async function createInvoice(
 
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+
+  if (!options?.allowNegativeStock) {
+    const stockError = await validateAvailableStock(parsed.data.items);
+    if (stockError) return { error: stockError };
+  }
 
   const total = computeTotal(parsed.data.items);
   const payments = parsed.data.payments.filter((line) => line.amount > 0);
@@ -124,6 +131,24 @@ export async function createInvoice(
         });
       }
 
+      const stockItems = parsed.data.items.filter((item) => item.productId);
+      for (const item of stockItems) {
+        const updated = await tx.product.updateMany({
+          where: { id: item.productId!, quantity: { gte: item.quantity } },
+          data: { quantity: { decrement: item.quantity } },
+        });
+        if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+        await tx.inventoryMovement.create({
+          data: {
+            productId: item.productId!,
+            type: "OUT",
+            quantity: item.quantity,
+            reason: `فاتورة رقم ${created.invoiceNumber}`,
+            reference: created.id,
+          },
+        });
+      }
+
       await adjustCustomerBalance(tx, customerId, balanceEffect, {
         reason: balanceEffectReason(balanceEffect),
         invoiceId: created.id,
@@ -132,11 +157,18 @@ export async function createInvoice(
 
       return created.id;
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      const stockError = await validateAvailableStock(parsed.data.items);
+      return { error: stockError ?? "الكمية المتوفرة غير كافية" };
+    }
     return { error: "حدث خطأ أثناء إنشاء الفاتورة" };
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/customers/${customerId}`);
   redirect(`/dashboard/invoices/${invoiceId}`);
 }
@@ -144,12 +176,18 @@ export async function createInvoice(
 export async function updateInvoice(
   id: string,
   input: unknown,
+  options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };
 
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+
+  if (!options?.allowNegativeStock) {
+    const stockError = await validateAvailableStock(parsed.data.items);
+    if (stockError) return { error: stockError };
+  }
 
   const existing = await prisma.invoice.findUnique({
     where: { id },
@@ -348,10 +386,16 @@ export async function getOrCreateInvoiceForOrder(
   });
   if (!order) return { error: "الطلب غير موجود" };
 
+  if (order.status !== "COMPLETED") {
+    const stockError = await validateAvailableStock(order.items);
+    if (stockError) return { error: stockError };
+  }
+
   const payments = options.payments.filter((line) => line.amount > 0);
 
   if (payments.some((line) => line.method === "BALANCE") && !order.customerId) {
-    return { error: ar.invoices.noCustomerForBalance };
+    const t = await getDictionary();
+    return { error: t.invoices.noCustomerForBalance };
   }
 
   const total = Number(order.total);
@@ -400,6 +444,29 @@ export async function getOrCreateInvoiceForOrder(
         });
       }
 
+      if (order.status !== "COMPLETED") {
+        for (const item of order.items) {
+          const updated = await tx.product.updateMany({
+            where: { id: item.productId, quantity: { gte: item.quantity } },
+            data: { quantity: { decrement: item.quantity } },
+          });
+          if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+          await tx.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              type: "OUT",
+              quantity: item.quantity,
+              reason: `فاتورة رقم ${created.invoiceNumber}`,
+              reference: created.id,
+            },
+          });
+        }
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: "COMPLETED" },
+        });
+      }
+
       if (order.customerId) {
         await adjustCustomerBalance(tx, order.customerId, balanceEffect, {
           reason: balanceEffectReason(balanceEffect),
@@ -410,11 +477,20 @@ export async function getOrCreateInvoiceForOrder(
 
       return created.id;
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      const stockError = await validateAvailableStock(order.items);
+      return { error: stockError ?? "الكمية المتوفرة غير كافية" };
+    }
     return { error: "حدث خطأ أثناء إنشاء الفاتورة" };
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/orders");
+  revalidatePath(`/dashboard/orders/${order.id}`);
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
   if (order.customerId) revalidatePath(`/dashboard/customers/${order.customerId}`);
   redirect(`/dashboard/invoices/${invoiceId}`);
 }
@@ -437,7 +513,8 @@ export async function recordPayment(
   if (!invoice) return { error: "الفاتورة غير موجودة" };
 
   if (input.method === "BALANCE" && !invoice.customerId) {
-    return { error: ar.invoices.noCustomerForBalance };
+    const t = await getDictionary();
+    return { error: t.invoices.noCustomerForBalance };
   }
 
   const total = Number(invoice.total);
@@ -526,7 +603,8 @@ export async function recordPaymentAcrossInvoices(
     return { error: "الرجاء إدخال مبلغ صحيح" };
   }
   if (input.invoiceIds.length === 0) {
-    return { error: ar.invoices.selectAtLeastOneInvoice };
+    const t = await getDictionary();
+    return { error: t.invoices.selectAtLeastOneInvoice };
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
@@ -542,7 +620,8 @@ export async function recordPaymentAcrossInvoices(
   if (input.method === "BALANCE" && !input.allowNegativeBalance) {
     const customerBalance = Number(customer.balance);
     if (input.amount > customerBalance + 0.005) {
-      return { error: ar.invoices.insufficientBalanceTitle };
+      const t = await getDictionary();
+      return { error: t.invoices.insufficientBalanceTitle };
     }
   }
 
@@ -655,7 +734,8 @@ export async function updatePayment(
   const invoice = payment.invoice;
 
   if (input.method === "BALANCE" && !invoice.customerId) {
-    return { error: ar.invoices.noCustomerForBalance };
+    const t = await getDictionary();
+    return { error: t.invoices.noCustomerForBalance };
   }
 
   const total = Number(invoice.total);

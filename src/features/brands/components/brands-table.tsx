@@ -7,10 +7,12 @@ import {
   type BrandRow,
 } from "@/features/brands/components/columns";
 import { deleteBrands } from "@/features/brands/actions";
+import { useLocale } from "@/i18n/locale-provider";
 
 export function BrandsTable({ data }: { data: BrandRow[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t, locale } = useLocale();
 
   function editHref(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -21,7 +23,7 @@ export function BrandsTable({ data }: { data: BrandRow[] }) {
 
   return (
     <DataTable
-      columns={getBrandColumns(editHref)}
+      columns={getBrandColumns(editHref, t, locale)}
       data={data}
       onDeleteSelected={deleteBrands}
     />

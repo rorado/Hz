@@ -4,6 +4,11 @@ import { DirectionProvider } from "@/components/ui/direction";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineNotification } from "@/components/shared/offline-notification";
+import { localeDirection } from "@/i18n/config";
+import { getLocale, getDictionary } from "@/i18n/server";
+import { LocaleProvider } from "@/i18n/locale-provider";
+import { companyConfig } from "@/config/company";
+import { getThemeCss } from "@/config/apply-theme";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -16,27 +21,39 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Hz",
-  description: "نظام إدارة مخزون ومبيعات متكامل",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDictionary();
+  return {
+    title: companyConfig.shortName,
+    description: t.common.siteDescription,
+    icons: { icon: companyConfig.favicon },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [locale, dictionary] = await Promise.all([getLocale(), getDictionary()]);
+  const direction = localeDirection[locale];
+
   return (
     <html
-      lang="ar"
-      dir="rtl"
+      lang={locale}
+      dir={direction}
       className={`${cairo.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <style>{getThemeCss()}</style>
+      </head>
       <body className="min-h-full flex flex-col">
-        <OfflineNotification />
-        <DirectionProvider direction="rtl">
-          <TooltipProvider>{children}</TooltipProvider>
-        </DirectionProvider>
+        <LocaleProvider locale={locale} dictionary={dictionary}>
+          <OfflineNotification />
+          <DirectionProvider direction={direction}>
+            <TooltipProvider>{children}</TooltipProvider>
+          </DirectionProvider>
+        </LocaleProvider>
         <Toaster position="top-center" />
       </body>
     </html>

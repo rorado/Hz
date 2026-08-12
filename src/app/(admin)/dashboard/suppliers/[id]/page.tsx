@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   FileClock,
   FileX2,
+  Truck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { getSupplierProfile } from "@/features/suppliers/queries";
 import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-orders-table";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { formatCurrency } from "@/lib/currency";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,11 @@ export default async function SupplierProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const profile = await getSupplierProfile(id);
+  const [t, locale, profile] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getSupplierProfile(id),
+  ]);
   if (!profile) notFound();
 
   const { supplier, purchaseOrders, payments, totals } = profile;
@@ -43,56 +49,57 @@ export default async function SupplierProfilePage({
     <div className="space-y-6">
       <PageHeader
         title={supplier.name}
-        description="ملف المورد"
+        icon={Truck}
+        description={t.suppliers.profileLabel}
         action={<BackButton fallbackHref="/dashboard/suppliers" />}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          title="إجمالي المشتريات"
+          title={t.customers.totalPurchased}
           value={totals.totalPurchased}
           icon={ClipboardList}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title="إجمالي المدفوع"
+          title={t.customers.totalPaid}
           value={totals.totalPaid}
           icon={Wallet}
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
-          title="إجمالي المبلغ المتبقي"
+          title={t.customers.totalRemainingLabel}
           value={totals.totalOutstanding}
           icon={Receipt}
           variant="warning"
-          formatValue={(value) => formatCurrency(value)}
+          formatValue={(value) => formatCurrency(value, locale)}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>أوامر الشراء غير المسددة</CardTitle>
+          <CardTitle>{t.suppliers.outstandingOrdersTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard
-              title="أوامر مدفوعة جزئياً"
+              title={t.suppliers.partiallyPaidOrdersLabel}
               value={partiallyPaidOrders.length}
               icon={FileClock}
               variant="warning"
             />
             <StatCard
-              title="أوامر غير مدفوعة"
+              title={t.suppliers.unpaidOrdersLabel}
               value={unpaidOrders.length}
               icon={FileX2}
               variant="warning"
             />
             <StatCard
-              title="إجمالي المبلغ المتبقي"
+              title={t.customers.totalRemainingLabel}
               value={totals.totalOutstanding}
               icon={CircleDollarSign}
               variant="warning"
-              formatValue={(value) => formatCurrency(value)}
+              formatValue={(value) => formatCurrency(value, locale)}
             />
           </div>
         </CardContent>
@@ -100,33 +107,33 @@ export default async function SupplierProfilePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>بيانات المورد</CardTitle>
+          <CardTitle>{t.suppliers.supplierInfoTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
-            <span className="text-muted-foreground">الاسم: </span>
+            <span className="text-muted-foreground">{t.suppliers.nameLabel}: </span>
             {supplier.name}
           </p>
           {supplier.phone && (
             <p>
-              <span className="text-muted-foreground">الهاتف: </span>
+              <span className="text-muted-foreground">{t.orders.phoneLabel}: </span>
               <span dir="ltr">{supplier.phone}</span>
             </p>
           )}
           {supplier.email && (
             <p>
-              <span className="text-muted-foreground">البريد الإلكتروني: </span>
+              <span className="text-muted-foreground">{t.orders.emailLabel}: </span>
               <span dir="ltr">{supplier.email}</span>
             </p>
           )}
           {supplier.address && (
             <p>
-              <span className="text-muted-foreground">العنوان: </span>
+              <span className="text-muted-foreground">{t.customers.addressLabel}: </span>
               {supplier.address}
             </p>
           )}
           <p>
-            <span className="text-muted-foreground">تاريخ التسجيل: </span>
+            <span className="text-muted-foreground">{t.customers.registeredAtLabel}: </span>
             {new Date(supplier.createdAt).toLocaleDateString("fr-FR")}
           </p>
           <Button
@@ -135,20 +142,20 @@ export default async function SupplierProfilePage({
             nativeButton={false}
             render={<Link href={`/dashboard/suppliers?edit=${supplier.id}`} />}
           >
-            تعديل بيانات المورد
+            {t.suppliers.editSupplierInfo}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>سجل أوامر الشراء</CardTitle>
+          <CardTitle>{t.suppliers.purchaseOrdersHistoryTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {purchaseOrders.length === 0 ? (
             <EmptyState
               icon={ClipboardList}
-              title="لا توجد أوامر شراء لهذا المورد"
+              title={t.suppliers.noPurchaseOrdersTitle}
             />
           ) : (
             <PurchaseOrdersTable
