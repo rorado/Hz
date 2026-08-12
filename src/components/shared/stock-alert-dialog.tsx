@@ -26,15 +26,21 @@ export type StockIssue = {
 export function findStockIssue(
   items: Array<{ productId?: string | null; quantity: unknown }>,
   products: Array<{ id: string; name: string; quantity: number }>,
+  existingItems: Array<{ productId?: string | null; quantity: unknown }> = [],
 ): StockIssue | null {
   const totals = new Map<string, number>();
+  const existingTotals = new Map<string, number>();
   items.forEach((item) => {
     if (item.productId) totals.set(item.productId, (totals.get(item.productId) ?? 0) + (Number(item.quantity) || 0));
   });
+  existingItems.forEach((item) => {
+    if (item.productId) existingTotals.set(item.productId, (existingTotals.get(item.productId) ?? 0) + (Number(item.quantity) || 0));
+  });
   for (const product of products) {
     const requested = totals.get(product.id) ?? 0;
-    if (requested > product.quantity) {
-      return { product: product.name, requested, available: product.quantity };
+    const available = product.quantity + (existingTotals.get(product.id) ?? 0);
+    if (requested > available) {
+      return { product: product.name, requested, available };
     }
   }
   return null;

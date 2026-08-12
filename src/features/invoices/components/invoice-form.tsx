@@ -488,6 +488,14 @@ export function InvoiceForm({
   const productsById = new Map(
     products.map((product) => [product.id, product]),
   );
+  const existingQuantityByProduct = new Map<string, number>();
+  invoice?.items.forEach((item) => {
+    if (!item.productId) return;
+    existingQuantityByProduct.set(
+      item.productId,
+      (existingQuantityByProduct.get(item.productId) ?? 0) + item.quantity,
+    );
+  });
 
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -576,7 +584,7 @@ export function InvoiceForm({
   }
 
   async function onSubmit(values: InvoiceOutput) {
-    const issue = findStockIssue(values.items, products);
+    const issue = findStockIssue(values.items, products, invoice?.items);
     if (issue && !allowNegativeStockRef.current) {
       setStockIssue(issue);
       setPendingStockValues(values);
@@ -923,7 +931,8 @@ export function InvoiceForm({
                                   );
                                   return product &&
                                     (Number(items?.[index]?.quantity) || 0) >
-                                      product.quantity
+                                      product.quantity +
+                                        (existingQuantityByProduct.get(product.id) ?? 0)
                                     ? "border-destructive ring-2 ring-destructive/20 focus-visible:border-destructive focus-visible:ring-destructive/30"
                                     : "";
                                 })()}`}

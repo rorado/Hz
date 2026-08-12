@@ -184,16 +184,16 @@ export async function updateInvoice(
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
 
-  if (!options?.allowNegativeStock) {
-    const stockError = await validateAvailableStock(parsed.data.items);
-    if (stockError) return { error: stockError };
-  }
-
   const existing = await prisma.invoice.findUnique({
     where: { id },
-    include: { payments: true },
+    include: { payments: true, items: true },
   });
   if (!existing) return { error: "الفاتورة غير موجودة" };
+
+  if (!options?.allowNegativeStock) {
+    const stockError = await validateAvailableStock(parsed.data.items, existing.items);
+    if (stockError) return { error: stockError };
+  }
 
   const total = computeTotal(parsed.data.items);
   // Items/total edits never touch the payments already on file — رصيد only
