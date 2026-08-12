@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Pencil, FolderTree } from "lucide-react";
+import { Eye, Pencil, FolderTree } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
@@ -71,6 +71,15 @@ export function getCategoryColumns(
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            nativeButton={false}
+            render={<Link href={`/dashboard/categories/${row.original.id}`} />}
+            title={t.categories.viewProfile}
+          >
+            <Eye className="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

@@ -7,6 +7,10 @@ function isTransientPrismaError(error: unknown) {
     return false;
   }
 
+  if (TRANSIENT_CODES.has(error.code)) {
+    return true;
+  }
+
   const code =
     typeof error.meta === "object" &&
     error.meta &&

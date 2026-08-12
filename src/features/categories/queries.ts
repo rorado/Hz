@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 
 export const CATEGORIES_PAGE_SIZE = 10;
+export const CATEGORY_PROFILE_PRODUCTS_PAGE_SIZE = 10;
 
 export async function getCategoriesPage({
   query,
@@ -41,6 +42,50 @@ export async function getCategoryOptions(excludeId?: string) {
 
 export async function getCategoryById(id: string) {
   return prisma.category.findUnique({ where: { id } });
+}
+
+export async function getCategoryProfile(id: string, productPage: number) {
+  const [category, stock, lowStockRows] = await Promise.all([
+    prisma.category.findUnique({
+      where: { id },
+      include: {
+        parent: { select: { id: true, name: true } },
+        children: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+        _count: { select: { products: true } },
+        products: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            quantity: true,
+            minStockLevel: true,
+            status: true,
+          },
+          orderBy: { name: "asc" },
+          skip: (productPage - 1) * CATEGORY_PROFILE_PRODUCTS_PAGE_SIZE,
+          take: CATEGORY_PROFILE_PRODUCTS_PAGE_SIZE,
+        },
+      },
+    }),
+    prisma.product.aggregate({
+      where: { categoryId: id },
+      _sum: { quantity: true },
+    }),
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM public."Product"
+      WHERE "categoryId" = ${id} AND quantity <= "minStockLevel"
+    `,
+  ]);
+  if (!category) return null;
+
+  return {
+    category,
+    productsTotal: category._count.products,
+    productsPageSize: CATEGORY_PROFILE_PRODUCTS_PAGE_SIZE,
+    totalStock: stock._sum.quantity ?? 0,
+    lowStockCount: Number(lowStockRows[0]?.count ?? 0),
+  };
 }
 
 export async function getPublicCategoriesWithCounts() {

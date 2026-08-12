@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, Tags } from "lucide-react";
+import { Eye, Pencil, Tags } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
@@ -63,6 +63,15 @@ export function getBrandColumns(
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            nativeButton={false}
+            render={<Link href={`/dashboard/brands/${row.original.id}`} />}
+            title={t.brands.viewProfile}
+          >
+            <Eye className="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

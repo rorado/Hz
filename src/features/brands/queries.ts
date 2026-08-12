@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 
 export const BRANDS_PAGE_SIZE = 10;
+export const BRAND_PROFILE_PRODUCTS_PAGE_SIZE = 10;
 
 export async function getBrandsPage({
   query,
@@ -37,4 +38,46 @@ export async function getBrandOptions() {
 
 export async function getBrandById(id: string) {
   return prisma.brand.findUnique({ where: { id } });
+}
+
+export async function getBrandProfile(id: string, productPage: number) {
+  const [brand, stock, lowStockRows] = await Promise.all([
+    prisma.brand.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { products: true } },
+        products: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            quantity: true,
+            minStockLevel: true,
+            status: true,
+          },
+          orderBy: { name: "asc" },
+          skip: (productPage - 1) * BRAND_PROFILE_PRODUCTS_PAGE_SIZE,
+          take: BRAND_PROFILE_PRODUCTS_PAGE_SIZE,
+        },
+      },
+    }),
+    prisma.product.aggregate({
+      where: { brandId: id },
+      _sum: { quantity: true },
+    }),
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM public."Product"
+      WHERE "brandId" = ${id} AND quantity <= "minStockLevel"
+    `,
+  ]);
+  if (!brand) return null;
+
+  return {
+    brand,
+    productsTotal: brand._count.products,
+    productsPageSize: BRAND_PROFILE_PRODUCTS_PAGE_SIZE,
+    totalStock: stock._sum.quantity ?? 0,
+    lowStockCount: Number(lowStockRows[0]?.count ?? 0),
+  };
 }

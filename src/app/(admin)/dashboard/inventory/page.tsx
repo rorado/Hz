@@ -137,13 +137,13 @@ export default async function InventoryPage({
                       <TableCell>
                         <div>
                           <p className="font-medium">
-                            {movement.product.name}
+                            {movement.product?.name ?? "—"}
                           </p>
                           <p
                             dir="ltr"
                             className="text-xs text-muted-foreground"
                           >
-                            {movement.product.sku}
+                            {movement.product?.sku ?? movement.productId}
                           </p>
                         </div>
                       </TableCell>
