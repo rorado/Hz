@@ -110,8 +110,7 @@ export default async function InvoiceEditPage({
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <InvoiceForm
+      <InvoiceForm
           invoice={{
             id: invoice.id,
             language: invoice.language,
@@ -136,8 +135,7 @@ export default async function InvoiceEditPage({
             ...payment,
             amount: Number(payment.amount),
           }))}
-        />
-      </div>
+      />
     </div>
   );
 }
