@@ -136,7 +136,9 @@ export default async function InventoryPage({
                     <TableRow key={movement.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{movement.product.name}</p>
+                          <p className="font-medium">
+                            {movement.product.name}
+                          </p>
                           <p
                             dir="ltr"
                             className="text-xs text-muted-foreground"

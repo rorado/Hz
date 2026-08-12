@@ -133,13 +133,13 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
+  price     Decimal @db.Decimal(10, 2)
 
   @@index([orderId])
   @@index([productId])
@@ -153,8 +153,8 @@ enum InventoryMovementType {
 
 model InventoryMovement {
   id        String                @id @default(cuid())
-  productId String?
-  product   Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId String
+  product   Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
   type      InventoryMovementType
   quantity  Int
   reason    String?
