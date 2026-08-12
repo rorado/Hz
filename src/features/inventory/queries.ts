@@ -6,7 +6,7 @@ export const MOVEMENTS_PAGE_SIZE = 15;
 export async function getInventoryMovementsPage({ page }: { page: number }) {
   // Legacy databases can contain movements whose product was removed before
   // the current foreign-key restriction was introduced.
-  const where = { product: { isNot: {} } };
+  const where = { product: { isNot: null } };
 
   const [items, total] = await Promise.all([
     prisma.inventoryMovement.findMany({
