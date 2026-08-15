@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ClipboardList, Printer, UserCircle } from "lucide-react";
+import { ClipboardList, Printer, UserCircle, Undo2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,7 @@ export default async function PurchaseOrderDetailPage({
         icon={ClipboardList}
         action={
           <div className="flex flex-wrap gap-2">
+            {order.status === "RECEIVED" && <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-returns/new?purchaseId=${order.id}`} />}><Undo2 className="size-4" />إنشاء مرتجع</Button>}
             <Button
               variant="outline"
               nativeButton={false}
@@ -181,6 +182,7 @@ export default async function PurchaseOrderDetailPage({
                 <RecordSupplierPaymentDialog
                   purchaseOrderId={order.id}
                   remaining={remaining}
+                  supplierBalance={Number(order.supplier.balance)}
                 />
               )}
             </CardContent>
@@ -192,6 +194,7 @@ export default async function PurchaseOrderDetailPage({
               amount: Number(payment.amount),
             }))}
           />
+          <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{order.returns.length===0?<p className="text-sm text-muted-foreground">لا توجد مرتجعات.</p>:<div className="space-y-2">{order.returns.map(r=><Link key={r.id} href={`/dashboard/purchase-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity,0)} قطعة</span></Link>)}</div>}</CardContent></Card>
         </div>
       </div>
     </div>

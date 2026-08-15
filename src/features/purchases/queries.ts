@@ -28,6 +28,7 @@ export async function getPurchaseOrderById(id: string) {
         },
       },
       payments: { orderBy: { createdAt: "desc" } },
+      returns: { where: { status: "CONFIRMED" }, include: { items: true }, orderBy: { createdAt: "desc" } },
     },
   });
 }

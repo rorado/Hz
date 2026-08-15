@@ -11,6 +11,7 @@ import {
 } from "@/features/suppliers/queries";
 import { SuppliersTable } from "@/features/suppliers/components/suppliers-table";
 import { SupplierFormSheet } from "@/features/suppliers/components/supplier-form-sheet";
+import { SuppliersFilterBar } from "@/features/suppliers/components/suppliers-filter-bar";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -23,15 +24,21 @@ export default async function SuppliersPage({
     q?: string;
     new?: string;
     edit?: string;
+    orders?: string;
+    balance?: string;
+    sort?: string;
   }>;
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
+  const orders = params.orders === "withOrders" || params.orders === "withoutOrders" ? params.orders : undefined;
+  const balance = params.balance === "outstanding" || params.balance === "paid" ? params.balance : undefined;
+  const sort = params.sort === "name" || params.sort === "orders" ? params.sort : undefined;
 
   const [t, { items, total, pageSize }, editingSupplier] = await Promise.all([
     getDictionary(),
-    getSuppliersPage({ query, page }),
+    getSuppliersPage({ query, page, orders, balance, sort }),
     params.edit ? getSupplierById(params.edit) : Promise.resolve(null),
   ]);
 
@@ -41,6 +48,9 @@ export default async function SuppliersPage({
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
     if (page > 1) sp.set("page", String(page));
+    if (orders) sp.set("orders", orders);
+    if (balance) sp.set("balance", balance);
+    if (sort) sp.set("sort", sort);
     for (const [key, value] of Object.entries(extra)) sp.set(key, value);
     return `/dashboard/suppliers?${sp.toString()}`;
   }
@@ -57,7 +67,10 @@ export default async function SuppliersPage({
           </Button>
         }
       />
-      <DataTableSearch placeholder={t.suppliers.searchPlaceholder} />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <DataTableSearch placeholder={t.suppliers.searchPlaceholder} />
+        <SuppliersFilterBar />
+      </div>
       {items.length === 0 ? (
         <EmptyState
           icon={Truck}
@@ -72,7 +85,7 @@ export default async function SuppliersPage({
             pageSize={pageSize}
             total={total}
             basePath="/dashboard/suppliers"
-            searchParams={{ q: query }}
+            searchParams={{ q: query, orders, balance, sort }}
           />
         </>
       )}

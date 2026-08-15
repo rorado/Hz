@@ -11,25 +11,29 @@ const IMAGE_DOWNLOAD_TIMEOUT_MS = 20000;
 const CLOUDINARY_FOLDER = "inventory-system/products";
 
 const HEADER_ALIASES: Record<string, string[]> = {
-  name: ["اسم المنتج", "الاسم", "name", "product name"],
-  sku: ["sku"],
-  category: ["القسم", "الفئة", "category"],
-  brand: ["العلامة التجارية", "brand"],
-  quantity: ["الكمية", "quantity", "qty"],
+  name: ["اسم المنتج", "الاسم", "name", "product name", "nom", "nom du produit"],
+  sku: ["sku", "référence", "reference"],
+  category: ["القسم", "الفئة", "category", "catégorie", "categorie"],
+  brand: ["العلامة التجارية", "brand", "marque"],
+  quantity: ["الكمية", "quantity", "qty", "quantité", "quantite"],
   minStockLevel: [
     "الحد الأدنى",
     "الحد الأدنى للمخزون",
     "min stock",
     "minstocklevel",
+    "minimum stock",
+    "stock minimum",
   ],
-  status: ["الحالة", "status"],
-  images: ["الصور", "الصورة", "images", "image"],
-  slug: ["الرابط", "slug"],
-  barcode: ["الباركود", "barcode"],
+  status: ["الحالة", "status", "statut"],
+  images: ["الصور", "الصورة", "images", "image", "image urls", "image url", "روابط الصور", "رابط الصورة", "urls des images", "url de l'image"],
+  slug: ["الرابط", "slug", "lien"],
+  barcode: ["الباركود", "barcode", "code-barres", "code barre"],
   description: ["الوصف", "description"],
-  price1: ["السعر الأول", "price1", "price", "السعر"],
-  price2: ["السعر الثاني", "price2"],
-  price3: ["السعر الثالث", "price3"],
+  price1: ["السعر الأول", "price1", "price 1", "price", "السعر", "premier prix", "prix 1"],
+  price2: ["السعر الثاني", "price2", "price 2", "deuxième prix", "deuxieme prix", "prix 2"],
+  price3: ["السعر الثالث", "price3", "price 3", "troisième prix", "troisieme prix", "prix 3"],
+  purchasePrice: ["سعر الشراء", "سعر الشراء (التكلفة)", "purchase price", "purchase price (cost)", "cost", "prix d'achat", "prix d'achat (coût)", "prix d'achat (cout)"],
+  weight: ["الوزن", "الوزن (kg)", "weight", "weight (kg)", "poids", "poids (kg)"],
 };
 
 export type ImportRowError = { row: number; name?: string; reason: string };
@@ -111,7 +115,12 @@ function parseImageUrls(text: string): string[] {
 
 function parseStatus(text: string): "ACTIVE" | "INACTIVE" {
   const normalized = text.trim().toLowerCase();
-  if (normalized === "غير نشط" || normalized === "inactive") return "INACTIVE";
+  if (
+    normalized === "غير نشط" ||
+    normalized === "inactive" ||
+    normalized === "inactif" ||
+    normalized === "inactive product"
+  ) return "INACTIVE";
   return "ACTIVE";
 }
 
@@ -304,6 +313,14 @@ export async function* importProductsFromBuffer(
       const price1 = Math.max(0, cellNumber(row, columnMap.get("price1")) ?? 0);
       const price2 = Math.max(0, cellNumber(row, columnMap.get("price2")) ?? 0);
       const price3 = Math.max(0, cellNumber(row, columnMap.get("price3")) ?? 0);
+      const purchasePrice = Math.max(
+        0,
+        cellNumber(row, columnMap.get("purchasePrice")) ?? 0,
+      );
+      const weight = Math.max(
+        0,
+        cellNumber(row, columnMap.get("weight")) ?? 0,
+      );
       const status = parseStatus(cellText(row, columnMap.get("status")));
       const barcode = cellText(row, columnMap.get("barcode")) || null;
       const description = cellText(row, columnMap.get("description")) || null;
@@ -350,6 +367,8 @@ export async function* importProductsFromBuffer(
             price1,
             price2,
             price3,
+            purchasePrice,
+            weight,
             status,
             images: { create: images },
           },

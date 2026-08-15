@@ -1,7 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import type { OrderStatus, PaymentStatus } from "@/generated/prisma/client";
+import type {
+  ExpenseCategory,
+  OrderStatus,
+  PaymentStatus,
+} from "@/generated/prisma/client";
 import type { ResolvedRange } from "@/features/dashboard/date-range";
 
 function bounds(range: ResolvedRange) {
@@ -165,6 +169,31 @@ export async function getRevenueTrend(
 }
 
 export type StatusBreakdown = { status: string; count: number; total: number };
+
+export type ExpenseBreakdown = {
+  category: ExpenseCategory;
+  count: number;
+  total: number;
+};
+
+export async function getExpensesByCategory(
+  range: ResolvedRange,
+): Promise<ExpenseBreakdown[]> {
+  const { from, to } = bounds(range);
+  const rows = await prisma.expense.groupBy({
+    by: ["category"],
+    where: { date: { gte: from, lte: to } },
+    _count: { _all: true },
+    _sum: { amount: true },
+    orderBy: { _sum: { amount: "desc" } },
+  });
+
+  return rows.map((row) => ({
+    category: row.category,
+    count: row._count._all,
+    total: Number(row._sum.amount ?? 0),
+  }));
+}
 
 export async function getOrderStatusBreakdown(
   range: ResolvedRange,

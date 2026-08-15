@@ -55,6 +55,7 @@ import {
   updateInvoice,
   recordPaymentAcrossInvoices,
   fetchCustomerOutstandingInvoices,
+  checkInvoiceStockAvailability,
 } from "@/features/invoices/actions";
 import { formatCurrency } from "@/lib/currency";
 import {
@@ -78,7 +79,6 @@ import { useLocale } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/format";
 import {
   StockAlertDialog,
-  findStockIssue,
   type StockIssue,
 } from "@/components/shared/stock-alert-dialog";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -584,7 +584,10 @@ export function InvoiceForm({
   }
 
   async function onSubmit(values: InvoiceOutput) {
-    const issue = findStockIssue(values.items, products, invoice?.items);
+    const issue = await checkInvoiceStockAvailability(
+      values.items,
+      invoice?.id,
+    );
     if (issue && !allowNegativeStockRef.current) {
       setStockIssue(issue);
       setPendingStockValues(values);

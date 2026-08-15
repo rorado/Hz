@@ -27,6 +27,7 @@ export function BulkDeleteBar({
   onConfirm,
   onClearSelection,
   requirePassword = false,
+  description,
 }: {
   count: number;
   onConfirm: (password?: string) => Promise<DeleteResult>;
@@ -35,6 +36,7 @@ export function BulkDeleteBar({
    * filled in — used for entities where deleting in bulk should require
    * the same DELETE_CONFIRM_PASSWORD as single-row deletes. */
   requirePassword?: boolean;
+  description?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -96,9 +98,10 @@ export function BulkDeleteBar({
             <AlertDialogHeader>
               <AlertDialogTitle>{t.common.confirmDeleteTitle}</AlertDialogTitle>
               <AlertDialogDescription>
-                {formatMessage(t.common.bulkDeleteConfirmDescription, {
-                  count: count.toLocaleString(locale),
-                })}
+                {description ??
+                  formatMessage(t.common.bulkDeleteConfirmDescription, {
+                    count: count.toLocaleString(locale),
+                  })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             {requirePassword && (

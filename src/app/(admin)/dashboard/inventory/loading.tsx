@@ -5,7 +5,7 @@ export default function InventoryLoading() {
     <div className="space-y-6">
       <PageHeaderSkeleton withAction />
       <TableSkeleton rows={4} columns={4} />
-      <TableSkeleton rows={6} columns={5} />
+      <TableSkeleton rows={6} columns={6} />
     </div>
   );
 }

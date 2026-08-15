@@ -15,7 +15,7 @@ export default function DashboardLoading() {
 
       <AnalyticsFilterBarSkeleton />
 
-      <StatCardsSkeleton count={6} />
+      <StatCardsSkeleton count={7} />
 
       <ChartCardSkeleton height="h-72" />
 
@@ -24,7 +24,8 @@ export default function DashboardLoading() {
         <RankedListCardSkeleton />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCardSkeleton />
         <ChartCardSkeleton />
         <ChartCardSkeleton />
         <ChartCardSkeleton />

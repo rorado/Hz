@@ -11,6 +11,8 @@ import {
   Receipt,
   BarChart3,
   FileText,
+  RotateCcw,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -64,6 +66,7 @@ export function getAdminNavGroups(t: Dictionary): AdminNavGroup[] {
           icon: FileText,
           badgeKey: "unpaidInvoices",
         },
+        { href: "/dashboard/sales-returns", label: t.returns.salesTitle, icon: RotateCcw },
       ],
     },
     {
@@ -81,6 +84,7 @@ export function getAdminNavGroups(t: Dictionary): AdminNavGroup[] {
           label: t.admin.purchases,
           icon: ClipboardList,
         },
+        { href: "/dashboard/purchase-returns", label: t.returns.purchaseTitle, icon: Undo2 },
       ],
     },
     {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileText, Printer } from "lucide-react";
+import { FileText, Printer, RotateCcw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
@@ -70,6 +71,7 @@ export default async function InvoiceEditPage({
         icon={FileText}
         action={
           <div className="flex gap-2">
+            <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/sales-returns/new?invoiceId=${invoice.id}`} />}><RotateCcw className="size-4" />إنشاء مرتجع</Button>
             <BackButton fallbackHref="/dashboard/invoices" />
             <Button
               nativeButton={false}
@@ -136,6 +138,7 @@ export default async function InvoiceEditPage({
             amount: Number(payment.amount),
           }))}
       />
+      <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{invoice.returns.length === 0 ? <p className="text-sm text-muted-foreground">لا توجد مرتجعات لهذه الفاتورة.</p> : <div className="space-y-2">{invoice.returns.map((r) => <Link key={r.id} href={`/dashboard/sales-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity,0)} قطعة — {formatCurrency(Number(r.refundAmount),locale)}</span></Link>)}</div>}</CardContent></Card>
     </div>
   );
 }

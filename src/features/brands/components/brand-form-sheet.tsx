@@ -86,44 +86,44 @@ export function BrandFormSheet({
       title={brand ? t.brands.formTitleEdit : t.brands.formTitleAdd}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <fieldset disabled={isPending} className="contents space-y-4">
-        <div className="space-y-2">
-          <Label>{t.brands.logoLabel}</Label>
-          <Controller
-            control={control}
-            name="logo"
-            render={({ field }) => (
-              <CloudinaryUploader
-                value={field.value ? [field.value] : []}
-                onChange={(images) => field.onChange(images[0] ?? null)}
-                maxImages={1}
-              />
+        <fieldset disabled={isPending} className="contents space-y-4">
+          <div className="space-y-2">
+            <Label>{t.brands.logoLabel}</Label>
+            <Controller
+              control={control}
+              name="logo"
+              render={({ field }) => (
+                <CloudinaryUploader
+                  value={field.value ? [field.value] : []}
+                  onChange={(images) => field.onChange(images[0] ?? null)}
+                  maxImages={1}
+                />
+              )}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-name">{t.brands.nameLabel}</Label>
+            <Input id="brand-name" {...register("name")} />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
             )}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="brand-name">{t.brands.nameLabel}</Label>
-          <Input id="brand-name" {...register("name")} />
-          {errors.name && (
-            <p className="text-sm text-destructive">{errors.name.message}</p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="brand-slug">{t.brands.slugLabel}</Label>
-          <Input id="brand-slug" dir="ltr" {...register("slug")} />
-          {errors.slug && (
-            <p className="text-sm text-destructive">{errors.slug.message}</p>
-          )}
-        </div>
-        <Button
-          type="submit"
-          className="w-full cursor-pointer"
-          disabled={isPending}
-        >
-          {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? t.common.saving : t.common.save}
-        </Button>
-      </fieldset>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-slug">{t.brands.slugLabel}</Label>
+            <Input id="brand-slug" dir="ltr" {...register("slug")} />
+            {errors.slug && (
+              <p className="text-sm text-destructive">{errors.slug.message}</p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            className="w-full cursor-pointer"
+            disabled={isPending}
+          >
+            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {isPending ? t.common.saving : t.common.save}
+          </Button>
+        </fieldset>
       </form>
     </FormSheet>
   );

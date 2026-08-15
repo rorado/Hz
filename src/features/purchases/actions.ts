@@ -117,6 +117,7 @@ export async function recordSupplierPayment(
 
   const order = await prisma.purchaseOrder.findUnique({
     where: { id: purchaseOrderId },
+    include: { supplier: { select: { balance: true } } },
   });
   if (!order) return { error: "أمر الشراء غير موجود" };
 
@@ -125,25 +126,38 @@ export async function recordSupplierPayment(
   if (input.amount > remaining + 0.005) {
     return { error: "المبلغ أكبر من المبلغ المتبقي على أمر الشراء" };
   }
+  if (input.method === "BALANCE" && input.amount > Number(order.supplier.balance) + 0.005) {
+    return { error: "رصيد المورد غير كافٍ" };
+  }
 
   const newPaidAmount = Number(order.paidAmount) + input.amount;
   const paymentStatus = computePaymentStatus(total, newPaidAmount);
 
   try {
-    await prisma.$transaction([
-      prisma.supplierPayment.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.supplierPayment.create({
         data: {
           purchaseOrderId,
           amount: input.amount,
           method: input.method,
           note: input.note || null,
         },
-      }),
-      prisma.purchaseOrder.update({
+      });
+      await tx.purchaseOrder.update({
         where: { id: purchaseOrderId },
         data: { paidAmount: newPaidAmount, paymentStatus },
-      }),
-    ]);
+      });
+      if (input.method === "BALANCE") {
+        const previousBalance = Number(order.supplier.balance);
+        await tx.supplier.update({ where: { id: order.supplierId }, data: { balance: { decrement: input.amount } } });
+        await tx.supplierBalanceHistory.create({ data: {
+          supplierId: order.supplierId, purchaseOrderId, reference: order.orderNumber,
+          previousBalance, change: -input.amount, newBalance: previousBalance - input.amount,
+          reason: "PURCHASE_PAYMENT", note: input.note || "استخدام رصيد المورد في الدفع",
+          createdById: session.user.id,
+        } });
+      }
+    });
   } catch {
     return { error: "حدث خطأ أثناء تسجيل الدفعة" };
   }
@@ -180,13 +194,24 @@ export async function deleteSupplierPayment(
   const paymentStatus = computePaymentStatus(total, newPaidAmount);
 
   try {
-    await prisma.$transaction([
-      prisma.supplierPayment.delete({ where: { id: paymentId } }),
-      prisma.purchaseOrder.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.supplierPayment.delete({ where: { id: paymentId } });
+      await tx.purchaseOrder.update({
         where: { id: order.id },
         data: { paidAmount: newPaidAmount, paymentStatus },
-      }),
-    ]);
+      });
+      if (payment.method === "BALANCE") {
+        const supplier = await tx.supplier.findUniqueOrThrow({ where: { id: order.supplierId } });
+        const previousBalance = Number(supplier.balance);
+        await tx.supplier.update({ where: { id: supplier.id }, data: { balance: { increment: payment.amount } } });
+        await tx.supplierBalanceHistory.create({ data: {
+          supplierId: supplier.id, purchaseOrderId: order.id, reference: order.orderNumber,
+          previousBalance, change: payment.amount, newBalance: previousBalance + Number(payment.amount),
+          reason: "PAYMENT_DELETED", note: "إعادة الرصيد بعد حذف دفعة المورد",
+          createdById: session.user.id,
+        } });
+      }
+    });
   } catch {
     return { error: "حدث خطأ أثناء حذف الدفعة" };
   }

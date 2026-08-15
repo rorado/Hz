@@ -22,6 +22,7 @@ import {
   getTopProducts,
   getTopCustomers,
   getSalesByCategory,
+  getExpensesByCategory,
 } from "@/features/dashboard/analytics-queries";
 import { resolveDateRange } from "@/features/dashboard/date-range";
 import { AnalyticsFilterBar } from "@/features/dashboard/components/analytics-filter-bar";
@@ -30,6 +31,7 @@ import { PaymentStatusChart } from "@/features/dashboard/components/payment-stat
 import { CategorySalesChart } from "@/features/dashboard/components/category-sales-chart";
 import { OrderStatusChart } from "@/features/dashboard/components/order-status-chart";
 import { RankedListCard } from "@/features/dashboard/components/ranked-list-card";
+import { ExpensesChart } from "@/features/dashboard/components/expenses-chart";
 import { formatCurrency } from "@/lib/currency";
 import { getLocale, getDictionary } from "@/i18n/server";
 
@@ -54,6 +56,7 @@ export default async function DashboardPage({
     topProducts,
     topCustomers,
     categorySales,
+    expensesByCategory,
   ] = await Promise.all([
     getLocale(),
     getDictionary(),
@@ -65,7 +68,12 @@ export default async function DashboardPage({
     getTopProducts(range),
     getTopCustomers(range),
     getSalesByCategory(range),
+    getExpensesByCategory(range),
   ]);
+  const totalExpenses = expensesByCategory.reduce(
+    (sum, expense) => sum + expense.total,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -155,6 +163,13 @@ export default async function DashboardPage({
           icon={Truck}
           formatValue={(value) => formatCurrency(value, locale)}
         />
+        <StatCard
+          title={t.dashboard.totalExpenses}
+          value={totalExpenses}
+          icon={Receipt}
+          variant="warning"
+          formatValue={(value) => formatCurrency(value, locale)}
+        />
       </div>
 
       <RevenueTrendChart data={trend} />
@@ -187,10 +202,11 @@ export default async function DashboardPage({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <CategorySalesChart data={categorySales} />
         <PaymentStatusChart data={paymentStatusBreakdown} />
         <OrderStatusChart data={orderStatusBreakdown} />
+        <ExpensesChart data={expensesByCategory} />
       </div>
     </div>
   );

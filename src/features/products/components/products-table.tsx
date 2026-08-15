@@ -26,6 +26,8 @@ export function ProductsTable({ data }: { data: ProductRow[] }) {
       columns={getProductColumns(editHref, t, locale)}
       data={data}
       onDeleteSelected={deleteProducts}
+      requireDeletePassword
+      bulkDeleteDescription={t.products.bulkDeleteDescription}
     />
   );
 }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
 import { categorySchema } from "@/features/categories/schema";
+import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -52,6 +53,17 @@ export async function updateCategory(
     return { error: "لا يمكن اختيار القسم نفسه كقسم أب" };
   }
 
+  const existing = await prisma.category.findUnique({
+    where: { id },
+    select: { imagePublicId: true },
+  });
+  if (!existing) return { error: "القسم غير موجود" };
+  const nextPublicId = parsed.data.image?.publicId ?? null;
+  const removedPublicId =
+    existing.imagePublicId && existing.imagePublicId !== nextPublicId
+      ? existing.imagePublicId
+      : null;
+
   try {
     await prisma.category.update({
       where: { id },
@@ -70,6 +82,10 @@ export async function updateCategory(
     return { error: "حدث خطأ أثناء تحديث القسم" };
   }
 
+  if (removedPublicId) {
+    await Promise.allSettled([destroyCloudinaryAsset(removedPublicId)]);
+  }
+
   revalidatePath("/dashboard/categories");
   revalidatePath("/categories");
   revalidatePath("/");
@@ -80,12 +96,22 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { error: "غير مصرح" };
 
+  const category = await prisma.category.findUnique({
+    where: { id },
+    select: { imagePublicId: true },
+  });
+  if (!category) return { error: "القسم غير موجود" };
+
   try {
     await prisma.category.delete({ where: { id } });
   } catch {
     return {
       error: "لا يمكن حذف هذا القسم لارتباطه بمنتجات أو أقسام فرعية",
     };
+  }
+
+  if (category.imagePublicId) {
+    await Promise.allSettled([destroyCloudinaryAsset(category.imagePublicId)]);
   }
 
   revalidatePath("/dashboard/categories");
@@ -97,10 +123,20 @@ export async function deleteCategories(ids: string[]): Promise<ActionResult> {
   if (!session?.user) return { error: "غير مصرح" };
   if (ids.length === 0) return { success: true };
 
+  const categories = await prisma.category.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, imagePublicId: true },
+  });
+
   let failedCount = 0;
-  for (const id of ids) {
+  for (const category of categories) {
     try {
-      await prisma.category.delete({ where: { id } });
+      await prisma.category.delete({ where: { id: category.id } });
+      if (category.imagePublicId) {
+        await Promise.allSettled([
+          destroyCloudinaryAsset(category.imagePublicId),
+        ]);
+      }
     } catch {
       failedCount++;
     }

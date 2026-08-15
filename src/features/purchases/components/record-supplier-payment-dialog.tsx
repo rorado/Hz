@@ -31,14 +31,17 @@ const PAYMENT_METHODS_NO_BALANCE: PaymentMethod[] = [
   "BANK_TRANSFER",
   "CREDIT_CARD",
   "OTHER",
+  "BALANCE",
 ];
 
 export function RecordSupplierPaymentDialog({
   purchaseOrderId,
   remaining,
+  supplierBalance,
 }: {
   purchaseOrderId: string;
   remaining: number;
+  supplierBalance: number;
 }) {
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("CASH");
@@ -65,6 +68,10 @@ export function RecordSupplierPaymentDialog({
     }
     if (amount > remaining + 0.005) {
       toast.error(t.purchases.amountExceedsRemainingToast);
+      return;
+    }
+    if (method === "BALANCE" && amount > supplierBalance + 0.005) {
+      toast.error(t.suppliers.insufficientBalance);
       return;
     }
 
@@ -116,6 +123,7 @@ export function RecordSupplierPaymentDialog({
               <p className="text-xs text-muted-foreground">
                 {t.purchases.remainingAmountLabel}: {formatCurrency(remaining, locale)}
               </p>
+              {method === "BALANCE" && <p className="text-xs text-muted-foreground">{t.suppliers.availableBalance}: {formatCurrency(supplierBalance, locale)}</p>}
             </div>
             <div className="space-y-2">
               <Label>{t.purchases.paymentMethodLabel}</Label>

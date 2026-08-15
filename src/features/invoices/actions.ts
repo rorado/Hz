@@ -10,7 +10,7 @@ import { computePaymentStatus } from "@/lib/money";
 import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
 import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
-import { validateAvailableStock } from "@/lib/stock-validation";
+import { getAvailableStockIssue, validateAvailableStock } from "@/lib/stock-validation";
 import type {
   InvoiceLanguage,
   PaymentMethod,
@@ -19,6 +19,21 @@ import type {
 } from "@/generated/prisma/client";
 
 type ActionResult = { error?: string; success?: boolean };
+
+export async function checkInvoiceStockAvailability(
+  items: Array<{ productId?: string | null; quantity: number }>,
+  invoiceId?: string,
+) {
+  const session = await auth();
+  if (!session?.user) return null;
+  const existingItems = invoiceId
+    ? await prisma.invoiceItem.findMany({
+        where: { invoiceId },
+        select: { productId: true, quantity: true },
+      })
+    : [];
+  return getAvailableStockIssue(items, existingItems);
+}
 
 function generateInvoiceNumber() {
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -110,11 +125,12 @@ export async function createInvoice(
           paidAmount,
           balanceEffectApplied: balanceEffect,
           items: {
-            create: parsed.data.items.map((item) => ({
+            create: parsed.data.items.map((item, index) => ({
               productId: item.productId || null,
               name: item.name,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
+              position: index + 1,
             })),
           },
         },
@@ -225,11 +241,12 @@ export async function updateInvoice(
           paymentStatus,
           balanceEffectApplied: newBalanceEffect,
           items: {
-            create: parsed.data.items.map((item) => ({
+            create: parsed.data.items.map((item, index) => ({
               productId: item.productId || null,
               name: item.name,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
+              position: index + 1,
             })),
           },
         },
@@ -424,11 +441,12 @@ export async function getOrCreateInvoiceForOrder(
           paidAmount,
           balanceEffectApplied: balanceEffect,
           items: {
-            create: order.items.map((item) => ({
+            create: order.items.map((item, index) => ({
               productId: item.productId,
               name: item.product.name,
               quantity: item.quantity,
               unitPrice: item.price,
+              position: index + 1,
             })),
           },
         },

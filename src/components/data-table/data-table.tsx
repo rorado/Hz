@@ -27,14 +27,16 @@ export function DataTable<TData extends { id: string }, TValue>({
   data,
   onDeleteSelected,
   requireDeletePassword = false,
+  bulkDeleteDescription,
 }: {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  /** When provided, enables row checkboxes and a bulk-delete bar. */
-  onDeleteSelected?: (ids: string[], password?: string) => Promise<DeleteResult>;
-  /** Passed through to BulkDeleteBar — requires DELETE_CONFIRM_PASSWORD
-   * before the bulk delete runs. */
+  onDeleteSelected?: (
+    ids: string[],
+    password?: string,
+  ) => Promise<DeleteResult>;
   requireDeletePassword?: boolean;
+  bulkDeleteDescription?: string;
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const selectable = Boolean(onDeleteSelected);
@@ -83,6 +85,7 @@ export function DataTable<TData extends { id: string }, TValue>({
           count={selectedIds.length}
           onClearSelection={() => setRowSelection({})}
           requirePassword={requireDeletePassword}
+          description={bulkDeleteDescription}
           onConfirm={async (password) => {
             const result = await onDeleteSelected!(selectedIds, password);
             if (!result?.error) setRowSelection({});
@@ -111,10 +114,16 @@ export function DataTable<TData extends { id: string }, TValue>({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>

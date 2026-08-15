@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { getSupplierProfile } from "@/features/suppliers/queries";
 import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-orders-table";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
+import { AdjustSupplierBalanceDialog } from "@/features/suppliers/components/adjust-supplier-balance-dialog";
 import { formatCurrency } from "@/lib/currency";
 import { getDictionary, getLocale } from "@/i18n/server";
 
@@ -54,11 +55,17 @@ export default async function SupplierProfilePage({
         action={<BackButton fallbackHref="/dashboard/suppliers" />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={t.customers.totalPurchased}
           value={totals.totalPurchased}
           icon={ClipboardList}
+          formatValue={(value) => formatCurrency(value, locale)}
+        />
+        <StatCard
+          title={t.suppliers.creditBalance}
+          value={Number(supplier.balance)}
+          icon={Wallet}
           formatValue={(value) => formatCurrency(value, locale)}
         />
         <StatCard
@@ -144,6 +151,7 @@ export default async function SupplierProfilePage({
           >
             {t.suppliers.editSupplierInfo}
           </Button>
+          <AdjustSupplierBalanceDialog supplierId={supplier.id} currentBalance={Number(supplier.balance)} />
         </CardContent>
       </Card>
 
@@ -179,6 +187,13 @@ export default async function SupplierProfilePage({
           amount: Number(payment.amount),
         }))}
       />
+      <Card>
+        <CardHeader><CardTitle>{t.suppliers.balanceHistory}</CardTitle></CardHeader>
+        <CardContent>
+          {supplier.balanceHistory.length === 0 ? <p className="text-sm text-muted-foreground">{t.suppliers.noBalanceHistory}</p> :
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b">{[t.suppliers.previousBalance,t.suppliers.balanceChange,t.suppliers.newBalance,t.suppliers.balanceReason,t.suppliers.balanceDate].map((label)=><th key={label} className="p-3 text-start font-medium">{label}</th>)}</tr></thead><tbody>{supplier.balanceHistory.map((row)=><tr key={row.id} className="border-b last:border-0"><td className="p-3">{formatCurrency(Number(row.previousBalance),locale)}</td><td className={`p-3 font-medium ${Number(row.change)>=0?"text-emerald-600":"text-destructive"}`}>{Number(row.change)>=0?"+":""}{formatCurrency(Number(row.change),locale)}</td><td className="p-3">{formatCurrency(Number(row.newBalance),locale)}</td><td className="p-3">{row.note??row.reason}</td><td className="p-3">{row.createdAt.toLocaleDateString(locale)}</td></tr>)}</tbody></table></div>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

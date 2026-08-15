@@ -125,6 +125,7 @@ export default async function InventoryPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t.inventory.columnProduct}</TableHead>
+                    <TableHead>SKU</TableHead>
                     <TableHead>{t.inventory.columnType}</TableHead>
                     <TableHead>{t.inventory.columnQuantity}</TableHead>
                     <TableHead>{t.inventory.columnReason}</TableHead>
@@ -135,17 +136,12 @@ export default async function InventoryPage({
                   {items.map((movement) => (
                     <TableRow key={movement.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {movement.product?.name ?? "—"}
-                          </p>
-                          <p
-                            dir="ltr"
-                            className="text-xs text-muted-foreground"
-                          >
-                            {movement.product?.sku ?? movement.productId}
-                          </p>
-                        </div>
+                        <p className="font-medium">
+                          {movement.product?.name ?? "—"}
+                        </p>
+                      </TableCell>
+                      <TableCell dir="ltr" className="text-muted-foreground">
+                        {movement.product?.sku ?? movement.productId ?? "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">

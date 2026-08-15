@@ -6,7 +6,7 @@ import { Pencil, Package, Eye } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { PasswordConfirmDeleteDialog } from "@/components/shared/password-confirm-delete-dialog";
 import { deleteProduct } from "@/features/products/actions";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { formatMessage } from "@/i18n/format";
@@ -120,8 +120,8 @@ export function getProductColumns(
           >
             <Pencil className="size-4" />
           </Button>
-          <ConfirmDeleteDialog
-            action={() => deleteProduct(row.original.id)}
+          <PasswordConfirmDeleteDialog
+            action={(password) => deleteProduct(row.original.id, password)}
             description={formatMessage(t.products.deleteDescription, {
               name: row.original.name,
             })}

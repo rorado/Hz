@@ -45,12 +45,17 @@ export async function getInvoiceById(id: string) {
     where: { id },
     include: {
       items: {
+        orderBy: [
+          { position: "asc" },
+          { product: { createdAt: "asc" } },
+        ],
         include: {
           product: { select: { name: true, sku: true, weight: true } },
         },
       },
       order: { select: { id: true } },
       payments: { orderBy: { createdAt: "desc" } },
+      returns: { where: { status: "CONFIRMED" }, include: { items: true }, orderBy: { createdAt: "desc" } },
     },
   });
 }
@@ -80,6 +85,10 @@ export async function getOtherOutstandingInvoices(
       paymentStatus: true,
       createdAt: true,
       items: {
+        orderBy: [
+          { position: "asc" },
+          { product: { createdAt: "asc" } },
+        ],
         select: { id: true, name: true, quantity: true, unitPrice: true },
       },
     },
