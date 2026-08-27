@@ -88,7 +88,13 @@ export async function getCustomersPage({
       SELECT
         "customerId",
         SUM(total) AS total_purchased,
-        SUM("paidAmount") AS total_paid,
+        SUM(
+          CASE
+            WHEN "paymentStatus" = 'PAID' THEN total
+            WHEN "paymentStatus" = 'PARTIALLY_PAID' THEN "paidAmount"
+            ELSE 0
+          END
+        ) AS total_paid,
         SUM(CASE WHEN "paymentStatus" IN ('UNPAID', 'PARTIALLY_PAID') THEN total - "paidAmount" ELSE 0 END) AS outstanding
       FROM public."Invoice"
       WHERE "customerId" IS NOT NULL
@@ -187,6 +193,52 @@ export async function getCustomerById(id: string) {
   return prisma.customer.findUnique({ where: { id } });
 }
 
+export async function getCustomerStatement(
+  customerId: string,
+  from?: string,
+  to?: string,
+) {
+  const createdAt = {
+    ...(from ? { gte: new Date(`${from}T00:00:00`) } : {}),
+    ...(to ? { lte: new Date(`${to}T23:59:59.999`) } : {}),
+  };
+
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    include: {
+      invoices: {
+        where: Object.keys(createdAt).length > 0 ? { createdAt } : undefined,
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          total: true,
+          paidAmount: true,
+          paymentStatus: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!customer) return null;
+
+  return {
+    customer: {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      address: customer.address,
+    },
+    invoices: customer.invoices.map((invoice) => ({
+      ...invoice,
+      total: Number(invoice.total),
+      paidAmount: Number(invoice.paidAmount),
+    })),
+  };
+}
+
 /**
  * Fuzzy name/phone search used by the customer picker, combining an exact
  * phone match with pg_trgm similarity over the normalized name so Arabic
@@ -273,7 +325,13 @@ export async function getCustomerProfile(id: string) {
     0,
   );
   const totalPaid = invoices.reduce(
-    (sum, invoice) => sum + Number(invoice.paidAmount),
+    (sum, invoice) =>
+      sum +
+      (invoice.paymentStatus === "PAID"
+        ? Number(invoice.total)
+        : invoice.paymentStatus === "PARTIALLY_PAID"
+          ? Number(invoice.paidAmount)
+          : 0),
     0,
   );
 

@@ -1,6 +1,8 @@
-import { AlertTriangle, Boxes } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Boxes, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,6 +20,7 @@ import {
   getProductSelectOptions,
 } from "@/features/products/queries";
 import { RecordMovementDialog } from "@/features/inventory/components/record-movement-dialog";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +30,8 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ page?: string; lowStockPage?: string }>;
 }) {
+  await requirePageAccess("INVENTORY_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const lowStockPage = Math.max(1, Number(params.lowStockPage) || 1);
@@ -74,6 +79,7 @@ export default async function InventoryPage({
                     <TableHead>SKU</TableHead>
                     <TableHead>{t.inventory.columnCurrentQuantity}</TableHead>
                     <TableHead>{t.inventory.columnMinStock}</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -90,6 +96,26 @@ export default async function InventoryPage({
                       </TableCell>
                       <TableCell>
                         {product.minStockLevel.toLocaleString(locale)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <RecordMovementDialog
+                            products={productOptions}
+                            defaultProductId={product.id}
+                            compact
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            nativeButton={false}
+                            render={
+                              <Link href={`/dashboard/products/${product.id}`} />
+                            }
+                            title={t.customers.viewProfile}
+                          >
+                            <Eye className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

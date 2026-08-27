@@ -4,13 +4,19 @@ import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { auth } from "@/lib/auth";
 import { getDashboardStats } from "@/features/dashboard/queries";
+import { getSystemSettings } from "@/features/settings/queries";
+import { getEffectivePermissions } from "@/lib/permissions";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [session, stats] = await Promise.all([auth(), getDashboardStats()]);
+  const [session, stats, settings] = await Promise.all([
+    auth(),
+    getDashboardStats(),
+    getSystemSettings(),
+  ]);
 
   // Defense in depth: proxy.ts already guards /dashboard/**, but this
   // layout re-checks auth close to the render so any route added under
@@ -19,10 +25,18 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const effectivePermissions = await getEffectivePermissions(session.user.id);
+  const permissions =
+    effectivePermissions === "full"
+      ? ("full" as const)
+      : Array.from(effectivePermissions);
+
   return (
     <SidebarProvider>
       <AppSidebar
         adminName={session?.user?.name ?? ""}
+        appName={settings.appName}
+        permissions={permissions}
         pendingOrders={stats.pendingOrders}
         lowStock={stats.lowStockCount}
         unpaidInvoices={stats.unpaidInvoicesCount}

@@ -10,9 +10,11 @@ import {
   Warehouse,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export default async function ReportsPage() {
+  await requirePageAccess("REPORTS_VIEW");
   const t = await getDictionary();
 
   const REPORTS = [

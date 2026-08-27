@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import {
   orderItemsSchema,
   reassignOrderCustomerSchema,
@@ -43,8 +43,8 @@ export async function updateOrderStatus(
   status: string,
   options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!VALID_STATUSES.includes(status as OrderStatus)) {
     return { error: "حالة غير صحيحة" };
@@ -102,8 +102,7 @@ export async function updateOrderStatus(
 }
 
 export async function getOrderStockIssue(id: string) {
-  const session = await auth();
-  if (!session?.user) return null;
+  if (!(await hasPermission("ORDERS_MANAGE"))) return null;
   const order = await prisma.order.findUnique({
     where: { id },
     include: { items: { include: { product: { select: { name: true, quantity: true } } } } },
@@ -125,8 +124,8 @@ export async function updateOrderItems(
   input: unknown,
   options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = orderItemsSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -199,8 +198,8 @@ export async function reassignOrderCustomer(
   orderId: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = reassignOrderCustomerSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -250,8 +249,8 @@ export async function saveOrderCustomerInfo(
     existingCustomerId: string;
   },
 ): Promise<ActionResult & { conflict?: ConflictCustomer }> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = customerSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -348,8 +347,8 @@ export async function createOrder(
   input: unknown,
   options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = createOrderSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -410,8 +409,8 @@ export async function createOrder(
 }
 
 export async function deleteOrder(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   try {
     await prisma.order.delete({ where: { id } });
@@ -425,8 +424,8 @@ export async function deleteOrder(id: string): Promise<ActionResult> {
 }
 
 export async function deleteOrders(ids: string[]): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("ORDERS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   let failedCount = 0;

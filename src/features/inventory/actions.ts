@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { inventoryMovementSchema } from "@/features/inventory/schema";
 
 type ActionResult = { error?: string; success?: boolean };
@@ -10,8 +10,8 @@ type ActionResult = { error?: string; success?: boolean };
 export async function recordInventoryMovement(
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVENTORY_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = inventoryMovementSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };

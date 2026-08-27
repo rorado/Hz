@@ -13,6 +13,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { getSuppliersReportPage } from "@/features/reports/queries";
 import { ReportExportButtons } from "@/features/reports/components/report-export-buttons";
 import { formatCurrency } from "@/lib/currency";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ export default async function SuppliersReportPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requirePageAccess("REPORTS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const [t, locale, { items: suppliers, total, pageSize }] = await Promise.all([

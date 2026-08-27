@@ -13,6 +13,7 @@ import { GenerateInvoiceDialog } from "@/features/orders/components/generate-inv
 import { OrderCustomerCard } from "@/features/orders/components/order-customer-card";
 import { InvoiceLockedNotice } from "@/features/orders/components/invoice-locked-notice";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -43,6 +44,8 @@ export default async function OrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePageAccess("ORDERS_VIEW");
+
   const { id } = await params;
   const [t, order, customers, productRows] = await Promise.all([
     getDictionary(),

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import { findCustomerByPhone } from "@/features/customers/queries";
@@ -15,8 +15,8 @@ type CreateCustomerResult = ActionResult & { customerId?: string };
 export async function createCustomer(
   input: unknown,
 ): Promise<CreateCustomerResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = customerSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -49,8 +49,8 @@ export async function updateCustomer(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = customerSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -100,8 +100,8 @@ export async function adjustCustomerBalanceManual(
   customerId: string,
   input: { delta: number; note?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!Number.isFinite(input.delta) || Math.abs(input.delta) < 0.005) {
     return { error: "الرجاء إدخال مبلغ صحيح" };
@@ -126,8 +126,7 @@ export async function findCustomerByPhoneAction(
   phone: string,
   excludeId?: string,
 ) {
-  const session = await auth();
-  if (!session?.user) return [];
+  if (!(await hasPermission("CUSTOMERS_MANAGE"))) return [];
   if (phone.trim().length < 6) return [];
   return findCustomerByPhone(phone, excludeId);
 }
@@ -136,8 +135,8 @@ export async function deleteCustomer(
   id: string,
   password: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
   try {
@@ -154,8 +153,8 @@ export async function deleteCustomers(
   ids: string[],
   password?: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
@@ -182,8 +181,8 @@ export async function toggleCustomerFavorite(
   id: string,
   isFavorite: boolean,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("CUSTOMERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   await prisma.customer.update({
     where: { id },

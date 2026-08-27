@@ -12,6 +12,9 @@ import { ProductsTable } from "@/features/products/components/products-table";
 import { ProductFormSheet } from "@/features/products/components/product-form-sheet";
 import { ImportProductsDialog } from "@/features/products/components/import-products-dialog";
 import { ProductBarcodeLookup } from "@/features/products/components/product-barcode-lookup";
+import { ProductsFilterBar } from "@/features/products/components/products-filter-bar";
+import type { ProductQuantitySort, ProductStockFilter } from "@/features/products/queries";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +27,21 @@ export default async function ProductsPage({
     q?: string;
     new?: string;
     edit?: string;
+    stock?: string;
+    sort?: string;
   }>;
 }) {
+  await requirePageAccess("PRODUCTS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
+  const stock: ProductStockFilter = ["low", "out", "available"].includes(params.stock ?? "")
+    ? (params.stock as ProductStockFilter)
+    : "all";
+  const sort: ProductQuantitySort = ["quantityAsc", "quantityDesc"].includes(params.sort ?? "")
+    ? (params.sort as ProductQuantitySort)
+    : "newest";
 
   const [
     t,
@@ -38,7 +51,7 @@ export default async function ProductsPage({
     editingProduct,
   ] = await Promise.all([
     getDictionary(),
-    getProductsPage({ query, page }),
+    getProductsPage({ query, page, stock, sort }),
     getCategoryOptions(),
     getBrandOptions(),
     params.edit ? getProductById(params.edit) : Promise.resolve(null),
@@ -50,6 +63,8 @@ export default async function ProductsPage({
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
     if (page > 1) sp.set("page", String(page));
+    if (stock !== "all") sp.set("stock", stock);
+    if (sort !== "newest") sp.set("sort", sort);
     for (const [key, value] of Object.entries(extra)) sp.set(key, value);
     return `/dashboard/products?${sp.toString()}`;
   }
@@ -70,7 +85,10 @@ export default async function ProductsPage({
           </div>
         }
       />
-      <DataTableSearch placeholder={t.products.searchPlaceholder} />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <DataTableSearch placeholder={t.products.searchPlaceholder} />
+        <ProductsFilterBar />
+      </div>
       {items.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -85,7 +103,11 @@ export default async function ProductsPage({
             pageSize={pageSize}
             total={total}
             basePath="/dashboard/products"
-            searchParams={{ q: query }}
+            searchParams={{
+              q: query,
+              stock: stock === "all" ? undefined : stock,
+              sort: sort === "newest" ? undefined : sort,
+            }}
           />
         </>
       )}

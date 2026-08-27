@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiPermission } from "@/lib/permissions";
 import { createUploadSignature } from "@/lib/cloudinary";
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const access = await requireApiPermission("PRODUCTS_MANAGE");
+  if (!access.ok) return access.response;
 
   const folder = "inventory-system/products";
   const { timestamp, signature } = createUploadSignature({ folder });

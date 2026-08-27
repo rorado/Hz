@@ -4,11 +4,14 @@ import { BackButton } from "@/components/shared/back-button";
 import { getProductPickerOptions } from "@/features/products/queries";
 import { getCustomerOptions } from "@/features/customers/queries";
 import { OrderForm } from "@/features/orders/components/order-form";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewOrderPage() {
+  await requirePageAccess("ORDERS_MANAGE");
+
   const [t, productRows, customers] = await Promise.all([
     getDictionary(),
     getProductPickerOptions(),

@@ -209,6 +209,7 @@ export function GenerateInvoiceDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AR">العربية</SelectItem>
+                <SelectItem value="EN">English</SelectItem>
                 <SelectItem value="FR">Français</SelectItem>
               </SelectContent>
             </Select>

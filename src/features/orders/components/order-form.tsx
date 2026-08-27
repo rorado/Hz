@@ -344,9 +344,6 @@ export function OrderForm({
                                           `items.${index}.price`,
                                           product.price1,
                                         );
-                                        if (index === fields.length - 1) {
-                                          append({ productId: "", quantity: 1, price: 0 });
-                                        }
                                       }
                                     }}
                                     t={t}

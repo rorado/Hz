@@ -17,6 +17,8 @@ import { InvoiceForm } from "@/features/invoices/components/invoice-form";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { RecordPaymentDialog } from "@/features/invoices/components/record-payment-dialog";
 import { formatCurrency } from "@/lib/currency";
+import { formatSequenceNumber } from "@/lib/sequence-number";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 
@@ -27,6 +29,8 @@ export default async function InvoiceEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePageAccess("INVOICES_VIEW");
+
   const { id } = await params;
   const [t, locale, invoice, productRows, customers, categories, brands] = await Promise.all([
     getDictionary(),
@@ -90,6 +94,14 @@ export default async function InvoiceEditPage({
 
       <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4">
         <PaymentStatusBadge status={invoice.paymentStatus} />
+        <p className="text-sm">
+          <span className="text-muted-foreground">
+            {t.invoices.sequenceNumberLabel}:{" "}
+          </span>
+          <span dir="ltr" className="font-medium tabular-nums">
+            {formatSequenceNumber(invoice.sequenceNumber)}
+          </span>
+        </p>
         <p className="text-sm">
           <span className="text-muted-foreground">
             {t.invoices.remainingBalance}:{" "}

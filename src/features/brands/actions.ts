@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
 import { brandSchema } from "@/features/brands/schema";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
@@ -10,8 +10,8 @@ import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 type ActionResult = { error?: string; success?: boolean };
 
 export async function createBrand(input: unknown): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = brandSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -40,8 +40,8 @@ export async function updateBrand(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = brandSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -83,8 +83,8 @@ export async function updateBrand(
 }
 
 export async function deleteBrand(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const brand = await prisma.brand.findUnique({
     where: { id },
@@ -107,8 +107,8 @@ export async function deleteBrand(id: string): Promise<ActionResult> {
 }
 
 export async function deleteBrands(ids: string[]): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   const brands = await prisma.brand.findMany({

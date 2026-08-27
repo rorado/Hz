@@ -28,7 +28,7 @@ export const paymentLineSchema = z.object({
 });
 
 export const invoiceSchema = z.object({
-  language: z.enum(["AR", "FR"]),
+  language: z.enum(["AR", "EN", "FR"]),
   customerId: z.string().min(1, { error: "الرجاء اختيار عميل" }),
   customerName: z
     .string()
@@ -65,5 +65,6 @@ export type InvoiceOutput = z.output<typeof invoiceSchema>;
 
 export const INVOICE_LANGUAGE_LABELS: Record<string, string> = {
   AR: "العربية",
+  EN: "English",
   FR: "Français",
 };

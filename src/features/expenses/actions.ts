@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { expenseSchema } from "@/features/expenses/schema";
 
 type ActionResult = { error?: string; success?: boolean };
 
 export async function createExpense(input: unknown): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("EXPENSES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = expenseSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -31,8 +31,8 @@ export async function updateExpense(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("EXPENSES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = expenseSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -52,8 +52,8 @@ export async function updateExpense(
 }
 
 export async function deleteExpense(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("EXPENSES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   await prisma.expense.delete({ where: { id } });
 
@@ -62,8 +62,8 @@ export async function deleteExpense(id: string): Promise<ActionResult> {
 }
 
 export async function deleteExpenses(ids: string[]): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("EXPENSES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   await prisma.expense.deleteMany({ where: { id: { in: ids } } });

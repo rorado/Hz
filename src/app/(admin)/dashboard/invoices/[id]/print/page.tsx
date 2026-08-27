@@ -8,13 +8,14 @@ import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-but
 import { InvoicePrintTotals } from "@/features/invoices/components/invoice-print-totals";
 import { BackButton } from "@/components/shared/back-button";
 import { companyConfig } from "@/config/company";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
 import { formatDateTime } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
-type Lang = "ar" | "fr";
+type Lang = "ar" | "en" | "fr";
 
 const LABELS: Record<
   Lang,
@@ -100,6 +101,33 @@ const LABELS: Record<
     totalWeight: "Poids total (kg)",
     thankYou: "Merci pour votre confiance",
   },
+  en: {
+    title: "Invoice",
+    invoiceNumber: "Invoice number",
+    date: "Date",
+    billTo: "Bill to",
+    phone: "Phone",
+    product: "Product",
+    quantity: "Quantity",
+    unitPrice: "Unit price",
+    lineTotal: "Line total",
+    total: "Products total",
+    previousPayment: "Previous payment",
+    previousDebts: "Previous balance",
+    oldAccountPrompt: "This customer has a previous balance of",
+    includeOldAccount: "Include previous balance",
+    excludeOldAccount: "Exclude previous balance",
+    selectInvoicesTitle: "Select previous invoices to include",
+    selectAllInvoices: "Select all",
+    invoiceTotal: "Total",
+    totalPaid: "Paid",
+    remaining: "Remaining",
+    done: "Done",
+    grandTotal: "Grand total",
+    itemsCount: "Number of products",
+    totalWeight: "Total weight (kg)",
+    thankYou: "Thank you for your business",
+  },
 };
 
 export default async function InvoicePrintPage({
@@ -109,6 +137,8 @@ export default async function InvoicePrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
+  await requirePageAccess("INVOICES_VIEW");
+
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
@@ -118,10 +148,11 @@ export default async function InvoicePrintPage({
   ]);
   if (!invoice) notFound();
 
+  const requestedLang = langParam ?? invoice.language.toLowerCase();
   const lang: Lang =
-    (langParam ?? invoice.language.toLowerCase()) === "fr" ? "fr" : "ar";
+    requestedLang === "en" || requestedLang === "fr" ? requestedLang : "ar";
   const t = LABELS[lang];
-  const dir = lang === "fr" ? "ltr" : "rtl";
+  const dir = lang === "ar" ? "rtl" : "ltr";
 
   const itemsTotal = invoice.items.reduce(
     (sum, item) => sum + Number(item.unitPrice) * item.quantity,

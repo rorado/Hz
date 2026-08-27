@@ -1,8 +1,9 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +20,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsiblePanel,
+} from "@/components/ui/collapsible";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -33,32 +39,105 @@ import { BrandMark } from "@/components/shared/brand-mark";
 import { getAdminNavGroups } from "@/components/layout/admin-nav-items";
 import { useT, useLocale } from "@/i18n/locale-provider";
 import { useDirection } from "@/components/ui/direction";
-import { companyConfig } from "@/config/company";
 import { logout } from "@/features/auth/actions";
 import { cn } from "@/lib/utils";
+import type { PermissionKey } from "@/lib/permission-modules";
+
+const COLLAPSED_GROUPS_STORAGE_KEY = "dashboard-sidebar-collapsed-groups";
+// The native "storage" event only fires in *other* tabs than the one that
+// wrote the change, so a same-tab toggle dispatches this too — otherwise
+// useSyncExternalStore would never see its own write.
+const COLLAPSED_GROUPS_CHANGE_EVENT = "dashboard-sidebar-collapsed-groups-change";
+
+function subscribeToCollapsedGroups(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(COLLAPSED_GROUPS_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(COLLAPSED_GROUPS_CHANGE_EVENT, onChange);
+  };
+}
+
+function getCollapsedGroupsSnapshot(): string {
+  try {
+    return localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+
+function getCollapsedGroupsServerSnapshot(): string {
+  return "[]";
+}
+
+/** Remembers which nav groups the admin has collapsed, per browser — reads
+ * through useSyncExternalStore (the React-blessed way to read/subscribe to
+ * an external store like localStorage) rather than an effect + setState, so
+ * there's no extra render pass and no hydration mismatch: the server and
+ * first client render both see "[]" via getServerSnapshot, and the real
+ * stored value is picked up right after via the normal external-store
+ * re-render React already does for that case. */
+function useCollapsedGroups() {
+  const raw = useSyncExternalStore(
+    subscribeToCollapsedGroups,
+    getCollapsedGroupsSnapshot,
+    getCollapsedGroupsServerSnapshot,
+  );
+
+  let collapsed: string[];
+  try {
+    collapsed = JSON.parse(raw);
+  } catch {
+    collapsed = [];
+  }
+
+  function setGroupCollapsed(label: string, isCollapsed: boolean) {
+    const next = isCollapsed
+      ? [...collapsed.filter((l) => l !== label), label]
+      : collapsed.filter((l) => l !== label);
+    try {
+      localStorage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Ignore — the toggle still applies visually via the dispatched event
+      // below, it just won't be remembered next time.
+    }
+    window.dispatchEvent(new Event(COLLAPSED_GROUPS_CHANGE_EVENT));
+  }
+
+  return [collapsed, setGroupCollapsed] as const;
+}
 
 export function AppSidebar({
   adminName,
+  appName,
+  permissions,
   pendingOrders,
   lowStock,
   unpaidInvoices,
 }: {
   adminName: string;
+  appName: string;
+  permissions: PermissionKey[] | "full";
   pendingOrders: number;
   lowStock: number;
   unpaidInvoices: number;
 }) {
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
+  const { state: sidebarState, setOpenMobile } = useSidebar();
   const t = useT();
   const { locale } = useLocale();
   const direction = useDirection();
-  const adminNavGroups = getAdminNavGroups(t);
+  const adminNavGroups = getAdminNavGroups(t, permissions);
+  const [collapsedGroups, setGroupCollapsed] = useCollapsedGroups();
   const badgeValues: Record<string, number> = {
     pendingOrders,
     lowStock,
     unpaidInvoices,
   };
+
+  function isItemActive(href: string) {
+    return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+  }
 
   return (
     <Sidebar side={direction === "rtl" ? "right" : "left"} collapsible="icon">
@@ -80,7 +159,7 @@ export function AppSidebar({
         >
           <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
             <span className="truncate text-base font-bold tracking-tight">
-              {companyConfig.name}
+              {appName}
             </span>
             <span className="truncate text-xs text-sidebar-foreground/60">
               {t.sidebar.subtitle}
@@ -90,60 +169,95 @@ export function AppSidebar({
         </Link>
       </SidebarHeader>
       <SidebarContent className="gap-1">
-        {adminNavGroups.map((group, groupIndex) => (
-          <SidebarGroup key={group.label ?? groupIndex}>
-            {group.label && (
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1.5">
-                {group.items.map((item) => {
-                  const isActive =
-                    item.href === "/dashboard"
-                      ? pathname === "/dashboard"
-                      : pathname.startsWith(item.href);
-                  const badgeValue = item.badgeKey
-                    ? badgeValues[item.badgeKey]
-                    : undefined;
+        {adminNavGroups.map((group, groupIndex) => {
+          const menu = (
+            <SidebarMenu className="gap-1.5">
+              {group.items.map((item) => {
+                const isActive = isItemActive(item.href);
+                const badgeValue = item.badgeKey
+                  ? badgeValues[item.badgeKey]
+                  : undefined;
 
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        tooltip={item.label}
-                        className={cn(
-                          "rounded-lg data-active:bg-primary data-active:font-semibold data-active:text-primary-foreground data-active:shadow-sm data-active:hover:bg-primary data-active:hover:text-primary-foreground",
-                        )}
-                        render={
-                          <Link
-                            href={item.href}
-                            onClick={() => setOpenMobile(false)}
-                          >
-                            <item.icon />
-                            <span>{item.label}</span>
-                          </Link>
-                        }
-                      />
-                      {!!badgeValue && badgeValue > 0 && (
-                        <SidebarMenuBadge
-                          className={cn(
-                            isActive && "peer-data-active/menu-button:text-primary-foreground",
-                            item.badgeKey === "lowStock" ||
-                              item.badgeKey === "unpaidInvoices"
-                              ? "bg-destructive/15 text-destructive"
-                              : "bg-primary/15 text-primary",
-                          )}
-                        >
-                          {badgeValue.toLocaleString(locale)}
-                        </SidebarMenuBadge>
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={cn(
+                        "rounded-lg data-active:bg-primary data-active:font-semibold data-active:text-primary-foreground data-active:shadow-sm data-active:hover:bg-primary data-active:hover:text-primary-foreground",
                       )}
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                      render={
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      }
+                    />
+                    {!!badgeValue && badgeValue > 0 && (
+                      <SidebarMenuBadge
+                        className={cn(
+                          isActive && "peer-data-active/menu-button:text-primary-foreground",
+                          item.badgeKey === "lowStock" ||
+                            item.badgeKey === "unpaidInvoices"
+                            ? "bg-destructive/15 text-destructive"
+                            : "bg-primary/15 text-primary",
+                        )}
+                      >
+                        {badgeValue.toLocaleString(locale)}
+                      </SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          );
+
+          // The first group (dashboard overview link) has no label — nothing
+          // to collapse, just render it plainly.
+          if (!group.label) {
+            return (
+              <SidebarGroup key={groupIndex}>
+                <SidebarGroupContent>{menu}</SidebarGroupContent>
+              </SidebarGroup>
+            );
+          }
+
+          // Never collapse away the section the admin is currently in —
+          // navigating into a group always reveals it, even if it was
+          // previously collapsed; the icon-only sidebar state always shows
+          // every icon regardless of the per-group preference, since there's
+          // no room for a group heading to click there anyway.
+          const isActiveGroup = group.items.some((item) => isItemActive(item.href));
+          const isOpen =
+            sidebarState === "collapsed" ||
+            isActiveGroup ||
+            !collapsedGroups.includes(group.label);
+
+          return (
+            <SidebarGroup key={group.label}>
+              <Collapsible
+                open={isOpen}
+                onOpenChange={(open) => setGroupCollapsed(group.label!, !open)}
+              >
+                <CollapsibleTrigger
+                  nativeButton={false}
+                  render={
+                    <SidebarGroupLabel className="group/collapsible-trigger flex w-full cursor-pointer items-center justify-between gap-2 select-none hover:bg-sidebar-accent/60 hover:text-sidebar-foreground" />
+                  }
+                >
+                  <span className="truncate">{group.label}</span>
+                  <ChevronDown className="size-3.5 shrink-0 text-sidebar-foreground/50 transition-transform duration-200 group-data-panel-open/collapsible-trigger:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsiblePanel>
+                  <SidebarGroupContent>{menu}</SidebarGroupContent>
+                </CollapsiblePanel>
+              </Collapsible>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

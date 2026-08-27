@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
 import { productSchema } from "@/features/products/schema";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
@@ -19,8 +19,7 @@ import {
 type ActionResult = { error?: string; success?: boolean };
 
 export async function findProductIdByBarcode(barcode: string) {
-  const session = await auth();
-  if (!session?.user) return null;
+  if (!(await hasPermission("PRODUCTS_VIEW"))) return null;
 
   const normalizedBarcode = barcode.trim();
   if (!normalizedBarcode) return null;
@@ -32,8 +31,8 @@ export async function findProductIdByBarcode(barcode: string) {
 }
 
 export async function createProduct(input: unknown): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -72,8 +71,8 @@ export async function updateProduct(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -410,8 +409,8 @@ export async function deleteProduct(
   id: string,
   password: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
   let deletedImages: Awaited<ReturnType<typeof forceDeleteProducts>>["images"];
@@ -442,8 +441,8 @@ export async function deleteProducts(
   ids: string[],
   password?: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
   if (ids.length === 0) return { success: true };
 

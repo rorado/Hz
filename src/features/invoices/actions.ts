@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { invoiceSchema } from "@/features/invoices/schema";
 import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
@@ -24,8 +24,7 @@ export async function checkInvoiceStockAvailability(
   items: Array<{ productId?: string | null; quantity: number }>,
   invoiceId?: string,
 ) {
-  const session = await auth();
-  if (!session?.user) return null;
+  if (!(await hasPermission("INVOICES_MANAGE"))) return null;
   const existingItems = invoiceId
     ? await prisma.invoiceItem.findMany({
         where: { invoiceId },
@@ -52,8 +51,7 @@ function balanceEffectReason(delta: number): BalanceChangeReason {
  * distributing an overpayment across a customer's other outstanding
  * invoices before the new invoice even exists yet. */
 export async function fetchCustomerOutstandingInvoices(customerId: string) {
-  const session = await auth();
-  if (!session?.user) return [];
+  if (!(await hasPermission("INVOICES_MANAGE"))) return [];
   const invoices = await getCustomerOutstandingInvoices(customerId);
   // Server action return values cross the same serialization boundary as
   // RSC props — Decimal instances aren't plain objects, so they have to be
@@ -78,8 +76,8 @@ export async function createInvoice(
     allowNegativeStock?: boolean;
   },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -149,11 +147,18 @@ export async function createInvoice(
 
       const stockItems = parsed.data.items.filter((item) => item.productId);
       for (const item of stockItems) {
-        const updated = await tx.product.updateMany({
-          where: { id: item.productId!, quantity: { gte: item.quantity } },
-          data: { quantity: { decrement: item.quantity } },
-        });
-        if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+        if (options?.allowNegativeStock) {
+          await tx.product.update({
+            where: { id: item.productId! },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        } else {
+          const updated = await tx.product.updateMany({
+            where: { id: item.productId!, quantity: { gte: item.quantity } },
+            data: { quantity: { decrement: item.quantity } },
+          });
+          if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+        }
         await tx.inventoryMovement.create({
           data: {
             productId: item.productId!,
@@ -194,8 +199,8 @@ export async function updateInvoice(
   input: unknown,
   options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -325,8 +330,8 @@ export async function deleteInvoice(
   id: string,
   options?: { applyBalanceChange?: boolean; password?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(options?.password)) {
     return { error: DELETE_PASSWORD_ERROR };
   }
@@ -352,8 +357,8 @@ export async function deleteInvoices(
   decisions: { id: string; applyBalanceChange?: boolean }[],
   password?: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (decisions.length === 0) return { success: true };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
@@ -386,8 +391,8 @@ export async function getOrCreateInvoiceForOrder(
     excessToBalance?: boolean;
   },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const existing = await prisma.invoice.findUnique({
     where: { orderId },
@@ -402,11 +407,6 @@ export async function getOrCreateInvoiceForOrder(
     include: { items: { include: { product: true } } },
   });
   if (!order) return { error: "الطلب غير موجود" };
-
-  if (order.status !== "COMPLETED") {
-    const stockError = await validateAvailableStock(order.items);
-    if (stockError) return { error: stockError };
-  }
 
   const payments = options.payments.filter((line) => line.amount > 0);
 
@@ -464,11 +464,13 @@ export async function getOrCreateInvoiceForOrder(
 
       if (order.status !== "COMPLETED") {
         for (const item of order.items) {
-          const updated = await tx.product.updateMany({
-            where: { id: item.productId, quantity: { gte: item.quantity } },
+          // Stock is no longer a hard gate here — an order can be invoiced
+          // even if it oversold, same as this dialog already allows a
+          // customer's balance to go negative rather than blocking.
+          await tx.product.updateMany({
+            where: { id: item.productId },
             data: { quantity: { decrement: item.quantity } },
           });
-          if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
           await tx.inventoryMovement.create({
             data: {
               productId: item.productId,
@@ -495,11 +497,7 @@ export async function getOrCreateInvoiceForOrder(
 
       return created.id;
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-      const stockError = await validateAvailableStock(order.items);
-      return { error: stockError ?? "الكمية المتوفرة غير كافية" };
-    }
+  } catch {
     return { error: "حدث خطأ أثناء إنشاء الفاتورة" };
   }
 
@@ -517,8 +515,8 @@ export async function recordPayment(
   invoiceId: string,
   input: { amount: number; method: PaymentMethod; note?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!(input.amount > 0)) {
     return { error: "الرجاء إدخال مبلغ صحيح" };
@@ -588,14 +586,11 @@ export async function recordPayment(
 
 /**
  * Records one payment against a customer's outstanding invoices, oldest
- * first, capping the amount given to each invoice at that invoice's own
- * remaining balance — so no single invoice's paidAmount ever exceeds its
- * total and no invoice silently overflows into رصيد on its own. Any money
- * left over after every selected invoice is fully paid is the caller's
- * `excessToBalance` decision: add it to the customer's رصيد as a standalone
- * credit (not tied to any one invoice), or drop it entirely. This replaces
- * the old implicit behavior where paying more than a single invoice's total
- * always became رصيد automatically.
+ * first, capping the normal allocation at each invoice's remaining balance.
+ * If the caller accepts an excess as customer credit, that excess is stored
+ * on the final Payment row. The invoice's balanceEffectApplied therefore
+ * tracks it, allowing payment edits/deletions to reverse the exact credit
+ * later instead of leaving an anonymous, orphaned رصيد adjustment.
  */
 export async function recordPaymentAcrossInvoices(
   customerId: string,
@@ -614,8 +609,8 @@ export async function recordPaymentAcrossInvoices(
     batchId?: string;
   },
 ): Promise<ActionResult & { batchId?: string }> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!(input.amount > 0)) {
     return { error: "الرجاء إدخال مبلغ صحيح" };
@@ -657,15 +652,28 @@ export async function recordPaymentAcrossInvoices(
   }
 
   const excess = Math.max(0, amountLeft);
+  // Keep an accepted overpayment attached to a real Payment row instead of
+  // creating an anonymous balance credit. This makes later edit/delete
+  // operations able to recompute and reverse that credit exactly, even when
+  // the customer's current balance is too small (adjustCustomerBalance
+  // deliberately permits the resulting negative balance).
+  if (allocations.length === 0 && excess > 0.005 && input.excessToBalance) {
+    allocations.push({ invoice: invoices[0], allocated: 0 });
+  }
   const batchId = input.batchId ?? crypto.randomUUID();
 
   try {
     await prisma.$transaction(async (tx) => {
-      for (const { invoice, allocated } of allocations) {
-        if (allocated <= 0.005) continue;
+      for (const [index, { invoice, allocated }] of allocations.entries()) {
+        const creditedExcess =
+          input.excessToBalance && index === allocations.length - 1
+            ? excess
+            : 0;
+        const recordedAmount = allocated + creditedExcess;
+        if (recordedAmount <= 0.005) continue;
 
         const total = Number(invoice.total);
-        const newPaidAmount = Number(invoice.paidAmount) + allocated;
+        const newPaidAmount = Number(invoice.paidAmount) + recordedAmount;
         const paymentStatus = computePaymentStatus(total, newPaidAmount);
 
         const allPayments = [
@@ -673,7 +681,7 @@ export async function recordPaymentAcrossInvoices(
             amount: Number(p.amount),
             method: p.method as string,
           })),
-          { amount: allocated, method: input.method as string },
+          { amount: recordedAmount, method: input.method as string },
         ];
         const newBalanceEffect = computeBalanceEffect(total, allPayments);
         const previousBalanceEffect = Number(invoice.balanceEffectApplied);
@@ -682,9 +690,17 @@ export async function recordPaymentAcrossInvoices(
         await tx.payment.create({
           data: {
             invoiceId: invoice.id,
-            amount: allocated,
+            amount: recordedAmount,
             method: input.method,
-            note: input.note || null,
+            note:
+              creditedExcess > 0.005
+                ? [
+                    input.note,
+                    `Overpayment credited to balance: ${creditedExcess.toFixed(2)}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : input.note || null,
             batchId,
           },
         });
@@ -703,12 +719,6 @@ export async function recordPaymentAcrossInvoices(
         });
       }
 
-      if (excess > 0.005 && input.excessToBalance) {
-        await adjustCustomerBalance(tx, customerId, excess, {
-          reason: "OVERPAYMENT_CREDIT",
-          note: `فائض دفعة موزعة على ${allocations.length} فاتورة`,
-        });
-      }
     });
   } catch {
     return { error: "حدث خطأ أثناء تسجيل الدفعة" };
@@ -736,8 +746,8 @@ export async function updatePayment(
   paymentId: string,
   input: { amount: number; method: PaymentMethod; note?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!(input.amount > 0)) {
     return { error: "الرجاء إدخال مبلغ صحيح" };
@@ -825,8 +835,8 @@ export async function deletePayment(
   paymentId: string,
   password: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("INVOICES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
   const payment = await prisma.payment.findUnique({

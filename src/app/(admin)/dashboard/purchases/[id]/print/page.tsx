@@ -4,12 +4,13 @@ import { InvoicePrintButton } from "@/features/invoices/components/invoice-print
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
 import { BackButton } from "@/components/shared/back-button";
 import { companyConfig } from "@/config/company";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
-type Lang = "ar" | "fr";
+type Lang = "ar" | "en" | "fr";
 
 const LABELS: Record<
   Lang,
@@ -59,6 +60,21 @@ const LABELS: Record<
     totalWeight: "Poids total (kg)",
     supplierSignature: "Signature du fournisseur",
   },
+  en: {
+    title: "Purchase invoice",
+    orderNumber: "Purchase order number",
+    date: "Date",
+    supplier: "Supplier",
+    phone: "Phone",
+    product: "Product",
+    quantity: "Quantity",
+    unitCost: "Unit cost",
+    lineTotal: "Line total",
+    total: "Grand total",
+    itemsCount: "Number of products",
+    totalWeight: "Total weight (kg)",
+    supplierSignature: "Supplier signature",
+  },
 };
 
 export default async function PurchaseOrderPrintPage({
@@ -68,6 +84,8 @@ export default async function PurchaseOrderPrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
+  await requirePageAccess("PURCHASES_VIEW");
+
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
@@ -77,10 +95,11 @@ export default async function PurchaseOrderPrintPage({
   ]);
   if (!order) notFound();
 
+  const requestedLang = langParam ?? order.language.toLowerCase();
   const lang: Lang =
-    (langParam ?? order.language.toLowerCase()) === "fr" ? "fr" : "ar";
+    requestedLang === "en" || requestedLang === "fr" ? requestedLang : "ar";
   const t = LABELS[lang];
-  const dir = lang === "fr" ? "ltr" : "rtl";
+  const dir = lang === "ar" ? "rtl" : "ltr";
 
   const grandTotal = order.items.reduce(
     (sum, item) => sum + Number(item.unitCost) * item.quantity,

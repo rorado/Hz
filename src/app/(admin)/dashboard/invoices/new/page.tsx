@@ -6,11 +6,14 @@ import { getCustomerOptions } from "@/features/customers/queries";
 import { getCategoryOptions } from "@/features/categories/queries";
 import { getBrandOptions } from "@/features/brands/queries";
 import { InvoiceForm } from "@/features/invoices/components/invoice-form";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewInvoicePage() {
+  await requirePageAccess("INVOICES_MANAGE");
+
   const [t, productRows, customers, categories, brands] = await Promise.all([
     getDictionary(),
     getProductPickerOptions(),

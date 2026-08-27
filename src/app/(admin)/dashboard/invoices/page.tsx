@@ -8,6 +8,7 @@ import { DataTableSearch } from "@/components/data-table/data-table-search";
 import { getInvoicesPage } from "@/features/invoices/queries";
 import { InvoicesTable } from "@/features/invoices/components/invoices-table";
 import { InvoicesFilterBar } from "@/features/invoices/components/invoices-filter-bar";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import type { PaymentStatus } from "@/generated/prisma/client";
 
@@ -20,6 +21,8 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<{ page?: string; q?: string; paymentStatus?: string }>;
 }) {
+  await requirePageAccess("INVOICES_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;
@@ -60,6 +63,7 @@ export default async function InvoicesPage({
           <InvoicesTable
             data={items.map((item) => ({
               id: item.id,
+              sequenceNumber: item.sequenceNumber,
               invoiceNumber: item.invoiceNumber,
               language: item.language,
               customerName: item.customerName,

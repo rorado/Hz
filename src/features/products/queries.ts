@@ -5,16 +5,23 @@ import type { Prisma } from "@/generated/prisma/client";
 
 export const PRODUCTS_PAGE_SIZE = 10;
 
+export type ProductStockFilter = "all" | "low" | "out" | "available";
+export type ProductQuantitySort = "newest" | "quantityAsc" | "quantityDesc";
+
 export async function getProductsPage({
   query,
   page,
   categoryId,
   status,
+  stock,
+  sort = "newest",
 }: {
   query?: string;
   page: number;
   categoryId?: string;
   status?: "ACTIVE" | "INACTIVE";
+  stock?: ProductStockFilter;
+  sort?: ProductQuantitySort;
 }) {
   const where: Prisma.ProductWhereInput = {
     ...(query
@@ -28,7 +35,21 @@ export async function getProductsPage({
       : {}),
     ...(categoryId ? { categoryId } : {}),
     ...(status ? { status } : {}),
+    ...(stock === "low"
+      ? { quantity: { lte: prisma.product.fields.minStockLevel } }
+      : stock === "out"
+        ? { quantity: { lte: 0 } }
+        : stock === "available"
+          ? { quantity: { gt: 0 } }
+          : {}),
   };
+
+  const orderBy: Prisma.ProductOrderByWithRelationInput[] =
+    sort === "quantityAsc"
+      ? [{ quantity: "asc" }, { createdAt: "desc" }]
+      : sort === "quantityDesc"
+        ? [{ quantity: "desc" }, { createdAt: "desc" }]
+        : [{ createdAt: "desc" }];
 
   const [items, total] = await withDbRetry(() =>
     Promise.all([
@@ -45,7 +66,7 @@ export async function getProductsPage({
           brand: { select: { name: true } },
           images: { orderBy: { position: "asc" }, take: 1 },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip: (page - 1) * PRODUCTS_PAGE_SIZE,
         take: PRODUCTS_PAGE_SIZE,
       }),
@@ -208,6 +229,76 @@ export async function getLowStockProductsPage({ page }: { page: number }) {
     items: rows.map(({ totalCount, ...row }) => row),
     total,
     pageSize: LOW_STOCK_PAGE_SIZE,
+  };
+}
+
+export const PRODUCT_CUSTOMERS_PAGE_SIZE = 10;
+
+export async function getProductCustomersPage({
+  productId,
+  query,
+  page,
+}: {
+  productId: string;
+  query?: string;
+  page: number;
+}) {
+  const search = query ? `%${query}%` : null;
+  const rows = await prisma.$queryRaw<
+    {
+      customerId: string | null;
+      customerName: string;
+      customerPhone: string;
+      totalQuantity: number;
+      ordersCount: number;
+      lastPurchaseAt: Date;
+      totalCount: bigint;
+    }[]
+  >`
+    WITH customer_rows AS (
+      SELECT
+        o.id AS "orderId",
+        o."customerId",
+        o."customerName",
+        o."customerPhone",
+        o."createdAt",
+        oi.quantity
+      FROM "OrderItem" oi
+      INNER JOIN "Order" o ON o.id = oi."orderId"
+      WHERE oi."productId" = ${productId}
+    ),
+    grouped AS (
+      SELECT
+        COALESCE("customerId", 'guest:' || "customerPhone") AS "groupKey",
+        "customerId",
+        (ARRAY_AGG("customerName" ORDER BY "createdAt" DESC))[1] AS "customerName",
+        (ARRAY_AGG("customerPhone" ORDER BY "createdAt" DESC))[1] AS "customerPhone",
+        SUM(quantity)::int AS "totalQuantity",
+        COUNT(DISTINCT "orderId")::int AS "ordersCount",
+        MAX("createdAt") AS "lastPurchaseAt"
+      FROM customer_rows
+      GROUP BY "groupKey", "customerId"
+    )
+    SELECT
+      "customerId",
+      "customerName",
+      "customerPhone",
+      "totalQuantity",
+      "ordersCount",
+      "lastPurchaseAt",
+      COUNT(*) OVER()::bigint AS "totalCount"
+    FROM grouped
+    WHERE (${search}::text IS NULL OR "customerName" ILIKE ${search})
+    ORDER BY "lastPurchaseAt" DESC
+    LIMIT ${PRODUCT_CUSTOMERS_PAGE_SIZE} OFFSET ${(page - 1) * PRODUCT_CUSTOMERS_PAGE_SIZE}
+  `;
+
+  const total = rows.length > 0 ? Number(rows[0].totalCount) : 0;
+
+  return {
+    items: rows.map(({ totalCount, ...row }) => row),
+    total,
+    pageSize: PRODUCT_CUSTOMERS_PAGE_SIZE,
   };
 }
 

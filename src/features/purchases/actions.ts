@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { computePaymentStatus } from "@/lib/money";
 import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
 import {
@@ -22,8 +22,8 @@ function generatePurchaseOrderNumber() {
 export async function createPurchaseOrder(
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = purchaseOrderSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -33,23 +33,42 @@ export async function createPurchaseOrder(
     0,
   );
 
-  const order = await prisma.purchaseOrder.create({
-    data: {
-      orderNumber: generatePurchaseOrderNumber(),
-      supplierId: parsed.data.supplierId,
-      language: parsed.data.language,
-      total,
-      items: {
-        create: parsed.data.items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          unitCost: item.unitCost,
-        })),
+  const order = await prisma.$transaction(async (tx) => {
+    const created = await tx.purchaseOrder.create({
+      data: {
+        orderNumber: generatePurchaseOrderNumber(),
+        supplierId: parsed.data.supplierId,
+        language: parsed.data.language,
+        total,
+        items: {
+          create: parsed.data.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+          })),
+        },
       },
-    },
+    });
+
+    for (const item of parsed.data.items) {
+      if (item.updateProductPurchasePrice) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { purchasePrice: item.unitCost },
+        });
+      }
+    }
+
+    return created;
   });
 
   revalidatePath("/dashboard/purchases");
+  revalidatePath("/dashboard/products");
+  for (const item of parsed.data.items) {
+    if (item.updateProductPurchasePrice) {
+      revalidatePath(`/dashboard/products/${item.productId}`);
+    }
+  }
   redirect(`/dashboard/purchases/${order.id}`);
 }
 
@@ -65,8 +84,8 @@ export async function updatePurchaseOrderItems(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = purchaseOrderItemsSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -80,24 +99,38 @@ export async function updatePurchaseOrderItems(
   );
 
   try {
-    await prisma.$transaction([
-      prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } }),
-      prisma.purchaseOrderItem.createMany({
+    await prisma.$transaction(async (tx) => {
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
+      await tx.purchaseOrderItem.createMany({
         data: parsed.data.items.map((item) => ({
           purchaseOrderId: id,
           productId: item.productId,
           quantity: item.quantity,
           unitCost: item.unitCost,
         })),
-      }),
-      prisma.purchaseOrder.update({ where: { id }, data: { total } }),
-    ]);
+      });
+      await tx.purchaseOrder.update({ where: { id }, data: { total } });
+      for (const item of parsed.data.items) {
+        if (item.updateProductPurchasePrice) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { purchasePrice: item.unitCost },
+          });
+        }
+      }
+    });
   } catch {
     return { error: "حدث خطأ أثناء تحديث عناصر أمر الشراء" };
   }
 
   revalidatePath("/dashboard/purchases");
   revalidatePath(`/dashboard/purchases/${id}`);
+  revalidatePath("/dashboard/products");
+  for (const item of parsed.data.items) {
+    if (item.updateProductPurchasePrice) {
+      revalidatePath(`/dashboard/products/${item.productId}`);
+    }
+  }
   return { success: true };
 }
 
@@ -108,8 +141,8 @@ export async function recordSupplierPayment(
   purchaseOrderId: string,
   input: { amount: number; method: PaymentMethod; note?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   if (!(input.amount > 0)) {
     return { error: "الرجاء إدخال مبلغ صحيح" };
@@ -154,7 +187,7 @@ export async function recordSupplierPayment(
           supplierId: order.supplierId, purchaseOrderId, reference: order.orderNumber,
           previousBalance, change: -input.amount, newBalance: previousBalance - input.amount,
           reason: "PURCHASE_PAYMENT", note: input.note || "استخدام رصيد المورد في الدفع",
-          createdById: session.user.id,
+          createdById: access.adminId,
         } });
       }
     });
@@ -174,8 +207,8 @@ export async function deleteSupplierPayment(
   paymentId: string,
   password: string,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
 
   const payment = await prisma.supplierPayment.findUnique({
@@ -208,7 +241,7 @@ export async function deleteSupplierPayment(
           supplierId: supplier.id, purchaseOrderId: order.id, reference: order.orderNumber,
           previousBalance, change: payment.amount, newBalance: previousBalance + Number(payment.amount),
           reason: "PAYMENT_DELETED", note: "إعادة الرصيد بعد حذف دفعة المورد",
-          createdById: session.user.id,
+          createdById: access.adminId,
         } });
       }
     });
@@ -223,8 +256,8 @@ export async function deleteSupplierPayment(
 }
 
 export async function receivePurchaseOrder(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const order = await prisma.purchaseOrder.findUnique({
     where: { id },
@@ -267,8 +300,8 @@ export async function receivePurchaseOrder(id: string): Promise<ActionResult> {
 }
 
 export async function cancelPurchaseOrder(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const order = await prisma.purchaseOrder.findUnique({ where: { id } });
   if (!order) return { error: "أمر الشراء غير موجود" };
@@ -287,8 +320,8 @@ export async function cancelPurchaseOrder(id: string): Promise<ActionResult> {
 }
 
 export async function deletePurchaseOrder(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   try {
     await prisma.purchaseOrder.delete({ where: { id } });
@@ -303,8 +336,8 @@ export async function deletePurchaseOrder(id: string): Promise<ActionResult> {
 export async function deletePurchaseOrders(
   ids: string[],
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   let failedCount = 0;

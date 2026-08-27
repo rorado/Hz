@@ -8,6 +8,7 @@ import { Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -38,7 +39,6 @@ import { useLocale } from "@/i18n/locale-provider";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
-import type { Locale } from "@/i18n/config";
 import type { InvoiceLanguage } from "@/generated/prisma/client";
 
 type Option = { id: string; name: string };
@@ -56,69 +56,8 @@ type ProductOption = {
   price3: number;
 };
 
-type PriceTier = "price1" | "price2" | "price3" | "custom";
-
 function productLabel(product: ProductOption, none: string) {
   return product.id ? `${product.name} (${product.sku})` : none;
-}
-
-function priceTierLabel(price: number, product: ProductOption): PriceTier {
-  if (price === product.price1) return "price1";
-  if (price === product.price2) return "price2";
-  if (price === product.price3) return "price3";
-  return "custom";
-}
-
-function PriceTierField({
-  price,
-  product,
-  onChange,
-  t,
-  locale,
-}: {
-  price: number;
-  product: ProductOption | undefined;
-  onChange: (price: number) => void;
-  t: Dictionary;
-  locale: Locale;
-}) {
-  if (!product?.id) return null;
-
-  const tierLabels: Record<PriceTier, string> = {
-    price1: t.reports.columnPrice1,
-    price2: t.reports.columnPrice2,
-    price3: t.reports.columnPrice3,
-    custom: t.orders.customPrice,
-  };
-
-  return (
-    <Select
-      value={priceTierLabel(price, product)}
-      onValueChange={(tier) => {
-        if (tier === "price1") onChange(product.price1);
-        else if (tier === "price2") onChange(product.price2);
-        else if (tier === "price3") onChange(product.price3);
-      }}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue>
-          {(value: string) => tierLabels[value as PriceTier] ?? value}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="price1">
-          ({formatCurrency(product.price1, locale)})
-        </SelectItem>
-        <SelectItem value="price2">
-          ({formatCurrency(product.price2, locale)})
-        </SelectItem>
-        <SelectItem value="price3">
-          ({formatCurrency(product.price3, locale)})
-        </SelectItem>
-        <SelectItem value="custom">{t.orders.customPrice}</SelectItem>
-      </SelectContent>
-    </Select>
-  );
 }
 
 function SupplierPickerField({
@@ -224,9 +163,11 @@ function ProductPickerField({
 export function PurchaseOrderForm({
   suppliers,
   products,
+  defaultProductId,
 }: {
   suppliers: Option[];
   products: ProductOption[];
+  defaultProductId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const { t, locale } = useLocale();
@@ -243,13 +184,19 @@ export function PurchaseOrderForm({
     defaultValues: {
       supplierId: "",
       language: "AR",
-      items: [{ productId: "", quantity: 1, unitCost: 0 }],
+      items: [
+        {
+          productId: products.some((product) => product.id === defaultProductId)
+            ? (defaultProductId ?? "")
+            : "",
+          quantity: 1,
+          unitCost: 0,
+          updateProductPurchasePrice: true,
+        },
+      ],
     },
   });
 
-  const productsById = new Map(
-    products.map((product) => [product.id, product]),
-  );
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const items = watch("items");
   const total = items.reduce(
@@ -324,7 +271,10 @@ export function PurchaseOrderForm({
 
       <div className="space-y-3">
         <Label>{t.purchases.itemsLabel}</Label>
-        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: product.price1 }))} />
+        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: 0, updateProductPurchasePrice: true }))} />
+        <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-foreground">
+          {t.purchases.updateProductPurchasePriceHelp}
+        </p>
 
         <div
           className={
@@ -349,12 +299,7 @@ export function PurchaseOrderForm({
                       products={products}
                       onChange={(product) => {
                         productField.onChange(product?.id ?? "");
-                        if (product?.id) {
-                          setValue(`items.${index}.unitCost`, product.price1);
-                          if (index === fields.length - 1) {
-                            append({ productId: "", quantity: 1, unitCost: 0 });
-                          }
-                        }
+                        setValue(`items.${index}.unitCost`, 0);
                       }}
                       t={t}
                     />
@@ -372,25 +317,30 @@ export function PurchaseOrderForm({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{t.purchases.unitCostLabel}</Label>
-                <div className="flex w-32 flex-col gap-1.5">
-                  <PriceTierField
-                    price={Number(items?.[index]?.unitCost) || 0}
-                    product={productsById.get(
-                      items?.[index]?.productId ?? "",
-                    )}
-                    onChange={(price) =>
-                      setValue(`items.${index}.unitCost`, price)
-                    }
-                    t={t}
-                    locale={locale}
-                  />
+                <div className="w-32">
                   <Input
                     type="number"
                     min={0}
                     step="0.01"
+                    inputMode="decimal"
                     {...register(`items.${index}.unitCost`)}
                   />
                 </div>
+                <Controller
+                  control={control}
+                  name={`items.${index}.updateProductPurchasePrice`}
+                  render={({ field }) => (
+                    <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
+                      <Checkbox
+                        checked={field.value ?? false}
+                        onCheckedChange={(checked) =>
+                          field.onChange(checked === true)
+                        }
+                      />
+                      <span>{t.purchases.updateProductPurchasePriceLabel}</span>
+                    </label>
+                  )}
+                />
               </div>
               <Button
                 type="button"
@@ -411,7 +361,7 @@ export function PurchaseOrderForm({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => append({ productId: "", quantity: 1, unitCost: 0 })}
+          onClick={() => append({ productId: "", quantity: 1, unitCost: 0, updateProductPurchasePrice: true })}
         >
           <Plus className="size-4" />
           {t.purchases.addItemButton}

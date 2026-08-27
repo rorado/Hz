@@ -19,10 +19,32 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
+  const adminRole = await prisma.role.upsert({
+    where: { id: "role_admin" },
+    update: {},
+    create: {
+      id: "role_admin",
+      name: "Admin",
+      isSystem: true,
+      isFullAccess: true,
+    },
+  });
+  await prisma.role.upsert({
+    where: { id: "role_user" },
+    update: {},
+    create: { id: "role_user", name: "Staff" },
+  });
+
   const admin = await prisma.admin.upsert({
     where: { email },
     update: {},
-    create: { name, email, password: hashedPassword },
+    create: {
+      name,
+      email,
+      password: hashedPassword,
+      roleId: adminRole.id,
+      isActive: true,
+    },
   });
 
   console.log(`تم إنشاء حساب المدير: ${admin.email}`);

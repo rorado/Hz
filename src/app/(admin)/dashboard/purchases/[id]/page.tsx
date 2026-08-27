@@ -14,6 +14,7 @@ import { RecordSupplierPaymentDialog } from "@/features/purchases/components/rec
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { formatCurrency } from "@/lib/currency";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 
@@ -24,6 +25,8 @@ export default async function PurchaseOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePageAccess("PURCHASES_VIEW");
+
   const { id } = await params;
   const [t, locale, order, productRows] = await Promise.all([
     getDictionary(),
@@ -78,6 +81,16 @@ export default async function PurchaseOrderDetailPage({
             >
               <Printer className="size-4" />
               {t.purchases.printFrenchButton}
+            </Button>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link href={`/dashboard/purchases/${order.id}/print?lang=en`} />
+              }
+            >
+              <Printer className="size-4" />
+              {t.purchases.printEnglishButton}
             </Button>
             <BackButton fallbackHref="/dashboard/purchases" />
           </div>

@@ -12,6 +12,7 @@ import {
 import { CustomersTable } from "@/features/customers/components/customers-table";
 import { CustomersFilterBar } from "@/features/customers/components/customers-filter-bar";
 import { CustomerFormSheet } from "@/features/customers/components/customer-form-sheet";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import type { DebtFilter, CustomerSort } from "@/features/customers/queries";
 
@@ -40,6 +41,8 @@ export default async function CustomersPage({
     sort?: string;
   }>;
 }) {
+  await requirePageAccess("CUSTOMERS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;

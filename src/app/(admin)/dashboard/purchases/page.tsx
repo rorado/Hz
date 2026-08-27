@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { getPurchaseOrdersPage } from "@/features/purchases/queries";
 import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-orders-table";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export default async function PurchasesPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requirePageAccess("PURCHASES_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 

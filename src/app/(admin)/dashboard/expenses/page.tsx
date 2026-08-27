@@ -7,6 +7,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { getExpensesPage, getExpenseById } from "@/features/expenses/queries";
 import { ExpensesTable } from "@/features/expenses/components/expenses-table";
 import { ExpenseFormSheet } from "@/features/expenses/components/expense-form-sheet";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { formatCurrency } from "@/lib/currency";
 import type { ExpenseCategory } from "@/generated/prisma/client";
@@ -23,6 +24,8 @@ export default async function ExpensesPage({
     edit?: string;
   }>;
 }) {
+  await requirePageAccess("EXPENSES_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const category = params.category as ExpenseCategory | undefined;

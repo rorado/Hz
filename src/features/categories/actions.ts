@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
 import { categorySchema } from "@/features/categories/schema";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
@@ -10,8 +10,8 @@ import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 type ActionResult = { error?: string; success?: boolean };
 
 export async function createCategory(input: unknown): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -43,8 +43,8 @@ export async function updateCategory(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -93,8 +93,8 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const category = await prisma.category.findUnique({
     where: { id },
@@ -119,8 +119,8 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 }
 
 export async function deleteCategories(ids: string[]): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   const categories = await prisma.category.findMany({

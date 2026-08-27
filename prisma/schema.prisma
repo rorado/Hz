@@ -12,10 +12,69 @@ model Admin {
   name            String
   email           String           @unique
   password        String
+  isActive        Boolean          @default(true)
+  roleId          String
+  role            Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   salesReturns    SalesReturn[]
   purchaseReturns PurchaseReturn[]
+
+  @@index([roleId])
+}
+
+enum PermissionKey {
+  PRODUCTS_VIEW
+  PRODUCTS_MANAGE
+  ORDERS_VIEW
+  ORDERS_MANAGE
+  CUSTOMERS_VIEW
+  CUSTOMERS_MANAGE
+  INVENTORY_VIEW
+  INVENTORY_MANAGE
+  PURCHASES_VIEW
+  PURCHASES_MANAGE
+  INVOICES_VIEW
+  INVOICES_MANAGE
+  SUPPLIERS_VIEW
+  SUPPLIERS_MANAGE
+  EXPENSES_VIEW
+  EXPENSES_MANAGE
+  REPORTS_VIEW
+  REPORTS_MANAGE
+  RETURNS_VIEW
+  RETURNS_MANAGE
+  USERS_MANAGE
+  SETTINGS_MANAGE
+}
+
+model Role {
+  id           String           @id @default(cuid())
+  name         String           @unique
+  isSystem     Boolean          @default(false)
+  isFullAccess Boolean          @default(false)
+  permissions  RolePermission[]
+  admins       Admin[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model RolePermission {
+  id         String        @id @default(cuid())
+  roleId     String
+  role       Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission PermissionKey
+
+  @@unique([roleId, permission])
+}
+
+model SystemSettings {
+  id           String   @id @default(cuid())
+  appName      String?
+  appShortName String?
+  colorsLight  Json?
+  colorsDark   Json?
+  updatedAt    DateTime @updatedAt
 }
 
 model Category {
@@ -285,6 +344,7 @@ model Expense {
 
 enum InvoiceLanguage {
   AR
+  EN
   FR
 }
 
@@ -305,6 +365,11 @@ enum PaymentStatus {
 model Invoice {
   id                   String          @id @default(cuid())
   invoiceNumber        String          @unique
+  /** Simple 1, 2, 3, ... counter shown to admins in the invoices table and
+   * profile page (formatted as 001, 002, ...) — distinct from invoiceNumber,
+   * which is what shows up on the printed/customer-facing document. Postgres
+   * assigns this atomically, so concurrent invoice creation never races. */
+  sequenceNumber       Int             @unique @default(autoincrement())
   language             InvoiceLanguage @default(AR)
   customerId           String?
   customer             Customer?       @relation(fields: [customerId], references: [id])

@@ -9,6 +9,7 @@ import { getLocale, getDictionary } from "@/i18n/server";
 import { LocaleProvider } from "@/i18n/locale-provider";
 import { companyConfig } from "@/config/company";
 import { getThemeCss } from "@/config/apply-theme";
+import { getSystemSettings } from "@/features/settings/queries";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -22,9 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getDictionary();
+  const [t, settings] = await Promise.all([getDictionary(), getSystemSettings()]);
   return {
-    title: companyConfig.shortName,
+    title: settings.appShortName,
     description: t.common.siteDescription,
     icons: { icon: companyConfig.favicon },
   };
@@ -45,7 +46,7 @@ export default async function RootLayout({
       className={`${cairo.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <style>{getThemeCss()}</style>
+        <style>{await getThemeCss()}</style>
       </head>
       <body className="min-h-full flex flex-col">
         <LocaleProvider locale={locale} dictionary={dictionary}>

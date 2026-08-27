@@ -666,7 +666,10 @@ export function InvoiceForm({
 
       const result = await createInvoice(
         { ...values, payments: cappedPayments },
-        { batchId: distributed.batchId },
+        {
+          batchId: distributed.batchId,
+          allowNegativeStock: allowNegativeStockRef.current,
+        },
       );
       if (result?.error) {
         toast.error(result.error);
@@ -895,14 +898,6 @@ export function InvoiceForm({
                                           `items.${index}.unitPrice`,
                                           product.price1,
                                         );
-                                        if (index === fields.length - 1) {
-                                          append({
-                                            productId: "",
-                                            name: "",
-                                            quantity: 1,
-                                            unitPrice: 0,
-                                          });
-                                        }
                                       }
                                     }}
                                     t={t}

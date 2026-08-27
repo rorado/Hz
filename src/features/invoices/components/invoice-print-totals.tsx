@@ -51,7 +51,7 @@ export function InvoicePrintTotals({
   showPreviousPayment,
   otherOutstandingInvoices,
 }: {
-  lang: "ar" | "fr";
+  lang: "ar" | "en" | "fr";
   labels: {
     total: string;
     previousPayment: string;

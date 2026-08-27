@@ -10,12 +10,14 @@ import { INVOICE_LANGUAGE_LABELS } from "@/features/invoices/schema";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
 import { formatCurrency } from "@/lib/currency";
 import { formatDateTime } from "@/lib/date";
+import { formatSequenceNumber } from "@/lib/sequence-number";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Locale } from "@/i18n/config";
 import type { PaymentStatus } from "@/generated/prisma/client";
 
 export type InvoiceRow = {
   id: string;
+  sequenceNumber: number;
   invoiceNumber: string;
   language: string;
   customerName: string;
@@ -32,6 +34,15 @@ export function getInvoiceColumns(
   locale: Locale,
 ): ColumnDef<InvoiceRow>[] {
   return [
+    {
+      accessorKey: "sequenceNumber",
+      header: t.invoices.columnSequenceNumber,
+      cell: ({ row }) => (
+        <span dir="ltr" className="font-medium tabular-nums">
+          {formatSequenceNumber(row.original.sequenceNumber)}
+        </span>
+      ),
+    },
     {
       accessorKey: "invoiceNumber",
       header: t.invoices.columnInvoiceNumber,

@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { salesReturnSchema, purchaseReturnSchema } from "./schema";
 import type { Prisma } from "@/generated/prisma/client";
-import bcrypt from "bcryptjs";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 
@@ -16,8 +16,7 @@ export async function searchReturnSources(
   kind: "sales" | "purchase",
   rawQuery: string,
 ) {
-  const session = await auth();
-  if (!session?.user) return [];
+  if (!(await hasPermission("RETURNS_MANAGE"))) return [];
   const query = rawQuery.trim();
   if (!query) return [];
 
@@ -91,48 +90,16 @@ function returnActionError(error: unknown, fallback: string, safeMessages: strin
   return safeMessages.includes(error.message) ? error.message : fallback;
 }
 
-async function ensureAdminRecord(user: {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-}, verificationError: string) {
-  const existing = await prisma.admin.findFirst({
-    where: {
-      OR: [
-        { id: user.id },
-        ...(user.email ? [{ email: user.email }] : []),
-      ],
-    },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const email = user.email ?? process.env.SEED_ADMIN_EMAIL;
-  if (!email) throw new Error(verificationError);
-  const passwordHash = await bcrypt.hash(
-    process.env.SEED_ADMIN_PASSWORD ?? crypto.randomUUID(),
-    12,
-  );
-  const admin = await prisma.admin.create({
-    data: {
-      id: user.id,
-      name: user.name ?? process.env.SEED_ADMIN_NAME ?? "Admin",
-      email,
-      password: passwordHash,
-    },
-    select: { id: true },
-  });
-  return admin.id;
-}
-
 export async function createSalesReturn(input: unknown): Promise<Result> {
   const [session,t] = await Promise.all([auth(),getDictionary()]);
   if (!session?.user?.id) return { error: t.returns.unauthorized };
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
   const parsed = salesReturnSchema.safeParse(input);
   if (!parsed.success) return { error: t.returns.invalidData };
 
   try {
-    const createdById = await ensureAdminRecord(session.user,t.returns.adminVerificationError);
+    const createdById = session.user.id;
     const result = await prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({
         where: { id: parsed.data.invoiceId },
@@ -204,7 +171,7 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
     revalidatePath("/dashboard/inventory");
     return { success: true, id: result.id };
   } catch (error) {
-    const safe=[t.returns.invoiceNotFound,t.returns.invalidInvoiceItem,t.returns.refundExceedsValue,t.returns.adminVerificationError];
+    const safe=[t.returns.invoiceNotFound,t.returns.invalidInvoiceItem,t.returns.refundExceedsValue];
     const quantityPrefix=t.returns.quantityExceedsTemplate.split("{requested}")[0];
     if(error instanceof Error && error.message.startsWith(quantityPrefix)) safe.push(error.message);
     return { error: returnActionError(error, t.returns.createSalesError,safe) };
@@ -214,10 +181,12 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
 export async function createPurchaseReturn(input: unknown): Promise<Result> {
   const [session,t] = await Promise.all([auth(),getDictionary()]);
   if (!session?.user?.id) return { error: t.returns.unauthorized };
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
   const parsed = purchaseReturnSchema.safeParse(input);
   if (!parsed.success) return { error: t.returns.invalidData };
   try {
-    const createdById = await ensureAdminRecord(session.user,t.returns.adminVerificationError);
+    const createdById = session.user.id;
     const result = await prisma.$transaction(async (tx) => {
       const purchase = await tx.purchaseOrder.findUnique({
         where: { id: parsed.data.purchaseId },
@@ -278,7 +247,7 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
     revalidatePath("/dashboard/inventory");
     return { success: true, id: result.id };
   } catch (error) {
-    const safe=[t.returns.purchaseNotFound,t.returns.receivedOnly,t.returns.invalidPurchaseItem,t.returns.refundExceedsValue,t.returns.adminVerificationError];
+    const safe=[t.returns.purchaseNotFound,t.returns.receivedOnly,t.returns.invalidPurchaseItem,t.returns.refundExceedsValue];
     const quantityPrefix=t.returns.quantityExceedsTemplate.split("{requested}")[0];
     const stockPrefix=t.returns.stockInsufficientTemplate.split("{product}")[0];
     if(error instanceof Error && (error.message.startsWith(quantityPrefix) || error.message.startsWith(stockPrefix))) safe.push(error.message);

@@ -11,6 +11,7 @@ import {
 } from "@/features/brands/queries";
 import { BrandsTable } from "@/features/brands/components/brands-table";
 import { BrandFormSheet } from "@/features/brands/components/brand-form-sheet";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function BrandsPage({
     edit?: string;
   }>;
 }) {
+  await requirePageAccess("PRODUCTS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;

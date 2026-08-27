@@ -11,6 +11,7 @@ import {
 } from "@/features/orders/queries";
 import { OrdersTable } from "@/features/orders/components/orders-table";
 import { OrdersFilterBar } from "@/features/orders/components/orders-filter-bar";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import type { OrderStatus } from "@/generated/prisma/client";
 
@@ -31,6 +32,8 @@ export default async function OrdersPage({
     invoiceFilter?: string;
   }>;
 }) {
+  await requirePageAccess("ORDERS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;

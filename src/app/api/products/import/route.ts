@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import {
   importProductsFromBuffer,
   type ImportEvent,
@@ -13,10 +13,10 @@ function ndjson(event: ImportEvent) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return new Response(ndjson({ type: "error", message: "غير مصرح" }), {
-      status: 401,
+  const access = await requirePermission("PRODUCTS_MANAGE");
+  if (!access.ok) {
+    return new Response(ndjson({ type: "error", message: access.error }), {
+      status: access.status,
       headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
     });
   }

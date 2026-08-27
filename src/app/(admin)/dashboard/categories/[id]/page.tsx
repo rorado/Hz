@@ -10,6 +10,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { getCategoryProfile } from "@/features/categories/queries";
 import { ProfileProductsTable } from "@/features/products/components/profile-products-table";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export default async function CategoryProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ productsPage?: string }>;
 }) {
+  await requirePageAccess("PRODUCTS_VIEW");
+
   const { id } = await params;
   const query = await searchParams;
   const productsPage = Math.max(1, Number(query.productsPage) || 1);

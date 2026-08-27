@@ -20,6 +20,7 @@ import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-or
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { AdjustSupplierBalanceDialog } from "@/features/suppliers/components/adjust-supplier-balance-dialog";
 import { formatCurrency } from "@/lib/currency";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export default async function SupplierProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePageAccess("SUPPLIERS_VIEW");
+
   const { id } = await params;
   const [t, locale, profile] = await Promise.all([
     getDictionary(),

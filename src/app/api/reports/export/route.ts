@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiPermission } from "@/lib/permissions";
 import { buildCsv, buildXlsx } from "@/lib/report-export";
 import {
   getInventoryReportData,
@@ -168,10 +168,12 @@ const REPORT_BUILDERS: Record<
 };
 
 export async function GET(request: NextRequest) {
-  const [session, t, locale] = await Promise.all([auth(), getDictionary(), getLocale()]);
-  if (!session?.user) {
-    return NextResponse.json({ error: t.reports.unauthorizedError }, { status: 401 });
-  }
+  const [access, t, locale] = await Promise.all([
+    requireApiPermission("REPORTS_VIEW"),
+    getDictionary(),
+    getLocale(),
+  ]);
+  if (!access.ok) return access.response;
 
   const { searchParams } = request.nextUrl;
   const type = searchParams.get("type") ?? "";

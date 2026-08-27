@@ -4,11 +4,19 @@ import { BackButton } from "@/components/shared/back-button";
 import { getSupplierOptions } from "@/features/suppliers/queries";
 import { getProductPickerOptions } from "@/features/products/queries";
 import { PurchaseOrderForm } from "@/features/purchases/components/purchase-order-form";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewPurchaseOrderPage() {
+export default async function NewPurchaseOrderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ productId?: string }>;
+}) {
+  await requirePageAccess("PURCHASES_MANAGE");
+
+  const { productId } = await searchParams;
   const [t, suppliers, productRows] = await Promise.all([
     getDictionary(),
     getSupplierOptions(),
@@ -36,7 +44,11 @@ export default async function NewPurchaseOrderPage() {
         action={<BackButton fallbackHref="/dashboard/purchases" />}
       />
       <div className="max-w-2xl">
-        <PurchaseOrderForm suppliers={suppliers} products={products} />
+        <PurchaseOrderForm
+          suppliers={suppliers}
+          products={products}
+          defaultProductId={productId}
+        />
       </div>
     </div>
   );

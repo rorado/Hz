@@ -12,6 +12,7 @@ import {
 import { SuppliersTable } from "@/features/suppliers/components/suppliers-table";
 import { SupplierFormSheet } from "@/features/suppliers/components/supplier-form-sheet";
 import { SuppliersFilterBar } from "@/features/suppliers/components/suppliers-filter-bar";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export default async function SuppliersPage({
     sort?: string;
   }>;
 }) {
+  await requirePageAccess("SUPPLIERS_VIEW");
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() || undefined;

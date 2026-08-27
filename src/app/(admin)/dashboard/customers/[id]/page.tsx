@@ -21,7 +21,9 @@ import { InvoicesTable } from "@/features/invoices/components/invoices-table";
 import { PaymentHistory } from "@/features/invoices/components/payment-history";
 import { BalanceHistoryCard } from "@/features/customers/components/balance-history-card";
 import { AdjustBalanceDialog } from "@/features/customers/components/adjust-balance-dialog";
+import { CustomerStatementForm } from "@/features/customers/components/customer-statement-form";
 import { formatCurrency } from "@/lib/currency";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,8 @@ export default async function CustomerProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePageAccess("CUSTOMERS_VIEW");
+
   const { id } = await params;
   const [t, locale, profile] = await Promise.all([
     getDictionary(),
@@ -126,11 +130,12 @@ export default async function CustomerProfilePage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.customers.personalInfo}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.customers.personalInfo}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
           <p>
             <span className="text-muted-foreground">{t.customers.columnName}: </span>
             {customer.name}
@@ -169,8 +174,18 @@ export default async function CustomerProfilePage({
           >
             {t.customers.editCustomerInfo}
           </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.customers.statementTitle}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CustomerStatementForm customerId={customer.id} />
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -207,6 +222,7 @@ export default async function CustomerProfilePage({
               searchable
               data={invoices.map((invoice) => ({
                 id: invoice.id,
+                sequenceNumber: invoice.sequenceNumber,
                 invoiceNumber: invoice.invoiceNumber,
                 language: invoice.language,
                 customerName: invoice.customerName,

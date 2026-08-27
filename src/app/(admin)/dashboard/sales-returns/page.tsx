@@ -7,9 +7,11 @@ import { DataTableSearch } from "@/components/data-table/data-table-search";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { getSalesReturnsPage } from "@/features/returns/queries";
 import { formatCurrency } from "@/lib/currency";
+import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
 export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
+  await requirePageAccess("RETURNS_VIEW");
   const p = await searchParams; const page = Math.max(1, Number(p.page) || 1); const query = p.q?.trim();
   const [{ items, total, pageSize },t,locale] = await Promise.all([getSalesReturnsPage({ query, page }),getDictionary(),getLocale()]);
   const statuses={PENDING:t.returns.pending,COMPLETED:t.returns.completed,CREDITED:t.returns.credited,NOT_REQUIRED:t.returns.notRequired};

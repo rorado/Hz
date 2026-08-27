@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, ArrowLeftRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -113,12 +113,23 @@ const MOVEMENT_TYPES = ["IN", "OUT", "ADJUSTMENT"] as const;
 
 export function RecordMovementDialog({
   products,
+  defaultProductId,
+  compact,
 }: {
   products: ProductOption[];
+  defaultProductId?: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { t, locale } = useLocale();
+
+  const getDefaultValues = () => ({
+    productId: defaultProductId ?? "",
+    type: "IN" as const,
+    quantity: 0,
+    reason: "",
+  });
 
   const {
     register,
@@ -129,7 +140,7 @@ export function RecordMovementDialog({
     formState: { errors },
   } = useForm<InventoryMovementInput, unknown, InventoryMovementOutput>({
     resolver: zodResolver(inventoryMovementSchema),
-    defaultValues: { productId: "", type: "IN", quantity: 0, reason: "" },
+    defaultValues: getDefaultValues(),
   });
 
   const selectedProductId = watch("productId");
@@ -146,19 +157,36 @@ export function RecordMovementDialog({
         return;
       }
       toast.success(t.inventory.toastRecorded);
-      reset();
+      reset(getDefaultValues());
       setOpen(false);
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) reset(getDefaultValues());
+      }}
+    >
       <DialogTrigger
         render={
-          <Button>
-            <Plus className="size-4" />
-            {t.inventory.recordMovementButton}
-          </Button>
+          compact ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="cursor-pointer"
+              title={t.inventory.recordMovementButton}
+            >
+              <ArrowLeftRight className="size-4" />
+            </Button>
+          ) : (
+            <Button>
+              <Plus className="size-4" />
+              {t.inventory.recordMovementButton}
+            </Button>
+          )
         }
       />
       <DialogContent>

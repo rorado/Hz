@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { supplierSchema } from "@/features/suppliers/schema";
 
 type ActionResult = { error?: string; success?: boolean };
@@ -11,8 +11,8 @@ export async function adjustSupplierBalance(
   supplierId: string,
   input: { delta: number; note?: string },
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "غير مصرح" };
+  const access = await requirePermission("SUPPLIERS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (!Number.isFinite(input.delta) || Math.abs(input.delta) < 0.005) {
     return { error: "أدخل مبلغًا صحيحًا" };
   }
@@ -26,7 +26,7 @@ export async function adjustSupplierBalance(
       await tx.supplier.update({ where: { id: supplierId }, data: { balance: newBalance } });
       await tx.supplierBalanceHistory.create({ data: {
         supplierId, previousBalance, change: input.delta, newBalance,
-        reason: "MANUAL_ADJUSTMENT", note: input.note || null, createdById: session.user.id,
+        reason: "MANUAL_ADJUSTMENT", note: input.note || null, createdById: access.adminId,
       } });
     });
   } catch (error) {
@@ -38,8 +38,8 @@ export async function adjustSupplierBalance(
 }
 
 export async function createSupplier(input: unknown): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("SUPPLIERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = supplierSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -61,8 +61,8 @@ export async function updateSupplier(
   id: string,
   input: unknown,
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("SUPPLIERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   const parsed = supplierSchema.safeParse(input);
   if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
@@ -82,8 +82,8 @@ export async function updateSupplier(
 }
 
 export async function deleteSupplier(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("SUPPLIERS_MANAGE");
+  if (!access.ok) return { error: access.error };
 
   try {
     await prisma.supplier.delete({ where: { id } });
@@ -96,8 +96,8 @@ export async function deleteSupplier(id: string): Promise<ActionResult> {
 }
 
 export async function deleteSuppliers(ids: string[]): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { error: "غير مصرح" };
+  const access = await requirePermission("SUPPLIERS_MANAGE");
+  if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
 
   let failedCount = 0;

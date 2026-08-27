@@ -13,13 +13,14 @@ export const purchaseOrderItemSchema = z.object({
 
 export const purchaseOrderSchema = z.object({
   supplierId: z.string().min(1, { error: "الرجاء اختيار المورد" }),
-  language: z.enum(["AR", "FR"]).default("AR"),
+  language: z.enum(["AR", "EN", "FR"]).default("AR"),
   items: z
     .array(
       z.object({
         productId: z.string(),
         quantity: z.coerce.number().int().min(1),
         unitCost: z.coerce.number().min(0),
+        updateProductPurchasePrice: z.boolean().default(false),
       }),
     )
     .refine((items) => items.some((item) => item.productId !== ""), {
@@ -38,6 +39,7 @@ export const purchaseOrderItemsSchema = z.object({
         productId: z.string(),
         quantity: z.coerce.number().int().min(1),
         unitCost: z.coerce.number().min(0),
+        updateProductPurchasePrice: z.boolean().default(false),
       }),
     )
     .refine((items) => items.some((item) => item.productId !== ""), {
