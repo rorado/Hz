@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
 import { updateSystemSettings } from "@/features/settings/actions";
 import type { SystemSettingsData } from "@/features/settings/queries";
 import { cssColorToHex } from "@/lib/css-color-to-hex";
+import { companyConfig } from "@/config/company";
 import { useLocale } from "@/i18n/locale-provider";
 
 const COLOR_TOKEN_KEYS = [
@@ -38,6 +39,7 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<SystemSettingsInput>({
     resolver: zodResolver(systemSettingsSchema),
@@ -57,6 +59,24 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
         return;
       }
       toast.success(t.settings.toastUpdated);
+    });
+  }
+
+  // Only fills the form — nothing is persisted until the admin reviews it
+  // and hits حفظ themselves, same as any other edit on this page.
+  function handleResetAllToDefaults() {
+    reset({
+      appName: companyConfig.name,
+      appShortName: companyConfig.shortName,
+      colorsLight: { ...companyConfig.colors.light },
+      colorsDark: { ...companyConfig.colors.dark },
+    });
+    toast.success(t.settings.toastDefaultsLoaded);
+  }
+
+  function resetColorToDefault(key: (typeof COLOR_TOKEN_KEYS)[number]) {
+    setValue(`colorsLight.${key}`, companyConfig.colors.light[key], {
+      shouldDirty: true,
     });
   }
 
@@ -111,6 +131,16 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
                       className="size-9 shrink-0 cursor-pointer rounded border border-input bg-transparent p-0.5"
                     />
                     <Input id={fieldName} dir="ltr" {...register(fieldName)} />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 cursor-pointer"
+                      title={t.settings.resetColorButton}
+                      onClick={() => resetColorToDefault(key)}
+                    >
+                      <RotateCcw className="size-4" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -118,10 +148,22 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
           </div>
         </div>
 
-        <Button type="submit" className="cursor-pointer" disabled={isPending}>
-          {isPending && <Loader2 className="size-4 animate-spin" />}
-          {isPending ? t.common.saving : t.common.save}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" className="cursor-pointer" disabled={isPending}>
+            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {isPending ? t.common.saving : t.common.save}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="cursor-pointer"
+            disabled={isPending}
+            onClick={handleResetAllToDefaults}
+          >
+            <RotateCcw className="size-4" />
+            {t.settings.resetAllButton}
+          </Button>
+        </div>
       </fieldset>
     </form>
   );

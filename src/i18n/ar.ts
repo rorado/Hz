@@ -972,6 +972,9 @@ export const ar = {
     colorPickerHint: "انقر على المربع اللوني لاختيار لون، أو الصق كود لون مباشرة في الحقل",
     darkThemeTitle: "الوضع الداكن",
     toastUpdated: "تم حفظ إعدادات المظهر بنجاح",
+    resetAllButton: "استعادة الإعدادات الافتراضية",
+    resetColorButton: "استعادة اللون الافتراضي",
+    toastDefaultsLoaded: "تم استرجاع الإعدادات الافتراضية، اضغط حفظ لتطبيقها",
     tokens: {
       primary: "اللون الأساسي",
       secondary: "اللون الثانوي",

@@ -980,6 +980,9 @@ export const en = {
     colorPickerHint: "Click the color swatch to pick a color, or paste a color value directly into the field",
     darkThemeTitle: "Dark mode",
     toastUpdated: "Appearance settings saved successfully",
+    resetAllButton: "Restore default settings",
+    resetColorButton: "Restore default color",
+    toastDefaultsLoaded: "Defaults loaded — click Save to apply them",
     tokens: {
       primary: "Primary color",
       secondary: "Secondary color",

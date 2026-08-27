@@ -1002,6 +1002,9 @@ export const fr = {
     colorPickerHint: "Cliquez sur la pastille pour choisir une couleur, ou collez une valeur directement dans le champ",
     darkThemeTitle: "Mode sombre",
     toastUpdated: "Paramètres d'apparence enregistrés avec succès",
+    resetAllButton: "Restaurer les paramètres par défaut",
+    resetColorButton: "Restaurer la couleur par défaut",
+    toastDefaultsLoaded: "Valeurs par défaut chargées — cliquez sur Enregistrer pour les appliquer",
     tokens: {
       primary: "Couleur principale",
       secondary: "Couleur secondaire",
