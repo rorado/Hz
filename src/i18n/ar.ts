@@ -969,6 +969,7 @@ export const ar = {
     appNameLabel: "اسم النظام",
     appShortNameLabel: "الاسم المختصر (لعنوان المتصفح)",
     lightThemeTitle: "الوضع الفاتح",
+    colorPickerHint: "انقر على المربع اللوني لاختيار لون، أو الصق كود لون مباشرة في الحقل",
     darkThemeTitle: "الوضع الداكن",
     toastUpdated: "تم حفظ إعدادات المظهر بنجاح",
     tokens: {

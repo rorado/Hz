@@ -999,6 +999,7 @@ export const fr = {
     appNameLabel: "Nom du système",
     appShortNameLabel: "Nom court (titre de l'onglet du navigateur)",
     lightThemeTitle: "Mode clair",
+    colorPickerHint: "Cliquez sur la pastille pour choisir une couleur, ou collez une valeur directement dans le champ",
     darkThemeTitle: "Mode sombre",
     toastUpdated: "Paramètres d'apparence enregistrés avec succès",
     tokens: {

@@ -977,6 +977,7 @@ export const en = {
     appNameLabel: "System name",
     appShortNameLabel: "Short name (browser tab title)",
     lightThemeTitle: "Light mode",
+    colorPickerHint: "Click the color swatch to pick a color, or paste a color value directly into the field",
     darkThemeTitle: "Dark mode",
     toastUpdated: "Appearance settings saved successfully",
     tokens: {

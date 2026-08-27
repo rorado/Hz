@@ -14,6 +14,7 @@ import {
 } from "@/features/settings/schema";
 import { updateSystemSettings } from "@/features/settings/actions";
 import type { SystemSettingsData } from "@/features/settings/queries";
+import { cssColorToHex } from "@/lib/css-color-to-hex";
 import { useLocale } from "@/i18n/locale-provider";
 
 const COLOR_TOKEN_KEYS = [
@@ -36,9 +37,15 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<SystemSettingsInput>({
     resolver: zodResolver(systemSettingsSchema),
+    // colorsDark is kept in the form's state from the loaded settings and
+    // submitted back unchanged — this page only lets an admin see/edit the
+    // light palette, but dark mode (OS/user preference) still needs some
+    // value to render with, so its current value (or the company.ts
+    // default, if never customized) is preserved rather than lost.
     defaultValues: settings,
   });
 
@@ -51,35 +58,6 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
       }
       toast.success(t.settings.toastUpdated);
     });
-  }
-
-  function renderThemeSection(
-    theme: "colorsLight" | "colorsDark",
-    title: string,
-  ) {
-    return (
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium">{title}</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {COLOR_TOKEN_KEYS.map((key) => {
-            const fieldName = `${theme}.${key}` as const;
-            const value = watch(fieldName);
-            return (
-              <div key={fieldName} className="space-y-1.5">
-                <Label htmlFor={fieldName}>{t.settings.tokens[key]}</Label>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-8 shrink-0 rounded border"
-                    style={{ background: value }}
-                  />
-                  <Input id={fieldName} dir="ltr" {...register(fieldName)} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -106,8 +84,39 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
           </div>
         </div>
 
-        {renderThemeSection("colorsLight", t.settings.lightThemeTitle)}
-        {renderThemeSection("colorsDark", t.settings.darkThemeTitle)}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-medium">{t.settings.lightThemeTitle}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t.settings.colorPickerHint}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {COLOR_TOKEN_KEYS.map((key) => {
+              const fieldName = `colorsLight.${key}` as const;
+              const value = watch(fieldName);
+              return (
+                <div key={fieldName} className="space-y-1.5">
+                  <Label htmlFor={fieldName}>{t.settings.tokens[key]}</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      aria-label={t.settings.tokens[key]}
+                      value={cssColorToHex(value)}
+                      onChange={(event) =>
+                        setValue(fieldName, event.target.value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      className="size-9 shrink-0 cursor-pointer rounded border border-input bg-transparent p-0.5"
+                    />
+                    <Input id={fieldName} dir="ltr" {...register(fieldName)} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         <Button type="submit" className="cursor-pointer" disabled={isPending}>
           {isPending && <Loader2 className="size-4 animate-spin" />}
