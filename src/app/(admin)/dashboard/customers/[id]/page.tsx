@@ -8,6 +8,8 @@ import {
   FileClock,
   FileX2,
   UserCircle,
+  LayoutDashboard,
+  ReceiptText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,8 @@ import { PaymentHistory } from "@/features/invoices/components/payment-history";
 import { BalanceHistoryCard } from "@/features/customers/components/balance-history-card";
 import { AdjustBalanceDialog } from "@/features/customers/components/adjust-balance-dialog";
 import { CustomerStatementForm } from "@/features/customers/components/customer-statement-form";
+import { CustomerStatementPanel } from "@/features/customers/components/statement/customer-statement-panel";
+import { resolveDateRange } from "@/features/dashboard/date-range";
 import { formatCurrency } from "@/lib/currency";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
@@ -30,12 +34,23 @@ export const dynamic = "force-dynamic";
 
 export default async function CustomerProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    range?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   await requirePageAccess("CUSTOMERS_VIEW");
 
   const { id } = await params;
+  const requestedParams = await searchParams;
+  const activeTab: "overview" | "statement" =
+    requestedParams.tab === "statement" ? "statement" : "overview";
+
   const [t, locale, profile] = await Promise.all([
     getDictionary(),
     getLocale(),
@@ -64,15 +79,10 @@ export default async function CustomerProfilePage({
   );
   const totalOutstanding = partiallyPaidRemaining + unpaidRemaining;
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={customer.name}
-        icon={UserCircle}
-        description={t.customers.profile}
-        action={<BackButton fallbackHref="/dashboard/customers" />}
-      />
+  const basePath = `/dashboard/customers/${id}`;
 
+  const overviewContent = (
+    <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           title={t.customers.totalPurchased}
@@ -257,6 +267,55 @@ export default async function CustomerProfilePage({
           createdAt: entry.createdAt,
         }))}
       />
+    </div>
+  );
+
+  // Only compute the statement's product-analysis query when that view is
+  // actually being shown — no point paying for it on every Overview render.
+  const statementContent =
+    activeTab === "statement" ? (
+      <CustomerStatementPanel
+        customerId={id}
+        range={resolveDateRange(requestedParams)}
+        basePath={basePath}
+        t={t}
+        locale={locale}
+      />
+    ) : null;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={customer.name}
+        icon={UserCircle}
+        description={t.customers.profile}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTab === "overview" ? (
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href={`${basePath}?tab=statement`} />}
+              >
+                <ReceiptText className="size-4" />
+                {t.customerStatement.tabStatement}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href={basePath} />}
+              >
+                <LayoutDashboard className="size-4" />
+                {t.customerStatement.tabOverview}
+              </Button>
+            )}
+            <BackButton fallbackHref="/dashboard/customers" />
+          </div>
+        }
+      />
+
+      {activeTab === "overview" ? overviewContent : statementContent}
     </div>
   );
 }

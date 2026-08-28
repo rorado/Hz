@@ -6,6 +6,7 @@ export type RangePreset =
   | "30d"
   | "90d"
   | "month"
+  | "lastMonth"
   | "year"
   | "all"
   | "custom";
@@ -16,6 +17,7 @@ export const RANGE_PRESETS: { value: RangePreset; label: string }[] = [
   { value: "30d", label: "آخر 30 يوماً" },
   { value: "90d", label: "آخر 90 يوماً" },
   { value: "month", label: "هذا الشهر" },
+  { value: "lastMonth", label: "الشهر الماضي" },
   { value: "year", label: "هذه السنة" },
   { value: "all", label: "كل الوقت" },
 ];
@@ -31,6 +33,7 @@ export function getRangePresetOptions(
     { value: "30d", label: t.dateRangePresets["30d"] },
     { value: "90d", label: t.dateRangePresets["90d"] },
     { value: "month", label: t.dateRangePresets.month },
+    { value: "lastMonth", label: t.dateRangePresets.lastMonth },
     { value: "year", label: t.dateRangePresets.year },
     { value: "all", label: t.dateRangePresets.all },
   ];
@@ -104,6 +107,24 @@ export function resolveDateRange(params: {
     case "month":
       from = new Date(now.getFullYear(), now.getMonth(), 1);
       break;
+    case "lastMonth": {
+      from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayOfPrevMonth = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        0,
+      );
+      to = new Date(
+        lastDayOfPrevMonth.getFullYear(),
+        lastDayOfPrevMonth.getMonth(),
+        lastDayOfPrevMonth.getDate(),
+        23,
+        59,
+        59,
+        999,
+      );
+      break;
+    }
     case "year":
       from = new Date(now.getFullYear(), 0, 1);
       break;

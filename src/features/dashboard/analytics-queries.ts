@@ -71,8 +71,15 @@ export type TrendPoint = {
   purchases: number;
 };
 
-function truncExpr(granularity: "hour" | "day" | "month") {
-  return Prisma.raw(`date_trunc('${granularity}', "createdAt")`);
+/** Granularity bucket-alignment helpers — exported so other features (e.g.
+ * the customer statement trend chart) can bucket their own time series with
+ * the exact same UTC-aligned boundaries as the dashboard, instead of
+ * reimplementing this. */
+export function truncExpr(
+  granularity: "hour" | "day" | "month",
+  column = '"createdAt"',
+) {
+  return Prisma.raw(`date_trunc('${granularity}', ${column})`);
 }
 
 // createdAt is stored as a naive "timestamp without time zone" and the DB
@@ -82,7 +89,7 @@ function truncExpr(granularity: "hour" | "day" | "month") {
 // line up exactly with the ones date_trunc() returns — otherwise, on a
 // server running outside UTC, each real bucket gets a second empty "ghost"
 // bucket a few hours off, and hovering it shows 0 next to real data.
-function bucketLabel(date: Date, granularity: "hour" | "day" | "month") {
+export function bucketLabel(date: Date, granularity: "hour" | "day" | "month") {
   if (granularity === "hour") {
     return date.toLocaleTimeString("fr-FR", {
       hour: "2-digit",
@@ -104,7 +111,7 @@ function bucketLabel(date: Date, granularity: "hour" | "day" | "month") {
   });
 }
 
-function stepBucket(date: Date, granularity: "hour" | "day" | "month") {
+export function stepBucket(date: Date, granularity: "hour" | "day" | "month") {
   const next = new Date(date);
   if (granularity === "hour") next.setUTCHours(next.getUTCHours() + 1);
   else if (granularity === "month") next.setUTCMonth(next.getUTCMonth() + 1);
