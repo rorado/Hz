@@ -47,7 +47,8 @@ const COLLAPSED_GROUPS_STORAGE_KEY = "dashboard-sidebar-collapsed-groups";
 // The native "storage" event only fires in *other* tabs than the one that
 // wrote the change, so a same-tab toggle dispatches this too — otherwise
 // useSyncExternalStore would never see its own write.
-const COLLAPSED_GROUPS_CHANGE_EVENT = "dashboard-sidebar-collapsed-groups-change";
+const COLLAPSED_GROUPS_CHANGE_EVENT =
+  "dashboard-sidebar-collapsed-groups-change";
 
 function subscribeToCollapsedGroups(onChange: () => void) {
   window.addEventListener("storage", onChange);
@@ -70,13 +71,6 @@ function getCollapsedGroupsServerSnapshot(): string {
   return "[]";
 }
 
-/** Remembers which nav groups the admin has collapsed, per browser — reads
- * through useSyncExternalStore (the React-blessed way to read/subscribe to
- * an external store like localStorage) rather than an effect + setState, so
- * there's no extra render pass and no hydration mismatch: the server and
- * first client render both see "[]" via getServerSnapshot, and the real
- * stored value is picked up right after via the normal external-store
- * re-render React already does for that case. */
 function useCollapsedGroups() {
   const raw = useSyncExternalStore(
     subscribeToCollapsedGroups,
@@ -136,7 +130,9 @@ export function AppSidebar({
   };
 
   function isItemActive(href: string) {
-    return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+    return href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(href);
   }
 
   return (
@@ -199,7 +195,8 @@ export function AppSidebar({
                     {!!badgeValue && badgeValue > 0 && (
                       <SidebarMenuBadge
                         className={cn(
-                          isActive && "peer-data-active/menu-button:text-primary-foreground",
+                          isActive &&
+                            "peer-data-active/menu-button:text-primary-foreground",
                           item.badgeKey === "lowStock" ||
                             item.badgeKey === "unpaidInvoices"
                             ? "bg-destructive/15 text-destructive"
@@ -225,12 +222,9 @@ export function AppSidebar({
             );
           }
 
-          // Never collapse away the section the admin is currently in —
-          // navigating into a group always reveals it, even if it was
-          // previously collapsed; the icon-only sidebar state always shows
-          // every icon regardless of the per-group preference, since there's
-          // no room for a group heading to click there anyway.
-          const isActiveGroup = group.items.some((item) => isItemActive(item.href));
+          const isActiveGroup = group.items.some((item) =>
+            isItemActive(item.href),
+          );
           const isOpen =
             sidebarState === "collapsed" ||
             isActiveGroup ||

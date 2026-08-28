@@ -24,9 +24,9 @@
 
 export const companyConfig = {
   /** Full company name — sidebar, public site, invoice/purchase print headers. */
-  name: "sohaib",
+  name: "cappuccino",
   /** Short form, used for the browser tab title. */
-  shortName: "SB",
+  shortName: "cpn",
 
   /**
    * Path to a logo image (under /public, e.g. "/images/logo.png") shown
