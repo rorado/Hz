@@ -214,7 +214,20 @@ export function PurchaseOrderForm({
     });
   }
 
+  function handleQuickAdd(selected: ProductOption[]) {
+    selected.forEach((product) =>
+      append({
+        productId: product.id,
+        quantity: 1,
+        unitCost: 0,
+        updateProductPurchasePrice: true,
+      }),
+    );
+  }
+
   return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+    <div className="min-w-0 space-y-6">
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
     <fieldset disabled={isPending} className="contents space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -271,7 +284,9 @@ export function PurchaseOrderForm({
 
       <div className="space-y-3">
         <Label>{t.purchases.itemsLabel}</Label>
-        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: 0, updateProductPurchasePrice: true }))} />
+        <div className="lg:hidden">
+          <QuickProductAddPanel products={products} onAddProducts={handleQuickAdd} />
+        </div>
         <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-foreground">
           {t.purchases.updateProductPurchasePriceHelp}
         </p>
@@ -377,5 +392,10 @@ export function PurchaseOrderForm({
       </div>
       </fieldset>
     </form>
+    </div>
+    <aside className="hidden space-y-6 lg:sticky lg:top-20 lg:block">
+      <QuickProductAddPanel products={products} onAddProducts={handleQuickAdd} />
+    </aside>
+    </div>
   );
 }

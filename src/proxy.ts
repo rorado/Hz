@@ -14,8 +14,25 @@ export default auth((req) => {
   if (pathname === "/login" && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
   }
+
+  if (
+    isLoggedIn &&
+    !pathname.startsWith("/dashboard") &&
+    pathname !== "/login"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+  }
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: [
+    "/dashboard/:path*",
+    "/login",
+    "/",
+    "/products/:path*",
+    "/categories/:path*",
+    "/cart",
+    "/about",
+    "/order-confirmation/:path*",
+  ],
 };

@@ -43,13 +43,11 @@ export default async function NewPurchaseOrderPage({
         icon={ClipboardList}
         action={<BackButton fallbackHref="/dashboard/purchases" />}
       />
-      <div className="max-w-2xl">
-        <PurchaseOrderForm
-          suppliers={suppliers}
-          products={products}
-          defaultProductId={productId}
-        />
-      </div>
+      <PurchaseOrderForm
+        suppliers={suppliers}
+        products={products}
+        defaultProductId={productId}
+      />
     </div>
   );
 }
