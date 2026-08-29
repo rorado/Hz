@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PermissionKey } from "@/lib/permission-modules";
+import { getDictionary } from "@/i18n/server";
 
 // Re-exported so existing server-side imports of the module-list helpers
 // from "@/lib/permissions" keep working — the actual definitions live in
@@ -77,15 +78,17 @@ export async function requirePermission(
 ): Promise<PermissionCheck> {
   const session = await auth();
   if (!session?.user) {
-    return { ok: false, status: 401, error: "يجب تسجيل الدخول أولاً" };
+    const t = await getDictionary();
+    return { ok: false, status: 401, error: t.common.loginRequiredError };
   }
 
   const effective = await getEffectivePermissions(session.user.id);
   if (effective !== "full" && !effective.has(permission)) {
+    const t = await getDictionary();
     return {
       ok: false,
       status: 403,
-      error: "ليست لديك الصلاحية الكافية لتنفيذ هذا الإجراء",
+      error: t.common.insufficientPermissionError,
     };
   }
   return { ok: true, adminId: session.user.id };

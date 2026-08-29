@@ -4,15 +4,17 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { expenseSchema } from "@/features/expenses/schema";
+import { getDictionary } from "@/i18n/server";
 
 type ActionResult = { error?: string; success?: boolean };
 
 export async function createExpense(input: unknown): Promise<ActionResult> {
   const access = await requirePermission("EXPENSES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = expenseSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.expenses.validationError };
 
   await prisma.expense.create({
     data: {
@@ -33,9 +35,10 @@ export async function updateExpense(
 ): Promise<ActionResult> {
   const access = await requirePermission("EXPENSES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = expenseSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.expenses.validationError };
 
   await prisma.expense.update({
     where: { id },

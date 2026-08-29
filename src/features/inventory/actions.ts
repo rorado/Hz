@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { inventoryMovementSchema } from "@/features/inventory/schema";
+import { getDictionary } from "@/i18n/server";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -12,14 +13,15 @@ export async function recordInventoryMovement(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVENTORY_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = inventoryMovementSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.inventory.validationError };
 
   const { productId, type, quantity, reason } = parsed.data;
 
   const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) return { error: "المنتج غير موجود" };
+  if (!product) return { error: t.inventory.notFoundError };
 
   let newQuantity: number;
   let movementQuantity: number;
@@ -29,7 +31,7 @@ export async function recordInventoryMovement(
     movementQuantity = quantity;
   } else if (type === "OUT") {
     if (quantity > product.quantity) {
-      return { error: "الكمية المطلوب إخراجها أكبر من الكمية المتوفرة حالياً" };
+      return { error: t.inventory.exceedsAvailableError };
     }
     newQuantity = product.quantity - quantity;
     movementQuantity = quantity;

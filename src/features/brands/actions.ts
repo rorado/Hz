@@ -6,15 +6,18 @@ import { requirePermission } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
 import { brandSchema } from "@/features/brands/schema";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 
 type ActionResult = { error?: string; success?: boolean };
 
 export async function createBrand(input: unknown): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = brandSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.brands.validationError };
 
   try {
     await prisma.brand.create({
@@ -27,9 +30,9 @@ export async function createBrand(input: unknown): Promise<ActionResult> {
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "هذا الرابط مستخدم بالفعل لعلامة تجارية أخرى" };
+      return { error: t.brands.slugTakenError };
     }
-    return { error: "حدث خطأ أثناء إضافة العلامة التجارية" };
+    return { error: t.brands.createError };
   }
 
   revalidatePath("/dashboard/brands");
@@ -42,15 +45,16 @@ export async function updateBrand(
 ): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = brandSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.brands.validationError };
 
   const existing = await prisma.brand.findUnique({
     where: { id },
     select: { logoPublicId: true },
   });
-  if (!existing) return { error: "العلامة التجارية غير موجودة" };
+  if (!existing) return { error: t.brands.notFoundError };
   const nextPublicId = parsed.data.logo?.publicId ?? null;
   const removedPublicId =
     existing.logoPublicId && existing.logoPublicId !== nextPublicId
@@ -69,9 +73,9 @@ export async function updateBrand(
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "هذا الرابط مستخدم بالفعل لعلامة تجارية أخرى" };
+      return { error: t.brands.slugTakenError };
     }
-    return { error: "حدث خطأ أثناء تحديث العلامة التجارية" };
+    return { error: t.brands.updateError };
   }
 
   if (removedPublicId) {
@@ -85,17 +89,18 @@ export async function updateBrand(
 export async function deleteBrand(id: string): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const brand = await prisma.brand.findUnique({
     where: { id },
     select: { logoPublicId: true },
   });
-  if (!brand) return { error: "العلامة التجارية غير موجودة" };
+  if (!brand) return { error: t.brands.notFoundError };
 
   try {
     await prisma.brand.delete({ where: { id } });
   } catch {
-    return { error: "لا يمكن حذف هذه العلامة التجارية لارتباطها بمنتجات" };
+    return { error: t.brands.cannotDeleteLinkedError };
   }
 
   if (brand.logoPublicId) {
@@ -110,6 +115,7 @@ export async function deleteBrands(ids: string[]): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
+  const t = await getDictionary();
 
   const brands = await prisma.brand.findMany({
     where: { id: { in: ids } },
@@ -132,7 +138,7 @@ export async function deleteBrands(ids: string[]): Promise<ActionResult> {
 
   if (failedCount > 0) {
     return {
-      error: `تعذر حذف ${failedCount} من العلامات التجارية لارتباطها بمنتجات`,
+      error: formatMessage(t.brands.bulkDeleteErrorTemplate, { count: failedCount }),
     };
   }
   return { success: true };

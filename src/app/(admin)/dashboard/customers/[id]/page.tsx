@@ -9,7 +9,7 @@ import {
   FileX2,
   UserCircle,
   LayoutDashboard,
-  ReceiptText,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -297,7 +297,7 @@ export default async function CustomerProfilePage({
                 nativeButton={false}
                 render={<Link href={`${basePath}?tab=statement`} />}
               >
-                <ReceiptText className="size-4" />
+                <BarChart3 className="size-4" />
                 {t.customerStatement.tabStatement}
               </Button>
             ) : (

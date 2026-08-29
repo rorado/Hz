@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { systemSettingsSchema } from "./schema";
 import { getSystemSettingsRow } from "./queries";
+import { getDictionary } from "@/i18n/server";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -13,9 +14,10 @@ export async function updateSystemSettings(
 ): Promise<ActionResult> {
   const access = await requirePermission("SETTINGS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = systemSettingsSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.settings.validationError };
 
   const data = {
     appName: parsed.data.appName,

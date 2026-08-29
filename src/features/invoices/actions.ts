@@ -8,7 +8,7 @@ import { invoiceSchema } from "@/features/invoices/schema";
 import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
 import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
-import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
+import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
 import { getAvailableStockIssue, validateAvailableStock } from "@/lib/stock-validation";
 import type {
@@ -78,9 +78,10 @@ export async function createInvoice(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = invoiceSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.invoices.validationError };
 
   if (!options?.allowNegativeStock) {
     const stockError = await validateAvailableStock(parsed.data.items);
@@ -181,9 +182,9 @@ export async function createInvoice(
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
       const stockError = await validateAvailableStock(parsed.data.items);
-      return { error: stockError ?? "الكمية المتوفرة غير كافية" };
+      return { error: stockError ?? t.invoices.insufficientStockFallbackError };
     }
-    return { error: "حدث خطأ أثناء إنشاء الفاتورة" };
+    return { error: t.invoices.createError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -201,15 +202,16 @@ export async function updateInvoice(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = invoiceSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.invoices.validationError };
 
   const existing = await prisma.invoice.findUnique({
     where: { id },
     include: { payments: true, items: true },
   });
-  if (!existing) return { error: "الفاتورة غير موجودة" };
+  if (!existing) return { error: t.invoices.notFoundError };
 
   if (!options?.allowNegativeStock) {
     const stockError = await validateAvailableStock(parsed.data.items, existing.items);
@@ -284,7 +286,7 @@ export async function updateInvoice(
       }
     });
   } catch {
-    return { error: "حدث خطأ أثناء تحديث الفاتورة" };
+    return { error: t.invoices.updateError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -332,12 +334,13 @@ export async function deleteInvoice(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
   if (!isDeletePasswordValid(options?.password)) {
-    return { error: DELETE_PASSWORD_ERROR };
+    return { error: await getDeletePasswordError() };
   }
 
   const existing = await prisma.invoice.findUnique({ where: { id } });
-  if (!existing) return { error: "الفاتورة غير موجودة" };
+  if (!existing) return { error: t.invoices.notFoundError };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -345,7 +348,7 @@ export async function deleteInvoice(
       await tx.invoice.delete({ where: { id } });
     });
   } catch {
-    return { error: "حدث خطأ أثناء حذف الفاتورة، الرجاء المحاولة مرة أخرى" };
+    return { error: t.invoices.deleteError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -359,8 +362,9 @@ export async function deleteInvoices(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
   if (decisions.length === 0) return { success: true };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
 
   const decisionById = new Map(decisions.map((d) => [d.id, d.applyBalanceChange]));
   const ids = decisions.map((d) => d.id);
@@ -376,7 +380,7 @@ export async function deleteInvoices(
       await tx.invoice.deleteMany({ where: { id: { in: ids } } });
     });
   } catch {
-    return { error: "حدث خطأ أثناء حذف الفواتير المحددة، الرجاء المحاولة مرة أخرى" };
+    return { error: t.invoices.bulkDeleteError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -393,6 +397,7 @@ export async function getOrCreateInvoiceForOrder(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const existing = await prisma.invoice.findUnique({
     where: { orderId },
@@ -406,12 +411,11 @@ export async function getOrCreateInvoiceForOrder(
     where: { id: orderId },
     include: { items: { include: { product: true } } },
   });
-  if (!order) return { error: "الطلب غير موجود" };
+  if (!order) return { error: t.invoices.orderNotFoundError };
 
   const payments = options.payments.filter((line) => line.amount > 0);
 
   if (payments.some((line) => line.method === "BALANCE") && !order.customerId) {
-    const t = await getDictionary();
     return { error: t.invoices.noCustomerForBalance };
   }
 
@@ -498,7 +502,7 @@ export async function getOrCreateInvoiceForOrder(
       return created.id;
     });
   } catch {
-    return { error: "حدث خطأ أثناء إنشاء الفاتورة" };
+    return { error: t.invoices.createError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -517,19 +521,19 @@ export async function recordPayment(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!(input.amount > 0)) {
-    return { error: "الرجاء إدخال مبلغ صحيح" };
+    return { error: t.invoices.invalidAmountError };
   }
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
     include: { payments: true },
   });
-  if (!invoice) return { error: "الفاتورة غير موجودة" };
+  if (!invoice) return { error: t.invoices.notFoundError };
 
   if (input.method === "BALANCE" && !invoice.customerId) {
-    const t = await getDictionary();
     return { error: t.invoices.noCustomerForBalance };
   }
 
@@ -573,7 +577,7 @@ export async function recordPayment(
       }
     });
   } catch {
-    return { error: "حدث خطأ أثناء تسجيل الدفعة" };
+    return { error: t.invoices.paymentError };
   }
 
   revalidatePath(`/dashboard/invoices/${invoiceId}`);
@@ -611,29 +615,28 @@ export async function recordPaymentAcrossInvoices(
 ): Promise<ActionResult & { batchId?: string }> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!(input.amount > 0)) {
-    return { error: "الرجاء إدخال مبلغ صحيح" };
+    return { error: t.invoices.invalidAmountError };
   }
   if (input.invoiceIds.length === 0) {
-    const t = await getDictionary();
     return { error: t.invoices.selectAtLeastOneInvoice };
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) return { error: "العميل غير موجود" };
+  if (!customer) return { error: t.invoices.customerNotFoundError };
 
   const invoices = await prisma.invoice.findMany({
     where: { id: { in: input.invoiceIds }, customerId },
     include: { payments: true },
     orderBy: { createdAt: "asc" },
   });
-  if (invoices.length === 0) return { error: "الفواتير المحددة غير موجودة" };
+  if (invoices.length === 0) return { error: t.invoices.selectedInvoicesNotFoundError };
 
   if (input.method === "BALANCE" && !input.allowNegativeBalance) {
     const customerBalance = Number(customer.balance);
     if (input.amount > customerBalance + 0.005) {
-      const t = await getDictionary();
       return { error: t.invoices.insufficientBalanceTitle };
     }
   }
@@ -721,7 +724,7 @@ export async function recordPaymentAcrossInvoices(
 
     });
   } catch {
-    return { error: "حدث خطأ أثناء تسجيل الدفعة" };
+    return { error: t.invoices.paymentError };
   }
 
   revalidatePath("/dashboard/invoices");
@@ -748,21 +751,21 @@ export async function updatePayment(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!(input.amount > 0)) {
-    return { error: "الرجاء إدخال مبلغ صحيح" };
+    return { error: t.invoices.invalidAmountError };
   }
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { invoice: { include: { payments: true } } },
   });
-  if (!payment) return { error: "الدفعة غير موجودة" };
+  if (!payment) return { error: t.invoices.paymentNotFoundError };
 
   const invoice = payment.invoice;
 
   if (input.method === "BALANCE" && !invoice.customerId) {
-    const t = await getDictionary();
     return { error: t.invoices.noCustomerForBalance };
   }
 
@@ -811,7 +814,7 @@ export async function updatePayment(
       }
     });
   } catch {
-    return { error: "حدث خطأ أثناء تعديل الدفعة" };
+    return { error: t.invoices.paymentUpdateError };
   }
 
   revalidatePath(`/dashboard/invoices/${invoice.id}`);
@@ -837,13 +840,14 @@ export async function deletePayment(
 ): Promise<ActionResult> {
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  const t = await getDictionary();
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { invoice: { include: { payments: true } } },
   });
-  if (!payment) return { error: "الدفعة غير موجودة" };
+  if (!payment) return { error: t.invoices.paymentNotFoundError };
 
   const invoice = payment.invoice;
   const total = Number(invoice.total);
@@ -885,7 +889,7 @@ export async function deletePayment(
       }
     });
   } catch {
-    return { error: "حدث خطأ أثناء حذف الدفعة" };
+    return { error: t.invoices.paymentDeleteError };
   }
 
   revalidatePath(`/dashboard/invoices/${invoice.id}`);

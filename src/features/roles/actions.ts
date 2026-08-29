@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
+import { getDictionary } from "@/i18n/server";
 import { roleSchema } from "./schema";
 
 type ActionResult = { error?: string; success?: boolean };
@@ -11,9 +12,10 @@ type ActionResult = { error?: string; success?: boolean };
 export async function createRole(input: unknown): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = roleSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.roles.validationError };
 
   try {
     await prisma.role.create({
@@ -30,8 +32,8 @@ export async function createRole(input: unknown): Promise<ActionResult> {
       },
     });
   } catch (error) {
-    if (isUniqueConstraintError(error)) return { error: "اسم الدور مستخدم بالفعل" };
-    return { error: "حدث خطأ أثناء إنشاء الدور" };
+    if (isUniqueConstraintError(error)) return { error: t.roles.nameTakenError };
+    return { error: t.roles.createError };
   }
 
   revalidatePath("/dashboard/settings/roles");
@@ -44,22 +46,23 @@ export async function updateRole(
 ): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = roleSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.roles.validationError };
 
   const existing = await prisma.role.findUnique({
     where: { id },
     select: { isSystem: true, isFullAccess: true },
   });
-  if (!existing) return { error: "الدور غير موجود" };
+  if (!existing) return { error: t.roles.notFoundError };
 
   // The built-in Admin role's name and full-access flag are locked so the
   // app always keeps at least one un-editable full-access role to fall
   // back on — only its permission set (moot, since isFullAccess bypasses
   // it) would otherwise be editable.
   if (existing.isSystem && (parsed.data.name !== "Admin" || !parsed.data.isFullAccess)) {
-    return { error: "لا يمكن تعديل الدور الأساسي للمدير" };
+    return { error: t.roles.cannotEditSystemRoleError };
   }
 
   if (existing.isFullAccess && !parsed.data.isFullAccess) {
@@ -67,9 +70,7 @@ export async function updateRole(
       where: { isActive: true, roleId: { not: id }, role: { isFullAccess: true } },
     });
     if (otherActiveFullAccessAdmins === 0) {
-      return {
-        error: "لا يمكن إزالة الصلاحية الكاملة من هذا الدور لأنه سيترك النظام بدون مدير مفعل",
-      };
+      return { error: t.roles.cannotRemoveFullAccessError };
     }
   }
 
@@ -92,8 +93,8 @@ export async function updateRole(
           ]),
     ]);
   } catch (error) {
-    if (isUniqueConstraintError(error)) return { error: "اسم الدور مستخدم بالفعل" };
-    return { error: "حدث خطأ أثناء تحديث الدور" };
+    if (isUniqueConstraintError(error)) return { error: t.roles.nameTakenError };
+    return { error: t.roles.updateError };
   }
 
   revalidatePath("/dashboard/settings/roles");
@@ -103,15 +104,16 @@ export async function updateRole(
 export async function deleteRole(id: string): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const role = await prisma.role.findUnique({
     where: { id },
     select: { isSystem: true, _count: { select: { admins: true } } },
   });
-  if (!role) return { error: "الدور غير موجود" };
-  if (role.isSystem) return { error: "لا يمكن حذف الدور الأساسي للمدير" };
+  if (!role) return { error: t.roles.notFoundError };
+  if (role.isSystem) return { error: t.roles.cannotDeleteSystemRoleError };
   if (role._count.admins > 0) {
-    return { error: "لا يمكن حذف دور مرتبط بمستخدمين" };
+    return { error: t.roles.cannotDeleteLinkedRoleError };
   }
 
   await prisma.role.delete({ where: { id } });

@@ -3,29 +3,34 @@
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { normalizeArabicName, isFullName } from "@/lib/arabic-name";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
 
-const createOrderFromCartSchema = z.object({
-  customerName: z
-    .string()
-    .min(1, "الاسم مطلوب")
-    .trim()
-    .refine(isFullName, "الرجاء إدخال الاسم الكامل (الاسم واللقب)"),
-  customerPhone: z.string().min(8, "رقم الهاتف غير صحيح").trim(),
-  customerEmail: z
-    .string()
-    .email("البريد الإلكتروني غير صحيح")
-    .optional()
-    .or(z.literal("")),
-  items: z
-    .array(
-      z.object({
-        productId: z.string(),
-        quantity: z.number().min(1),
-      }),
-    )
-    .min(1, "يجب إضافة منتج واحد على الأقل"),
-  notes: z.string().optional(),
-});
+function buildSchema(t: Dictionary) {
+  return z.object({
+    customerName: z
+      .string()
+      .min(1, t.cart.nameRequiredError)
+      .trim()
+      .refine(isFullName, t.cart.fullNameRequiredError),
+    customerPhone: z.string().min(8, t.cart.invalidPhoneError).trim(),
+    customerEmail: z
+      .string()
+      .email(t.cart.invalidEmailError)
+      .optional()
+      .or(z.literal("")),
+    items: z
+      .array(
+        z.object({
+          productId: z.string(),
+          quantity: z.number().min(1),
+        }),
+      )
+      .min(1, t.cart.minOneItemError),
+    notes: z.string().optional(),
+  });
+}
 
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString().slice(-6);
@@ -34,8 +39,11 @@ function generateOrderNumber(): string {
 }
 
 export async function createOrderFromCart(
-  data: z.infer<typeof createOrderFromCartSchema>,
+  data: z.infer<ReturnType<typeof buildSchema>>,
 ) {
+  const t = await getDictionary();
+  const createOrderFromCartSchema = buildSchema(t);
+
   try {
     const validatedData = createOrderFromCartSchema.parse(data);
 
@@ -51,7 +59,7 @@ export async function createOrderFromCart(
     if (products.length !== validatedData.items.length) {
       return {
         success: false,
-        error: "أحد المنتجات غير متاح",
+        error: t.cart.productUnavailableError,
       };
     }
 
@@ -61,7 +69,9 @@ export async function createOrderFromCart(
       if (!product || product.quantity < item.quantity) {
         return {
           success: false,
-          error: `المنتج "${product?.name}" لا يتوفر بالكمية المطلوبة`,
+          error: formatMessage(t.cart.insufficientQuantityErrorTemplate, {
+            product: product?.name ?? "",
+          }),
         };
       }
     }
@@ -142,12 +152,12 @@ export async function createOrderFromCart(
     return {
       success: true,
       orderId: order.id,
-      message: "تم إنشاء طلبك بنجاح",
+      message: t.cart.successMessage,
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const firstError = error.issues[0];
-      const message = firstError?.message || "بيانات غير صحيحة";
+      const message = firstError?.message || t.cart.invalidDataError;
       return {
         success: false,
         error: message,
@@ -155,7 +165,7 @@ export async function createOrderFromCart(
     }
     return {
       success: false,
-      error: "حدث خطأ أثناء إنشاء الطلب",
+      error: t.cart.createError,
     };
   }
 }

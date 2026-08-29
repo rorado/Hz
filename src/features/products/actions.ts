@@ -8,13 +8,14 @@ import { productSchema } from "@/features/products/schema";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 import { computePaymentStatus } from "@/lib/money";
 import {
-  DELETE_PASSWORD_ERROR,
+  getDeletePasswordError,
   isDeletePasswordValid,
 } from "@/lib/delete-guard";
 import {
   adjustCustomerBalance,
   computeBalanceEffect,
 } from "@/features/customers/balance";
+import { getDictionary } from "@/i18n/server";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -33,9 +34,10 @@ export async function findProductIdByBarcode(barcode: string) {
 export async function createProduct(input: unknown): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = productSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.products.validationError };
 
   const { images, ...data } = parsed.data;
 
@@ -57,9 +59,9 @@ export async function createProduct(input: unknown): Promise<ActionResult> {
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "SKU أو الرابط أو الباركود مستخدم بالفعل لمنتج آخر" };
+      return { error: t.products.uniqueFieldsError };
     }
-    return { error: "حدث خطأ أثناء إضافة المنتج" };
+    return { error: t.products.createError };
   }
 
   revalidatePath("/dashboard/products");
@@ -73,9 +75,10 @@ export async function updateProduct(
 ): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = productSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.products.validationError };
 
   const { images, ...data } = parsed.data;
 
@@ -121,9 +124,9 @@ export async function updateProduct(
     ]);
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "SKU أو الرابط أو الباركود مستخدم بالفعل لمنتج آخر" };
+      return { error: t.products.uniqueFieldsError };
     }
-    return { error: "حدث خطأ أثناء تحديث المنتج" };
+    return { error: t.products.updateError };
   }
 
   await Promise.all(
@@ -411,15 +414,16 @@ export async function deleteProduct(
 ): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  const t = await getDictionary();
 
   let deletedImages: Awaited<ReturnType<typeof forceDeleteProducts>>["images"];
   try {
     const result = await forceDeleteProducts([id]);
-    if (result.deletedCount === 0) return { error: "المنتج غير موجود" };
+    if (result.deletedCount === 0) return { error: t.products.notFoundError };
     deletedImages = result.images;
   } catch {
-    return { error: "تعذر حذف المنتج وجميع سجلاته المرتبطة" };
+    return { error: t.products.deleteError };
   }
   await Promise.allSettled(
     deletedImages.map((image) => destroyCloudinaryAsset(image.publicId)),
@@ -443,15 +447,16 @@ export async function deleteProducts(
 ): Promise<ActionResult> {
   const access = await requirePermission("PRODUCTS_MANAGE");
   if (!access.ok) return { error: access.error };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
   if (ids.length === 0) return { success: true };
+  const t = await getDictionary();
 
   let deletedImages: Awaited<ReturnType<typeof forceDeleteProducts>>["images"];
   try {
     const result = await forceDeleteProducts(ids);
     deletedImages = result.images;
   } catch {
-    return { error: "تعذر حذف المنتجات وجميع سجلاتها المرتبطة" };
+    return { error: t.products.bulkDeleteError };
   }
   await Promise.allSettled(
     deletedImages.map((image) => destroyCloudinaryAsset(image.publicId)),

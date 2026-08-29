@@ -13,6 +13,8 @@ import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import type { OrderStatus } from "@/generated/prisma/client";
 import { validateAvailableStock } from "@/lib/stock-validation";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -45,16 +47,17 @@ export async function updateOrderStatus(
 ): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!VALID_STATUSES.includes(status as OrderStatus)) {
-    return { error: "حالة غير صحيحة" };
+    return { error: t.orders.invalidStatusError };
   }
 
   const order = await prisma.order.findUnique({
     where: { id },
     include: { items: { include: { product: true } } },
   });
-  if (!order) return { error: "الطلب غير موجود" };
+  if (!order) return { error: t.orders.notFoundError };
 
   const completingNow = status === "COMPLETED" && order.status !== "COMPLETED";
 
@@ -126,9 +129,10 @@ export async function updateOrderItems(
 ): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = orderItemsSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.orders.validationError };
 
   if (!options?.allowNegativeStock) {
     const stockError = await validateAvailableStock(parsed.data.items);
@@ -139,7 +143,7 @@ export async function updateOrderItems(
     where: { id: orderId },
     include: { items: true },
   });
-  if (!order) return { error: "الطلب غير موجود" };
+  if (!order) return { error: t.orders.notFoundError };
 
   const existingIds = new Set(order.items.map((item) => item.id));
   const updates = parsed.data.items.filter(
@@ -152,7 +156,7 @@ export async function updateOrderItems(
       where: { id: { in: newItems.map((item) => item.productId) } },
     });
     if (products.length !== new Set(newItems.map((item) => item.productId)).size) {
-      return { error: "أحد المنتجات المضافة غير موجود" };
+      return { error: t.orders.addedProductNotFoundError };
     }
   }
 
@@ -200,14 +204,15 @@ export async function reassignOrderCustomer(
 ): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = reassignOrderCustomerSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.orders.validationError };
 
   const customer = await prisma.customer.findUnique({
     where: { id: parsed.data.customerId },
   });
-  if (!customer) return { error: "العميل غير موجود" };
+  if (!customer) return { error: t.orders.customerNotFoundError };
 
   await prisma.order.update({
     where: { id: orderId },
@@ -251,12 +256,13 @@ export async function saveOrderCustomerInfo(
 ): Promise<ActionResult & { conflict?: ConflictCustomer }> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.orders.validationError };
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) return { error: "الطلب غير موجود" };
+  if (!order) return { error: t.orders.notFoundError };
 
   if (!resolution) {
     const conflictingCustomer = await prisma.customer.findFirst({
@@ -349,9 +355,10 @@ export async function createOrder(
 ): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = createOrderSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.orders.validationError };
 
   if (!options?.allowNegativeStock) {
     const stockError = await validateAvailableStock(parsed.data.items);
@@ -361,7 +368,7 @@ export async function createOrder(
   const customer = await prisma.customer.findUnique({
     where: { id: parsed.data.customerId },
   });
-  if (!customer) return { error: "العميل غير موجود" };
+  if (!customer) return { error: t.orders.customerNotFoundError };
 
   const products = await prisma.product.findMany({
     where: { id: { in: parsed.data.items.map((item) => item.productId) } },
@@ -370,7 +377,7 @@ export async function createOrder(
 
   for (const item of parsed.data.items) {
     const product = productById.get(item.productId);
-    if (!product) return { error: "أحد المنتجات غير موجود" };
+    if (!product) return { error: t.orders.productNotFoundError };
   }
 
   const total = parsed.data.items.reduce(
@@ -400,7 +407,7 @@ export async function createOrder(
     });
     orderId = order.id;
   } catch {
-    return { error: "حدث خطأ أثناء إنشاء الطلب" };
+    return { error: t.orders.createError };
   }
 
   revalidatePath("/dashboard/orders");
@@ -411,11 +418,12 @@ export async function createOrder(
 export async function deleteOrder(id: string): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   try {
     await prisma.order.delete({ where: { id } });
   } catch {
-    return { error: "لا يمكن حذف هذا الطلب لارتباطه بفاتورة سابقة" };
+    return { error: t.orders.cannotDeleteLinkedError };
   }
 
   revalidatePath("/dashboard/orders");
@@ -427,6 +435,7 @@ export async function deleteOrders(ids: string[]): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
+  const t = await getDictionary();
 
   let failedCount = 0;
   for (const id of ids) {
@@ -442,7 +451,7 @@ export async function deleteOrders(ids: string[]): Promise<ActionResult> {
 
   if (failedCount > 0) {
     return {
-      error: `تعذر حذف ${failedCount} من الطلبات لارتباطها بفواتير سابقة`,
+      error: formatMessage(t.orders.bulkDeleteErrorTemplate, { count: failedCount }),
     };
   }
   return { success: true };

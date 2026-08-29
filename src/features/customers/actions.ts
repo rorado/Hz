@@ -7,7 +7,9 @@ import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import { findCustomerByPhone } from "@/features/customers/queries";
 import { adjustCustomerBalance } from "@/features/customers/balance";
-import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
+import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 
 type ActionResult = { error?: string; success?: boolean };
 type CreateCustomerResult = ActionResult & { customerId?: string };
@@ -17,16 +19,17 @@ export async function createCustomer(
 ): Promise<CreateCustomerResult> {
   const access = await requirePermission("CUSTOMERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.customers.validationError };
 
   const existing = await prisma.customer.findFirst({
     where: { phone: parsed.data.phone },
     select: { id: true },
   });
   if (existing) {
-    return { error: "يوجد عميل مسجل بنفس رقم الهاتف بالفعل" };
+    return { error: t.customers.phoneTakenError };
   }
 
   const customer = await prisma.customer.create({
@@ -51,16 +54,17 @@ export async function updateCustomer(
 ): Promise<ActionResult> {
   const access = await requirePermission("CUSTOMERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.customers.validationError };
 
   const existing = await prisma.customer.findFirst({
     where: { phone: parsed.data.phone, id: { not: id } },
     select: { id: true },
   });
   if (existing) {
-    return { error: "يوجد عميل مسجل بنفس رقم الهاتف بالفعل" };
+    return { error: t.customers.phoneTakenError };
   }
 
   // Invoices and orders each keep their own snapshot of the customer's
@@ -102,13 +106,14 @@ export async function adjustCustomerBalanceManual(
 ): Promise<ActionResult> {
   const access = await requirePermission("CUSTOMERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!Number.isFinite(input.delta) || Math.abs(input.delta) < 0.005) {
-    return { error: "الرجاء إدخال مبلغ صحيح" };
+    return { error: t.customers.invalidAmountError };
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) return { error: "العميل غير موجود" };
+  if (!customer) return { error: t.customers.notFoundError };
 
   await prisma.$transaction(async (tx) => {
     await adjustCustomerBalance(tx, customerId, input.delta, {
@@ -137,12 +142,13 @@ export async function deleteCustomer(
 ): Promise<ActionResult> {
   const access = await requirePermission("CUSTOMERS_MANAGE");
   if (!access.ok) return { error: access.error };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  const t = await getDictionary();
 
   try {
     await prisma.customer.delete({ where: { id } });
   } catch {
-    return { error: "لا يمكن حذف هذا العميل لارتباطه بطلبات سابقة" };
+    return { error: t.customers.cannotDeleteLinkedError };
   }
 
   revalidatePath("/dashboard/customers");
@@ -156,7 +162,8 @@ export async function deleteCustomers(
   const access = await requirePermission("CUSTOMERS_MANAGE");
   if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  const t = await getDictionary();
 
   let failedCount = 0;
   for (const id of ids) {
@@ -171,7 +178,7 @@ export async function deleteCustomers(
 
   if (failedCount > 0) {
     return {
-      error: `تعذر حذف ${failedCount} من العملاء لارتباطهم بطلبات سابقة`,
+      error: formatMessage(t.customers.bulkDeleteErrorTemplate, { count: failedCount }),
     };
   }
   return { success: true };

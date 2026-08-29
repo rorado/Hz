@@ -1,6 +1,10 @@
 import "server-only";
+import { getDictionary } from "@/i18n/server";
 
-export const DELETE_PASSWORD_ERROR = "كلمة المرور غير صحيحة";
+export async function getDeletePasswordError(): Promise<string> {
+  const t = await getDictionary();
+  return t.common.deletePasswordError;
+}
 
 /** Gate for deleting invoices, customers, and payments — verified
  * server-side against DELETE_CONFIRM_PASSWORD so it can't be bypassed by

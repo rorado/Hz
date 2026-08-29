@@ -8,7 +8,10 @@ import {
   countOtherActiveFullAccessAdmins,
 } from "@/lib/permissions";
 import { isUniqueConstraintError } from "@/lib/prisma-errors";
-import { isDeletePasswordValid, DELETE_PASSWORD_ERROR } from "@/lib/delete-guard";
+import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
 import {
   createUserSchema,
   updateUserSchema,
@@ -22,9 +25,10 @@ const PASSWORD_HASH_COST = 12;
 export async function createUser(input: unknown): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = createUserSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.users.validationError };
 
   try {
     const hashed = await bcrypt.hash(parsed.data.password, PASSWORD_HASH_COST);
@@ -38,9 +42,9 @@ export async function createUser(input: unknown): Promise<ActionResult> {
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
+      return { error: t.users.emailTakenError };
     }
-    return { error: "حدث خطأ أثناء إنشاء المستخدم" };
+    return { error: t.users.createError };
   }
 
   revalidatePath("/dashboard/settings/users");
@@ -53,33 +57,34 @@ export async function updateUser(
 ): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = updateUserSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.users.validationError };
 
   const target = await prisma.admin.findUnique({
     where: { id },
     select: { roleId: true, role: { select: { isFullAccess: true } } },
   });
-  if (!target) return { error: "المستخدم غير موجود" };
+  if (!target) return { error: t.users.notFoundError };
 
   // Structural guard against self-escalation: nobody can change their own
   // role, even an admin with USERS_MANAGE — closes the "grant myself more
   // permissions" hole without relying on the UI to hide the control.
   if (id === access.adminId && parsed.data.roleId !== target.roleId) {
-    return { error: "لا يمكنك تغيير دورك الخاص" };
+    return { error: t.users.cannotChangeOwnRoleError };
   }
 
   const newRole = await prisma.role.findUnique({
     where: { id: parsed.data.roleId },
     select: { isFullAccess: true },
   });
-  if (!newRole) return { error: "الدور المحدد غير موجود" };
+  if (!newRole) return { error: t.users.roleNotFoundError };
 
   if (target.role.isFullAccess && !newRole.isFullAccess) {
     const others = await countOtherActiveFullAccessAdmins(id);
     if (others === 0) {
-      return { error: "لا يمكن إزالة صلاحية آخر مدير في النظام" };
+      return { error: t.users.cannotRemoveLastAdminError };
     }
   }
 
@@ -94,9 +99,9 @@ export async function updateUser(
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
+      return { error: t.users.emailTakenError };
     }
-    return { error: "حدث خطأ أثناء تحديث المستخدم" };
+    return { error: t.users.updateError };
   }
 
   revalidatePath("/dashboard/settings/users");
@@ -109,9 +114,10 @@ export async function resetUserPassword(
 ): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   const parsed = resetPasswordSchema.safeParse(input);
-  if (!parsed.success) return { error: "الرجاء التحقق من البيانات المدخلة" };
+  if (!parsed.success) return { error: t.users.validationError };
 
   const hashed = await bcrypt.hash(parsed.data.password, PASSWORD_HASH_COST);
   await prisma.admin.update({ where: { id }, data: { password: hashed } });
@@ -126,10 +132,11 @@ export async function toggleUserActive(
 ): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
 
   if (!isActive) {
     if (id === access.adminId) {
-      return { error: "لا يمكنك إلغاء تفعيل حسابك الخاص" };
+      return { error: t.users.cannotDeactivateSelfError };
     }
     const target = await prisma.admin.findUnique({
       where: { id },
@@ -138,7 +145,7 @@ export async function toggleUserActive(
     if (target?.role.isFullAccess) {
       const others = await countOtherActiveFullAccessAdmins(id);
       if (others === 0) {
-        return { error: "لا يمكن إلغاء تفعيل آخر مدير في النظام" };
+        return { error: t.users.cannotDeactivateLastAdminError };
       }
     }
   }
@@ -151,17 +158,18 @@ export async function toggleUserActive(
 async function guardUserDeletion(
   id: string,
   currentAdminId: string,
+  t: Dictionary,
 ): Promise<ActionResult | null> {
-  if (id === currentAdminId) return { error: "لا يمكنك حذف حسابك الخاص" };
+  if (id === currentAdminId) return { error: t.users.cannotDeleteSelfError };
 
   const target = await prisma.admin.findUnique({
     where: { id },
     select: { role: { select: { isFullAccess: true } } },
   });
-  if (!target) return { error: "المستخدم غير موجود" };
+  if (!target) return { error: t.users.notFoundError };
   if (target.role.isFullAccess) {
     const others = await countOtherActiveFullAccessAdmins(id);
-    if (others === 0) return { error: "لا يمكن حذف آخر مدير في النظام" };
+    if (others === 0) return { error: t.users.cannotDeleteLastAdminError };
   }
   return null;
 }
@@ -172,15 +180,16 @@ export async function deleteUser(
 ): Promise<ActionResult> {
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  const t = await getDictionary();
 
-  const blocked = await guardUserDeletion(id, access.adminId);
+  const blocked = await guardUserDeletion(id, access.adminId, t);
   if (blocked) return blocked;
 
   try {
     await prisma.admin.delete({ where: { id } });
   } catch {
-    return { error: "لا يمكن حذف هذا المستخدم لارتباطه بعمليات سابقة" };
+    return { error: t.users.cannotDeleteLinkedError };
   }
 
   revalidatePath("/dashboard/settings/users");
@@ -194,11 +203,12 @@ export async function deleteUsers(
   const access = await requirePermission("USERS_MANAGE");
   if (!access.ok) return { error: access.error };
   if (ids.length === 0) return { success: true };
-  if (!isDeletePasswordValid(password)) return { error: DELETE_PASSWORD_ERROR };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  const t = await getDictionary();
 
   let failedCount = 0;
   for (const id of ids) {
-    const blocked = await guardUserDeletion(id, access.adminId);
+    const blocked = await guardUserDeletion(id, access.adminId, t);
     if (blocked) {
       failedCount++;
       continue;
@@ -213,7 +223,7 @@ export async function deleteUsers(
   revalidatePath("/dashboard/settings/users");
 
   if (failedCount > 0) {
-    return { error: `تعذر حذف ${failedCount} من المستخدمين` };
+    return { error: formatMessage(t.users.bulkDeleteErrorTemplate, { count: failedCount }) };
   }
   return { success: true };
 }
