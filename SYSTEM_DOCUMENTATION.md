@@ -26,10 +26,7 @@ This document is the single source of truth for this system: what it does, who c
 
 ### What it is
 
-An Arabic-first (RTL, with English/French support), full-stack inventory + sales management system built on Next.js. It combines:
-
-- An **admin dashboard** (`/dashboard/**`) for staff to manage products, stock, customers, sales, purchasing, suppliers, expenses, and reporting.
-- A **public storefront** (`/`, `/products`, `/categories`, `/cart`, `/about`) where customers can browse the product catalog and submit an order — no customer account/login exists; the storefront is browse-and-order-request only.
+An Arabic-first (RTL, with English/French support), full-stack inventory + sales management system built on Next.js — an internal admin dashboard (`/dashboard/**`) for staff to manage products, stock, customers, sales, purchasing, suppliers, expenses, and reporting.
 
 ### Main purpose
 
@@ -37,8 +34,7 @@ Run the day-to-day operations of a small-to-mid-size retail/wholesale business: 
 
 ### Who uses it
 
-- **Store staff/admins** — logged-in users under `/dashboard/**`, each with a role that grants specific permissions.
-- **Anonymous customers** — the public storefront, no login. A logged-in staff member is redirected away from the public pages back to `/dashboard` (staff use the dashboard, not the storefront).
+**Store staff/admins** — logged-in users under `/dashboard/**`, each with a role that grants specific permissions.
 
 ### Main modules
 
@@ -104,17 +100,14 @@ Every feature below was confirmed to exist in the codebase (route + server actio
 | Printable account statement | A separate, print/PDF-oriented statement (invoices + payments + totals for a date range), reusing the app's print/PDF infrastructure | `CUSTOMERS_VIEW` | `/dashboard/customers/[id]/statement` |
 | Bulk delete customers | Select and delete multiple customers (password-confirmed) | `CUSTOMERS_MANAGE` | Customers list |
 
-### 2.4 Orders (public storefront intake)
+### 2.4 Orders
 
 | Feature | What it does | Permission | UI location |
 |---|---|---|---|
-| Public storefront browsing | Browse categories/products, view product detail pages, add to a browser-local cart | none (public) | `/`, `/products`, `/products/[slug]`, `/categories` |
-| Cart & checkout | Cart persists in `localStorage`; checkout submits customer name/phone/email/notes + items, validated with zod, creates an `Order` (status `PENDING`) after re-checking stock | none (public) | `/cart` |
-| Order confirmation page | Shown after checkout | none (public) | `/order-confirmation/[orderId]` |
 | Orders list/management | Staff view of all orders, status (Pending/Processing/Completed/Cancelled), search | `ORDERS_VIEW` | `/dashboard/orders` |
-| Create order manually | Staff can create an order directly (not just from the public cart) | `ORDERS_MANAGE` | `/dashboard/orders/new` |
+| Create order | Staff create an order directly | `ORDERS_MANAGE` | `/dashboard/orders/new` |
 | Edit order items/status | Change item quantities/prices, update status, reassign or edit the linked customer | `ORDERS_MANAGE` | `/dashboard/orders/[id]` |
-| Convert order → invoice | An invoice can be created from an order (`getOrCreateInvoiceForOrder`), which is how a storefront order actually becomes a tracked sale with payment | `INVOICES_MANAGE` | Order detail page |
+| Convert order → invoice | An invoice can be created from an order (`getOrCreateInvoiceForOrder`), turning it into a tracked sale with payment | `INVOICES_MANAGE` | Order detail page |
 | Bulk delete orders | | `ORDERS_MANAGE` | Orders list |
 
 ### 2.5 Invoices (sales)
@@ -316,7 +309,7 @@ All of the following requires `USERS_MANAGE` (Users, Roles) or `SETTINGS_MANAGE`
 
 Go to `/dashboard/settings/appearance` (requires `SETTINGS_MANAGE`).
 
-- **App name / short name** — the full name shown across the admin UI, storefront, and print documents, plus a short name used for the browser tab title.
+- **App name / short name** — the full name shown across the admin UI and print documents, plus a short name used for the browser tab title.
 - **Light-mode colors** — a real color picker (native `<input type="color">`) plus a text field per token (primary, secondary, sidebar, sidebar text, header, background, text, button, accent), each with a live swatch preview and its own "reset to default" button.
 - Only light mode is shown in the UI; dark-mode color values still exist in the underlying settings record and are preserved unedited (submitted through unchanged) — there's currently no UI to edit them directly.
 - **"Restore default settings"** — resets the form (name, short name, and all colors) back to the values in `src/config/company.ts`, without saving until you press Save.
@@ -394,8 +387,6 @@ All dashboard pages live under `/dashboard/**` and require being logged in (enfo
 | Appearance | `/dashboard/settings/appearance` | `SETTINGS_MANAGE` | Branding & theme colors |
 | Access denied | `/dashboard/access-denied` | — | Shown when a logged-in user lacks the permission for the page they tried to reach |
 
-> **Note:** a logged-in admin visiting the public storefront is automatically redirected back to `/dashboard` — staff and storefront visitors are treated as separate audiences.
-
 ---
 
 ## 7. Main Workflows
@@ -411,14 +402,12 @@ All dashboard pages live under `/dashboard/**` and require being logged in (enfo
 7. Optionally print or save as PDF from the invoice detail page.
 8. If more payment comes in later, record additional payments from the invoice profile until it's fully paid.
 
-### 7.2 Storefront order → fulfilled sale
+### 7.2 Order → fulfilled sale
 
-1. Customer browses `/products`, adds items to their (browser-local) cart.
-2. Customer goes to `/cart`, enters name/phone/email/notes, submits.
-3. System re-validates stock and creates an `Order` (status `PENDING`).
-4. Staff reviews it in **Orders**, updates status as it's processed, edits items/customer if needed.
-5. Staff converts the order into an **Invoice** to actually record it as a tracked, payable sale.
-6. From here it follows the same payment/print flow as 7.1.
+1. Staff create an order in **Orders → New Order** (or edit one already on file).
+2. Update its status as it's processed, editing items/customer if needed.
+3. Convert the order into an **Invoice** to record it as a tracked, payable sale.
+4. From here it follows the same payment/print flow as 7.1.
 
 ### 7.3 Restocking via a supplier purchase
 
@@ -494,7 +483,6 @@ These live in each feature's `actions.ts`, are invoked directly from forms/compo
 | **Inventory** | `recordInventoryMovement` | `INVENTORY_MANAGE` |
 | **Customers** | `createCustomer`, `updateCustomer`, `adjustCustomerBalanceManual`, `findCustomerByPhoneAction`, `deleteCustomer`, `deleteCustomers`, `toggleCustomerFavorite` | `CUSTOMERS_MANAGE` |
 | **Orders** | `updateOrderStatus`, `getOrderStockIssue`, `updateOrderItems`, `reassignOrderCustomer`, `saveOrderCustomerInfo`, `createOrder`, `deleteOrder`, `deleteOrders` | `ORDERS_MANAGE` |
-| **Cart (public)** | `createOrderFromCart` | none — public checkout |
 | **Invoices** | `checkInvoiceStockAvailability`, `fetchCustomerOutstandingInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`, `deleteInvoices`, `getOrCreateInvoiceForOrder`, `recordPayment`, `recordPaymentAcrossInvoices`, `updatePayment`, `deletePayment` | `INVOICES_MANAGE` |
 | **Suppliers** | `adjustSupplierBalance`, `createSupplier`, `updateSupplier`, `deleteSupplier`, `deleteSuppliers` | `SUPPLIERS_MANAGE` |
 | **Purchases** | `createPurchaseOrder`, `updatePurchaseOrderItems`, `recordSupplierPayment`, `deleteSupplierPayment`, `receivePurchaseOrder`, `cancelPurchaseOrder`, `deletePurchaseOrder`, `deletePurchaseOrders` | `PURCHASES_MANAGE` |
@@ -507,6 +495,8 @@ These live in each feature's `actions.ts`, are invoked directly from forms/compo
 Every action in this table returns an `ActionResult`-shaped value (`{ error?: string }` on failure; `void`/data on success) rather than an HTTP status — that's the nature of Next.js Server Actions. Deletions of invoices, customers, payments, and users additionally require the `DELETE_CONFIRM_PASSWORD` value to be supplied and correct.
 
 ### 9.3 Common error shapes
+
+Every error message returned by a server action or API route is looked up from the app's dictionary (`ar`/`en`/`fr`) based on the visitor's locale cookie, not a fixed string — the English text shown below is just that lookup's English value.
 
 | Situation | Server Action | Route Handler |
 |---|---|---|
@@ -561,5 +551,4 @@ Every action in this table returns an `ActionResult`-shaped value (`{ error?: st
 - **Dashboard "top customers" widget** shows customer names/figures to any logged-in user, independent of whether they hold `CUSTOMERS_VIEW` — a direct consequence of the point above.
 - **Page-level access denial returns HTTP 200, not 403/404.** Because of how Next.js streaming/`loading.tsx` interacts with `redirect()`/`notFound()` inside a nested page, a permission-denied page redirect to `/dashboard/access-denied` cannot carry a real 403 status code by the time it fires — the browser sees a 200 for the redirected page. The redirect and message are still correct and no denied data is ever included in the response; only the raw HTTP status code is not meaningful here. Server Actions and the real API routes under `/api/**` are unaffected and return correct `401`/`403` statuses.
 - **A leaked database credential was found and fixed during this documentation pass.** `.env.example` (a file intended to be safe to commit) contained a real Neon Postgres connection string with a live password, and it had already been committed and pushed to the project's **public** GitHub repository. The current working copy of `.env.example` has been redacted, but the credential remains in git history and was exposed publicly — **the actual database password should be rotated on the Neon dashboard**; editing the file alone does not undo the exposure.
-- **The public storefront has no customer accounts.** Checkout (`createOrderFromCart`) only creates an `Order`; there is no customer login, order-history-by-account, or way for a storefront visitor to see past orders beyond the one-time confirmation page. This may be intentional (order-request-only storefront) but is worth confirming against actual business needs.
 - **`README.md` is still the default `create-next-app` boilerplate** and describes none of this project's actual setup — this document (`SYSTEM_DOCUMENTATION.md`) is the accurate reference; consider pointing `README.md` at it.

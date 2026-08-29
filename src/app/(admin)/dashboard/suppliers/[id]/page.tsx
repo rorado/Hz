@@ -15,10 +15,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { getSupplierProfile } from "@/features/suppliers/queries";
+import { getSupplierProfile, getSupplierProductsDelivered } from "@/features/suppliers/queries";
 import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-orders-table";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { AdjustSupplierBalanceDialog } from "@/features/suppliers/components/adjust-supplier-balance-dialog";
+import { SupplierProductsTable } from "@/features/suppliers/components/supplier-products-table";
 import { formatCurrency } from "@/lib/currency";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
@@ -33,10 +34,11 @@ export default async function SupplierProfilePage({
   await requirePageAccess("SUPPLIERS_VIEW");
 
   const { id } = await params;
-  const [t, locale, profile] = await Promise.all([
+  const [t, locale, profile, deliveredProducts] = await Promise.all([
     getDictionary(),
     getLocale(),
     getSupplierProfile(id),
+    getSupplierProductsDelivered(id),
   ]);
   if (!profile) notFound();
 
@@ -146,15 +148,17 @@ export default async function SupplierProfilePage({
             <span className="text-muted-foreground">{t.customers.registeredAtLabel}: </span>
             {new Date(supplier.createdAt).toLocaleDateString("fr-FR")}
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link href={`/dashboard/suppliers?edit=${supplier.id}`} />}
-          >
-            {t.suppliers.editSupplierInfo}
-          </Button>
-          <AdjustSupplierBalanceDialog supplierId={supplier.id} currentBalance={Number(supplier.balance)} />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/dashboard/suppliers?edit=${supplier.id}`} />}
+            >
+              {t.suppliers.editSupplierInfo}
+            </Button>
+            <AdjustSupplierBalanceDialog supplierId={supplier.id} currentBalance={Number(supplier.balance)} />
+          </div>
         </CardContent>
       </Card>
 
@@ -170,6 +174,7 @@ export default async function SupplierProfilePage({
             />
           ) : (
             <PurchaseOrdersTable
+              searchable
               data={purchaseOrders.map((order) => ({
                 id: order.id,
                 orderNumber: order.orderNumber,
@@ -183,6 +188,8 @@ export default async function SupplierProfilePage({
           )}
         </CardContent>
       </Card>
+
+      <SupplierProductsTable products={deliveredProducts} t={t} locale={locale} />
 
       <SupplierPaymentHistory
         payments={payments.map((payment) => ({

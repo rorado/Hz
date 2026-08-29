@@ -141,3 +141,73 @@ export async function getSupplierProfile(id: string) {
     totals: { totalPurchased, totalPaid, totalOutstanding },
   };
 }
+
+export type SupplierDeliveredProduct = {
+  key: string;
+  name: string;
+  quantity: number;
+  deliveries: number;
+  totalCost: number;
+  avgCost: number;
+  latestCost: number;
+};
+
+/** All-time, per-product breakdown of what this supplier has delivered —
+ * aggregated from every PurchaseOrderItem on their purchase orders,
+ * regardless of order status (received/pending/cancelled all still
+ * represent something the supplier was asked to deliver). */
+export async function getSupplierProductsDelivered(
+  supplierId: string,
+): Promise<SupplierDeliveredProduct[]> {
+  const rows = await prisma.$queryRaw<
+    {
+      key: string;
+      name: string;
+      quantity: bigint;
+      deliveries: bigint;
+      totalCost: string;
+      latestCost: string;
+    }[]
+  >`
+    WITH items AS (
+      SELECT poi."productId" as key, p.name, poi.quantity, poi."unitCost",
+        po."createdAt", po.id as "purchaseOrderId"
+      FROM public."PurchaseOrderItem" poi
+      JOIN public."PurchaseOrder" po ON po.id = poi."purchaseOrderId"
+      JOIN public."Product" p ON p.id = poi."productId"
+      WHERE po."supplierId" = ${supplierId}
+    ),
+    agg AS (
+      SELECT key, MIN(name) as name,
+        SUM(quantity)::bigint as quantity,
+        COUNT(DISTINCT "purchaseOrderId")::bigint as deliveries,
+        SUM(quantity * "unitCost")::numeric as "totalCost"
+      FROM items
+      GROUP BY key
+    ),
+    ranked AS (
+      SELECT key, "unitCost",
+        ROW_NUMBER() OVER (PARTITION BY key ORDER BY "createdAt" DESC) as rn
+      FROM items
+    )
+    SELECT agg.key, agg.name, agg.quantity, agg.deliveries, agg."totalCost",
+      latest."unitCost" as "latestCost"
+    FROM agg
+    JOIN ranked latest ON latest.key = agg.key AND latest.rn = 1
+    ORDER BY agg."totalCost" DESC
+  `;
+
+  return rows.map((row) => {
+    const quantity = Number(row.quantity);
+    const totalCost = Number(row.totalCost);
+    return {
+      key: row.key,
+      name: row.name,
+      quantity,
+      deliveries: Number(row.deliveries),
+      totalCost,
+      avgCost: quantity > 0 ? totalCost / quantity : 0,
+      latestCost: Number(row.latestCost),
+    };
+  });
+}

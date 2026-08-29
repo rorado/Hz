@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Package, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Package, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -34,10 +35,26 @@ export function StatementProductsTable({
   t: Dictionary;
   locale: Locale;
 }) {
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+
+  const trimmed = query.trim().toLowerCase();
+  const filtered = useMemo(
+    () =>
+      trimmed
+        ? products.filter((product) => product.name.toLowerCase().includes(trimmed))
+        : products,
+    [products, trimmed],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const paged = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
 
   return (
     <Card>
@@ -52,6 +69,15 @@ export function StatementProductsTable({
           <EmptyState icon={Package} title={t.customerStatement.noProducts} />
         ) : (
           <>
+            <div className="relative max-w-sm">
+              <Search className="pointer-events-none absolute inset-e-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => handleQueryChange(event.target.value)}
+                placeholder={t.customerStatement.productsSearchPlaceholder}
+                className="pe-9"
+              />
+            </div>
             <div className="overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
@@ -64,6 +90,16 @@ export function StatementProductsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {paged.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        {t.common.noResults}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {paged.map((product) => {
                     const change =
                       product.currentPrice !== null
@@ -158,11 +194,11 @@ export function StatementProductsTable({
                 </TableBody>
               </Table>
             </div>
-            {products.length > PAGE_SIZE && (
+            {filtered.length > PAGE_SIZE && (
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
                   {formatMessage(t.common.paginationSummary, {
-                    total: products.length.toLocaleString(locale),
+                    total: filtered.length.toLocaleString(locale),
                     page: currentPage.toLocaleString(locale),
                     pageCount: pageCount.toLocaleString(locale),
                   })}
