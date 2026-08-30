@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/permissions";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { computePaymentStatus } from "@/lib/money";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
@@ -12,9 +12,15 @@ import {
   purchaseOrderSchema,
   purchaseOrderItemsSchema,
 } from "@/features/purchases/schema";
-import type { PaymentMethod } from "@/generated/prisma/client";
+import type { PaymentMethod, PurchaseOrderStatus, Prisma } from "@/generated/prisma/client";
 
 type ActionResult = { error?: string; success?: boolean };
+
+const PURCHASE_ORDER_STATUSES: PurchaseOrderStatus[] = [
+  "PENDING",
+  "RECEIVED",
+  "CANCELLED",
+];
 
 function generatePurchaseOrderNumber() {
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -43,6 +49,7 @@ export async function createPurchaseOrder(
         supplierId: parsed.data.supplierId,
         language: parsed.data.language,
         total,
+        createdById: access.adminId,
         items: {
           create: parsed.data.items.map((item) => ({
             productId: item.productId,
@@ -76,12 +83,12 @@ export async function createPurchaseOrder(
 }
 
 /**
- * Replaces a purchase order's items and recomputes its total. Allowed at
- * any status, including after receipt — but deliberately does NOT touch
- * product quantities or inventory movements, since those were already
- * recorded against whatever items existed at receive time. Editing items
- * afterward is purely a correction to the order's own record; if the stock
- * itself needs adjusting too, that's a separate manual inventory action.
+ * Replaces a purchase order's items and recomputes its total. Blocked once
+ * the order has been received — stock was already reserved against whatever
+ * items existed at receive time, so editing them afterward would silently
+ * desync the order's record from the stock/movements it already produced.
+ * To correct a received order, change its status back to pending first
+ * (which reverses that stock) or use a purchase return.
  */
 export async function updatePurchaseOrderItems(
   id: string,
@@ -96,6 +103,9 @@ export async function updatePurchaseOrderItems(
 
   const order = await prisma.purchaseOrder.findUnique({ where: { id } });
   if (!order) return { error: t.purchases.notFoundError };
+  if (order.status === "RECEIVED") {
+    return { error: t.purchases.cannotEditReceivedError };
+  }
 
   const total = parsed.data.items.reduce(
     (sum, item) => sum + item.quantity * item.unitCost,
@@ -261,7 +271,185 @@ export async function deleteSupplierPayment(
   return { success: true };
 }
 
-export async function receivePurchaseOrder(id: string): Promise<ActionResult> {
+/**
+ * Checks whether un-receiving this order (moving it away from RECEIVED)
+ * would take any of its products below zero — e.g. because stock it
+ * delivered was already resold. Returns null when the reversal is safe.
+ */
+export async function getPurchaseOrderStockIssue(id: string) {
+  if (!(await hasPermission("PURCHASES_MANAGE"))) return null;
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    include: {
+      items: { include: { product: { select: { name: true, quantity: true } } } },
+    },
+  });
+  if (!order || order.status !== "RECEIVED") return null;
+
+  const requestedByProduct = new Map<string, number>();
+  for (const item of order.items) {
+    requestedByProduct.set(
+      item.productId,
+      (requestedByProduct.get(item.productId) ?? 0) + item.quantity,
+    );
+  }
+  for (const item of order.items) {
+    const requested = requestedByProduct.get(item.productId) ?? 0;
+    if (requested > item.product.quantity) {
+      return {
+        product: item.product.name,
+        requested,
+        available: item.product.quantity,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Changes a purchase order's status, keeping stock in sync either way:
+ * moving INTO RECEIVED reserves (adds) the ordered stock, exactly like the
+ * old one-shot "receive" action; moving OUT of RECEIVED (back to pending or
+ * to cancelled) reverses that same stock, since the goods are no longer
+ * considered on hand because of this order. A status change that doesn't
+ * cross the RECEIVED boundary (e.g. PENDING <-> CANCELLED) never touches
+ * stock at all.
+ */
+export async function updatePurchaseOrderStatus(
+  id: string,
+  status: PurchaseOrderStatus,
+  options?: { allowNegativeStock?: boolean },
+): Promise<ActionResult> {
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  if (!PURCHASE_ORDER_STATUSES.includes(status)) {
+    return { error: t.purchases.invalidStatusError };
+  }
+
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+  if (!order) return { error: t.purchases.notFoundError };
+  if (order.status === status) return { success: true };
+
+  const wasReceived = order.status === "RECEIVED";
+  const willBeReceived = status === "RECEIVED";
+
+  try {
+    if (willBeReceived && !wasReceived) {
+      await prisma.$transaction([
+        prisma.purchaseOrder.update({
+          where: { id },
+          data: { status, receivedAt: new Date() },
+        }),
+        ...order.items.map((item) =>
+          prisma.product.update({
+            where: { id: item.productId },
+            data: { quantity: { increment: item.quantity } },
+          }),
+        ),
+        ...order.items.map((item) =>
+          prisma.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              type: "IN",
+              quantity: item.quantity,
+              reference: order.orderNumber,
+              reason: "استلام أمر شراء",
+            },
+          }),
+        ),
+      ]);
+    } else if (wasReceived && !willBeReceived) {
+      await prisma.$transaction(async (tx) => {
+        await tx.purchaseOrder.update({
+          where: { id },
+          data: { status, receivedAt: null },
+        });
+        for (const item of order.items) {
+          if (options?.allowNegativeStock) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { quantity: { decrement: item.quantity } },
+            });
+          } else {
+            const updated = await tx.product.updateMany({
+              where: { id: item.productId, quantity: { gte: item.quantity } },
+              data: { quantity: { decrement: item.quantity } },
+            });
+            if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+          }
+          await tx.inventoryMovement.create({
+            data: {
+              productId: item.productId,
+              type: "OUT",
+              quantity: item.quantity,
+              reference: order.orderNumber,
+              reason: "التراجع عن استلام أمر شراء",
+            },
+          });
+        }
+      });
+    } else {
+      await prisma.purchaseOrder.update({ where: { id }, data: { status } });
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      const issue = await getPurchaseOrderStockIssue(id);
+      return {
+        error: issue
+          ? formatMessage(t.common.insufficientProductStockTemplate, issue)
+          : t.purchases.statusUpdateError,
+      };
+    }
+    return { error: t.purchases.statusUpdateError };
+  }
+
+  revalidatePath("/dashboard/purchases");
+  revalidatePath(`/dashboard/purchases/${id}`);
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/**
+ * Reverses a RECEIVED purchase order's stock effect before it's deleted, so
+ * deleting the record doesn't leave phantom stock behind with no order left
+ * to justify it. A PENDING or CANCELLED order never added stock, so there's
+ * nothing to undo.
+ */
+async function reversePurchaseOrderStockOnDelete(
+  tx: Prisma.TransactionClient,
+  order: {
+    orderNumber: string;
+    status: string;
+    items: { productId: string; quantity: number }[];
+  },
+) {
+  if (order.status !== "RECEIVED") return;
+  for (const item of order.items) {
+    const updated = await tx.product.updateMany({
+      where: { id: item.productId, quantity: { gte: item.quantity } },
+      data: { quantity: { decrement: item.quantity } },
+    });
+    if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+    await tx.inventoryMovement.create({
+      data: {
+        productId: item.productId,
+        type: "OUT",
+        quantity: item.quantity,
+        reference: order.orderNumber,
+        reason: "حذف أمر شراء مستلم",
+      },
+    });
+  }
+}
+
+export async function deletePurchaseOrder(id: string): Promise<ActionResult> {
   const access = await requirePermission("PURCHASES_MANAGE");
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
@@ -271,74 +459,28 @@ export async function receivePurchaseOrder(id: string): Promise<ActionResult> {
     include: { items: true },
   });
   if (!order) return { error: t.purchases.notFoundError };
-  if (order.status !== "PENDING") {
-    return { error: t.purchases.alreadyReceivedError };
-  }
-
-  await prisma.$transaction([
-    prisma.purchaseOrder.update({
-      where: { id },
-      data: { status: "RECEIVED", receivedAt: new Date() },
-    }),
-    ...order.items.map((item) =>
-      prisma.product.update({
-        where: { id: item.productId },
-        data: { quantity: { increment: item.quantity } },
-      }),
-    ),
-    ...order.items.map((item) =>
-      prisma.inventoryMovement.create({
-        data: {
-          productId: item.productId,
-          type: "IN",
-          quantity: item.quantity,
-          reference: order.orderNumber,
-          reason: "استلام أمر شراء",
-        },
-      }),
-    ),
-  ]);
-
-  revalidatePath("/dashboard/purchases");
-  revalidatePath(`/dashboard/purchases/${id}`);
-  revalidatePath("/dashboard/inventory");
-  revalidatePath("/dashboard/products");
-  return { success: true };
-}
-
-export async function cancelPurchaseOrder(id: string): Promise<ActionResult> {
-  const access = await requirePermission("PURCHASES_MANAGE");
-  if (!access.ok) return { error: access.error };
-  const t = await getDictionary();
-
-  const order = await prisma.purchaseOrder.findUnique({ where: { id } });
-  if (!order) return { error: t.purchases.notFoundError };
-  if (order.status !== "PENDING") {
-    return { error: t.purchases.cannotCancelError };
-  }
-
-  await prisma.purchaseOrder.update({
-    where: { id },
-    data: { status: "CANCELLED" },
-  });
-
-  revalidatePath("/dashboard/purchases");
-  revalidatePath(`/dashboard/purchases/${id}`);
-  return { success: true };
-}
-
-export async function deletePurchaseOrder(id: string): Promise<ActionResult> {
-  const access = await requirePermission("PURCHASES_MANAGE");
-  if (!access.ok) return { error: access.error };
-  const t = await getDictionary();
 
   try {
-    await prisma.purchaseOrder.delete({ where: { id } });
-  } catch {
+    await prisma.$transaction(async (tx) => {
+      await reversePurchaseOrderStockOnDelete(tx, order);
+      await tx.purchaseOrder.delete({ where: { id } });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      const issue = await getPurchaseOrderStockIssue(id);
+      return {
+        error: issue
+          ? formatMessage(t.common.insufficientProductStockTemplate, issue)
+          : t.purchases.deleteError,
+      };
+    }
     return { error: t.purchases.deleteError };
   }
 
   revalidatePath("/dashboard/purchases");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -353,13 +495,27 @@ export async function deletePurchaseOrders(
   let failedCount = 0;
   for (const id of ids) {
     try {
-      await prisma.purchaseOrder.delete({ where: { id } });
+      const order = await prisma.purchaseOrder.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!order) {
+        failedCount++;
+        continue;
+      }
+      await prisma.$transaction(async (tx) => {
+        await reversePurchaseOrderStockOnDelete(tx, order);
+        await tx.purchaseOrder.delete({ where: { id } });
+      });
     } catch {
       failedCount++;
     }
   }
 
   revalidatePath("/dashboard/purchases");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard");
 
   if (failedCount > 0) {
     return {

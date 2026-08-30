@@ -396,6 +396,7 @@ export async function createOrder(
         customerEmail: customer.email,
         notes: parsed.data.notes || null,
         total,
+        createdById: access.adminId,
         items: {
           create: parsed.data.items.map((item) => ({
             productId: item.productId,

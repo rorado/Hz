@@ -70,8 +70,12 @@ export default async function ExpensesPage({
         <>
           <ExpensesTable
             data={items.map((item) => ({
-              ...item,
+              id: item.id,
+              category: item.category,
               amount: Number(item.amount),
+              description: item.description,
+              date: item.date,
+              createdByName: item.createdBy?.name ?? null,
             }))}
           />
           <DataTablePagination

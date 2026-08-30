@@ -20,10 +20,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/format";
-import { localeDirection } from "@/i18n/config";
+import { locales, localeLabels, localeDirection, type Locale } from "@/i18n/config";
 
 const PRESET_LIMITS = [50, 100, 250, 500];
 
@@ -203,6 +210,10 @@ export function ReportExportButtons({
   const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>("csv");
+  // Independent of the admin's own UI language — lets the exported file be
+  // requested in any supported language regardless of what's currently
+  // displayed on screen. Defaults to the current UI locale.
+  const [lang, setLang] = useState<Locale>(locale);
   const [limit, setLimit] = useState<number | "all">("all");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
@@ -220,13 +231,15 @@ export function ReportExportButtons({
           ? t.reports.exportPrint
         : t.reports.exportCsv;
 
-  async function openDialog(nextFormat: ExportFormat) {
-    setFormat(nextFormat);
-    setLimit("all");
-    setOpen(true);
+  async function fetchColumns(forLang: Locale) {
     setIsLoadingColumns(true);
     try {
-      const params = new URLSearchParams({ type, format: "json", limit: "1" });
+      const params = new URLSearchParams({
+        type,
+        format: "json",
+        limit: "1",
+        lang: forLang,
+      });
       const response = await fetch(`/api/reports/export?${params.toString()}`);
       if (!response.ok) throw new Error("column request failed");
       const payload = (await response.json()) as { headers: string[] };
@@ -239,6 +252,24 @@ export function ReportExportButtons({
     } finally {
       setIsLoadingColumns(false);
     }
+  }
+
+  async function openDialog(nextFormat: ExportFormat) {
+    setFormat(nextFormat);
+    setLimit("all");
+    setLang(locale);
+    setOpen(true);
+    await fetchColumns(locale);
+  }
+
+  function handleLangChange(value: string | null) {
+    if (!value) return;
+    const nextLang = value as Locale;
+    setLang(nextLang);
+    // Column headers are language-dependent, so the selection checkboxes
+    // need refreshed labels — re-selects everything since column *count*
+    // never changes between languages, only the label text.
+    void fetchColumns(nextLang);
   }
 
   async function generatePdf(
@@ -256,7 +287,7 @@ export function ReportExportButtons({
         requestAnimationFrame(() => resolve()),
       );
 
-      const params = new URLSearchParams({ type, format: "json" });
+      const params = new URLSearchParams({ type, format: "json", lang });
       if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
       params.set("columns", chosenColumns.join(","));
       const response = await fetch(`/api/reports/export?${params.toString()}`);
@@ -375,7 +406,7 @@ export function ReportExportButtons({
         requestAnimationFrame(() => resolve()),
       );
 
-      const params = new URLSearchParams({ type, format: "json" });
+      const params = new URLSearchParams({ type, format: "json", lang });
       if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
       params.set("columns", chosenColumns.join(","));
       const response = await fetch(`/api/reports/export?${params.toString()}`);
@@ -444,7 +475,7 @@ export function ReportExportButtons({
       void printAllItems(chosenLimit, chosenColumns);
       return;
     }
-    const params = new URLSearchParams({ type, format });
+    const params = new URLSearchParams({ type, format, lang });
     if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
     params.set("columns", chosenColumns.join(","));
     window.location.href = `/api/reports/export?${params.toString()}`;
@@ -509,6 +540,27 @@ export function ReportExportButtons({
           </DialogHeader>
 
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pe-1">
+          <div className="space-y-1.5">
+            <span className="text-sm font-semibold">{t.reports.exportLanguageLabel}</span>
+            <Select
+              items={localeLabels}
+              value={lang}
+              onValueChange={(value) => handleLangChange(value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {(value: Locale) => localeLabels[value]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {locales.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {localeLabels[option]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <button
               type="button"

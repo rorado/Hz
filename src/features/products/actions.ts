@@ -48,6 +48,7 @@ export async function createProduct(input: unknown): Promise<ActionResult> {
         barcode: data.barcode || null,
         description: data.description || null,
         brandId: data.brandId || null,
+        createdById: access.adminId,
         images: {
           create: images.map((image, index) => ({
             publicId: image.publicId,

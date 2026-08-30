@@ -54,7 +54,12 @@ export function getAdminNavGroups(
   const groups: AdminNavGroup[] = [
     {
       items: [
-        { href: "/dashboard", label: t.admin.dashboard, icon: LayoutDashboard },
+        {
+          href: "/dashboard",
+          label: t.admin.dashboard,
+          icon: LayoutDashboard,
+          permission: "DASHBOARD_VIEW",
+        },
       ],
     },
     {
@@ -189,4 +194,19 @@ export function getAdminNavGroups(
       items: group.items.filter((item) => canSee(permissions, item.permission)),
     }))
     .filter((group) => group.items.length > 0);
+}
+
+/** The first page this admin can actually reach, in the same priority
+ * order as the sidebar itself — used wherever the app would otherwise
+ * blindly send someone to `/dashboard` regardless of whether they can see
+ * it (post-login redirect, the access-denied page's "back" link). Returns
+ * `null` only for a role with no permissions granted at all, in which case
+ * the caller should fall back to the access-denied page — there's
+ * genuinely nowhere else to send them. */
+export function getFirstAccessibleHref(
+  t: Dictionary,
+  permissions: PermissionKey[] | "full",
+): string | null {
+  const groups = getAdminNavGroups(t, permissions);
+  return groups[0]?.items[0]?.href ?? null;
 }

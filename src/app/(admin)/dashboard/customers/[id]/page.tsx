@@ -176,6 +176,10 @@ export default async function CustomerProfilePage({
             <span className="text-muted-foreground">{t.customers.registeredAtLabel}: </span>
             {new Date(customer.createdAt).toLocaleDateString("fr-FR")}
           </p>
+          <p>
+            <span className="text-muted-foreground">{t.common.createdByLabel}: </span>
+            {customer.createdBy?.name ?? t.common.unknownEmployee}
+          </p>
           <Button
             variant="outline"
             size="sm"

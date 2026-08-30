@@ -17,6 +17,7 @@ export type ExpenseRow = {
   amount: number;
   description: string | null;
   date: Date;
+  createdByName: string | null;
 };
 
 export function getExpenseColumns(
@@ -51,6 +52,11 @@ export function getExpenseColumns(
       header: t.expenses.columnDate,
       cell: ({ row }) =>
         new Date(row.original.date).toLocaleDateString("fr-FR"),
+    },
+    {
+      id: "createdBy",
+      header: t.common.createdByLabel,
+      cell: ({ row }) => row.original.createdByName ?? t.common.unknownEmployee,
     },
     {
       id: "actions",

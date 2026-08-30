@@ -168,6 +168,10 @@ export default async function ProductProfilePage({
                 {product.description}
               </p>
             )}
+            <p>
+              <span className="text-muted-foreground">{t.common.createdByLabel}: </span>
+              {product.createdBy?.name ?? t.common.unknownEmployee}
+            </p>
           </CardContent>
         </Card>
 
@@ -237,6 +241,7 @@ export default async function ProductProfilePage({
                   <TableHead>{t.inventory.columnQuantity}</TableHead>
                   <TableHead>{t.inventory.columnReason}</TableHead>
                   <TableHead>{t.inventory.columnDate}</TableHead>
+                  <TableHead>{t.common.createdByLabel}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -252,6 +257,9 @@ export default async function ProductProfilePage({
                       {movement.reason ?? "—"}
                     </TableCell>
                     <TableCell>{formatDateTime(movement.createdAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {movement.createdBy?.name ?? t.common.unknownEmployee}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

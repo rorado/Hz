@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
+import { DataTableSearch } from "@/components/data-table/data-table-search";
 import { getPurchaseOrdersPage } from "@/features/purchases/queries";
 import { PurchaseOrdersTable } from "@/features/purchases/components/purchase-orders-table";
 import { requirePageAccess } from "@/lib/permissions";
@@ -14,16 +15,17 @@ export const dynamic = "force-dynamic";
 export default async function PurchasesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 }) {
   await requirePageAccess("PURCHASES_VIEW");
 
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
+  const query = params.q?.trim() || undefined;
 
   const [t, { items, total, pageSize }] = await Promise.all([
     getDictionary(),
-    getPurchaseOrdersPage({ page }),
+    getPurchaseOrdersPage({ query, page }),
   ]);
 
   return (
@@ -38,6 +40,7 @@ export default async function PurchasesPage({
           </Button>
         }
       />
+      <DataTableSearch placeholder={t.purchases.searchPlaceholder} />
       {items.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
@@ -58,7 +61,7 @@ export default async function PurchasesPage({
             pageSize={pageSize}
             total={total}
             basePath="/dashboard/purchases"
-            searchParams={{}}
+            searchParams={{ q: query }}
           />
         </>
       )}

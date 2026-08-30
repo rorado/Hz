@@ -9,8 +9,9 @@ import {
   getPurchasesReportData,
   getSuppliersReportData,
 } from "@/features/reports/queries";
-import { getDictionary, getLocale } from "@/i18n/server";
-import type { Dictionary } from "@/i18n/dictionaries";
+import { getLocale } from "@/i18n/server";
+import { dictionaries, type Dictionary } from "@/i18n/dictionaries";
+import { isLocale } from "@/i18n/config";
 import { CURRENCY_LABEL } from "@/lib/currency";
 
 type ReportPayload = { headers: string[]; rows: (string | number)[][] };
@@ -168,14 +169,23 @@ const REPORT_BUILDERS: Record<
 };
 
 export async function GET(request: NextRequest) {
-  const [access, t, locale] = await Promise.all([
+  const { searchParams } = request.nextUrl;
+
+  // Language is independent of the admin's own current UI locale — an
+  // explicit ?lang= (ar/en/fr) always wins, so the same export can be
+  // requested in any supported language regardless of what the requester's
+  // session/cookie is set to. Falls back to the session locale when omitted
+  // or invalid, matching every other locale-aware surface in the app.
+  const requestedLang = searchParams.get("lang");
+  const [access, sessionLocale] = await Promise.all([
     requireApiPermission("REPORTS_VIEW"),
-    getDictionary(),
     getLocale(),
   ]);
   if (!access.ok) return access.response;
 
-  const { searchParams } = request.nextUrl;
+  const locale = isLocale(requestedLang) ? requestedLang : sessionLocale;
+  const t = dictionaries[locale];
+
   const type = searchParams.get("type") ?? "";
   const format = searchParams.get("format") ?? "csv";
   const limitParam = Number(searchParams.get("limit"));

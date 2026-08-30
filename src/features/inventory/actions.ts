@@ -51,6 +51,7 @@ export async function recordInventoryMovement(
         type,
         quantity: movementQuantity,
         reason: reason || null,
+        createdById: access.adminId,
       },
     }),
   ]);

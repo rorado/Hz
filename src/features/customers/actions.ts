@@ -41,6 +41,7 @@ export async function createCustomer(
       address: parsed.data.address || null,
       notes: parsed.data.notes || null,
       isFavorite: parsed.data.isFavorite,
+      createdById: access.adminId,
     },
   });
 

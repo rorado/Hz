@@ -92,6 +92,13 @@ export default async function InvoiceEditPage({
         }
       />
 
+      <p className="text-sm text-muted-foreground">
+        {t.common.createdByLabel}:{" "}
+        <span className="font-medium text-foreground">
+          {invoice.createdBy?.name ?? t.common.unknownEmployee}
+        </span>
+      </p>
+
       <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4">
         <PaymentStatusBadge status={invoice.paymentStatus} />
         <p className="text-sm">

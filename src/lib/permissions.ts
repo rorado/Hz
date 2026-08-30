@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PermissionKey } from "@/lib/permission-modules";
 import { getDictionary } from "@/i18n/server";
+import { getFirstAccessibleHref } from "@/components/layout/admin-nav-items";
 
 // Re-exported so existing server-side imports of the module-list helpers
 // from "@/lib/permissions" keep working — the actual definitions live in
@@ -60,6 +61,22 @@ export async function hasPermission(permission: PermissionKey): Promise<boolean>
 export async function requirePageAccess(permission: PermissionKey): Promise<void> {
   const allowed = await hasPermission(permission);
   if (!allowed) redirect("/dashboard/access-denied");
+}
+
+/** Where to send a logged-in admin instead of blindly assuming `/dashboard`
+ * — used right after login and by the access-denied page's "back" link, so
+ * neither one dead-ends someone who was never granted DASHBOARD_VIEW (or
+ * whatever page they're bouncing off of) in a redirect loop back to the one
+ * page they can't see. Falls back to the access-denied page itself only
+ * when the admin's role has no permissions granted at all. */
+export async function getFirstAccessiblePath(): Promise<string> {
+  const session = await auth();
+  if (!session?.user) return "/login";
+
+  const effective = await getEffectivePermissions(session.user.id);
+  const permissions = effective === "full" ? "full" : Array.from(effective);
+  const t = await getDictionary();
+  return getFirstAccessibleHref(t, permissions) ?? "/dashboard/access-denied";
 }
 
 export type PermissionCheck =

@@ -89,6 +89,18 @@ export function PermissionMatrix({
               />
             </td>
           </tr>
+          <tr className="border-t bg-muted/30">
+            <td className="p-2 font-medium">{t.roles.dashboardViewPermission}</td>
+            <td className="p-2 text-center">
+              <Checkbox
+                disabled={disabled}
+                checked={selected.has("DASHBOARD_VIEW")}
+                onCheckedChange={(checked) => toggle("DASHBOARD_VIEW", checked)}
+                aria-label={t.roles.dashboardViewPermission}
+              />
+            </td>
+            <td className="p-2 text-center text-muted-foreground">—</td>
+          </tr>
         </tbody>
       </table>
     </div>

@@ -11,7 +11,10 @@ export async function getInventoryMovementsPage({ page }: { page: number }) {
   const [items, total] = await Promise.all([
     prisma.inventoryMovement.findMany({
       where,
-      include: { product: { select: { name: true, sku: true } } },
+      include: {
+        product: { select: { name: true, sku: true } },
+        createdBy: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * MOVEMENTS_PAGE_SIZE,
       take: MOVEMENTS_PAGE_SIZE,

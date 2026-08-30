@@ -7,8 +7,9 @@ export { PermissionKey };
 
 /** The app's feature modules, each carrying a VIEW and a MANAGE permission.
  * Kept in sync by hand with the PermissionKey enum in schema.prisma — see
- * the enum there for the full list (it also has USERS_MANAGE and
- * SETTINGS_MANAGE, which aren't modules and so aren't listed here). */
+ * the enum there for the full list (it also has USERS_MANAGE,
+ * SETTINGS_MANAGE, and DASHBOARD_VIEW, which are standalone and aren't
+ * modules so aren't listed here). */
 export const PERMISSION_MODULE_KEYS = [
   "PRODUCTS",
   "ORDERS",

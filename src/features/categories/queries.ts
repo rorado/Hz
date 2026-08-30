@@ -52,6 +52,7 @@ export async function getCategoryProfile(id: string, productPage: number) {
         parent: { select: { id: true, name: true } },
         children: { select: { id: true, name: true }, orderBy: { name: "asc" } },
         _count: { select: { products: true } },
+        createdBy: { select: { name: true } },
         products: {
           select: {
             id: true,

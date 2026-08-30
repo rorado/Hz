@@ -27,6 +27,7 @@ export async function createCategory(input: unknown): Promise<ActionResult> {
         parentId: parsed.data.parentId || null,
         imagePublicId: parsed.data.image?.publicId ?? null,
         imageSecureUrl: parsed.data.image?.secureUrl ?? null,
+        createdById: access.adminId,
       },
     });
   } catch (error) {

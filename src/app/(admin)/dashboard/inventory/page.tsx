@@ -156,6 +156,7 @@ export default async function InventoryPage({
                     <TableHead>{t.inventory.columnQuantity}</TableHead>
                     <TableHead>{t.inventory.columnReason}</TableHead>
                     <TableHead>{t.inventory.columnDate}</TableHead>
+                    <TableHead>{t.common.createdByLabel}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -184,6 +185,9 @@ export default async function InventoryPage({
                         {new Date(movement.createdAt).toLocaleDateString(
                           "fr-FR",
                         )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {movement.createdBy?.name ?? t.common.unknownEmployee}
                       </TableCell>
                     </TableRow>
                   ))}

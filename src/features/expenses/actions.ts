@@ -22,6 +22,7 @@ export async function createExpense(input: unknown): Promise<ActionResult> {
       amount: parsed.data.amount,
       description: parsed.data.description || null,
       date: new Date(parsed.data.date),
+      createdById: access.adminId,
     },
   });
 

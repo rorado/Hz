@@ -148,6 +148,10 @@ export default async function SupplierProfilePage({
             <span className="text-muted-foreground">{t.customers.registeredAtLabel}: </span>
             {new Date(supplier.createdAt).toLocaleDateString("fr-FR")}
           </p>
+          <p>
+            <span className="text-muted-foreground">{t.common.createdByLabel}: </span>
+            {supplier.createdBy?.name ?? t.common.unknownEmployee}
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"

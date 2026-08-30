@@ -123,6 +123,7 @@ export async function createInvoice(
           paymentStatus,
           paidAmount,
           balanceEffectApplied: balanceEffect,
+          createdById: access.adminId,
           items: {
             create: parsed.data.items.map((item, index) => ({
               productId: item.productId || null,
@@ -231,8 +232,85 @@ export async function updateInvoice(
   const previousBalanceEffect = Number(existing.balanceEffectApplied);
   const newCustomerId = parsed.data.customerId;
 
+  // Stock was reserved per-product when this invoice was first created;
+  // editing its items must move that reservation by the exact delta, or the
+  // product's on-hand quantity (and everything derived from it — low-stock
+  // count, total inventory value, movement history) silently drifts out of
+  // sync with what the invoice actually says was sold.
+  const existingQtyByProduct = new Map<string, number>();
+  for (const item of existing.items) {
+    if (!item.productId) continue;
+    existingQtyByProduct.set(
+      item.productId,
+      (existingQtyByProduct.get(item.productId) ?? 0) + item.quantity,
+    );
+  }
+  const newQtyByProduct = new Map<string, number>();
+  for (const item of parsed.data.items) {
+    if (!item.productId) continue;
+    newQtyByProduct.set(
+      item.productId,
+      (newQtyByProduct.get(item.productId) ?? 0) + item.quantity,
+    );
+  }
+  const affectedProductIds = new Set([
+    ...existingQtyByProduct.keys(),
+    ...newQtyByProduct.keys(),
+  ]);
+  const stockDeltas = [...affectedProductIds]
+    .map((productId) => ({
+      productId,
+      delta:
+        (newQtyByProduct.get(productId) ?? 0) -
+        (existingQtyByProduct.get(productId) ?? 0),
+    }))
+    .filter((row) => row.delta !== 0);
+
   try {
     await prisma.$transaction(async (tx) => {
+      for (const { productId, delta } of stockDeltas) {
+        if (delta > 0) {
+          // More of this product is on the invoice now — reserve the extra
+          // stock, same as a fresh sale of that quantity.
+          if (options?.allowNegativeStock) {
+            await tx.product.update({
+              where: { id: productId },
+              data: { quantity: { decrement: delta } },
+            });
+          } else {
+            const updated = await tx.product.updateMany({
+              where: { id: productId, quantity: { gte: delta } },
+              data: { quantity: { decrement: delta } },
+            });
+            if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+          }
+          await tx.inventoryMovement.create({
+            data: {
+              productId,
+              type: "OUT",
+              quantity: delta,
+              reason: `تعديل فاتورة رقم ${existing.invoiceNumber}`,
+              reference: id,
+            },
+          });
+        } else {
+          const restored = -delta;
+          await tx.product.update({
+            where: { id: productId },
+            data: { quantity: { increment: restored } },
+          });
+          await tx.inventoryMovement.create({
+            data: {
+              productId,
+              type: "IN",
+              quantity: restored,
+              reason: `تعديل فاتورة رقم ${existing.invoiceNumber}`,
+              reference: id,
+            },
+          });
+        }
+      }
+
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
       await tx.invoice.update({
         where: { id },
@@ -285,12 +363,19 @@ export async function updateInvoice(
         });
       }
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      const stockError = await validateAvailableStock(parsed.data.items, existing.items);
+      return { error: stockError ?? t.invoices.insufficientStockFallbackError };
+    }
     return { error: t.invoices.updateError };
   }
 
   revalidatePath("/dashboard/invoices");
   revalidatePath(`/dashboard/invoices/${id}`);
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
   if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
   if (newCustomerId !== existing.customerId) {
     revalidatePath(`/dashboard/customers/${newCustomerId}`);
@@ -352,6 +437,7 @@ export async function deleteInvoice(
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
   return { success: true };
 }
@@ -384,6 +470,7 @@ export async function deleteInvoices(
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -444,6 +531,7 @@ export async function getOrCreateInvoiceForOrder(
           paymentStatus,
           paidAmount,
           balanceEffectApplied: balanceEffect,
+          createdById: access.adminId,
           items: {
             create: order.items.map((item, index) => ({
               productId: item.productId,
@@ -582,6 +670,7 @@ export async function recordPayment(
 
   revalidatePath(`/dashboard/invoices/${invoiceId}`);
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   if (invoice.customerId) {
     revalidatePath(`/dashboard/customers/${invoice.customerId}`);
   }
@@ -728,6 +817,7 @@ export async function recordPaymentAcrossInvoices(
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/customers/${customerId}`);
   for (const { invoice } of allocations) {
     revalidatePath(`/dashboard/invoices/${invoice.id}`);
@@ -819,6 +909,7 @@ export async function updatePayment(
 
   revalidatePath(`/dashboard/invoices/${invoice.id}`);
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   if (invoice.customerId) {
     revalidatePath(`/dashboard/customers/${invoice.customerId}`);
   }
@@ -894,6 +985,7 @@ export async function deletePayment(
 
   revalidatePath(`/dashboard/invoices/${invoice.id}`);
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard");
   if (invoice.customerId) {
     revalidatePath(`/dashboard/customers/${invoice.customerId}`);
   }

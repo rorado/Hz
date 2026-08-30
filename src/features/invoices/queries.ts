@@ -56,6 +56,7 @@ export async function getInvoiceById(id: string) {
       order: { select: { id: true } },
       payments: { orderBy: { createdAt: "desc" } },
       returns: { where: { status: "CONFIRMED" }, include: { items: true }, orderBy: { createdAt: "desc" } },
+      createdBy: { select: { name: true } },
     },
   });
 }

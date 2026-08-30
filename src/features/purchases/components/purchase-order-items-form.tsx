@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Combobox,
   useComboboxFilter,
   ComboboxValue,
@@ -110,10 +118,17 @@ export function PurchaseOrderItemsForm({
   purchaseOrderId,
   items,
   products,
+  locked = false,
 }: {
   purchaseOrderId: string;
-  items: { productId: string; quantity: number; unitCost: number }[];
+  items: {
+    productId: string;
+    productName?: string;
+    quantity: number;
+    unitCost: number;
+  }[];
   products: ProductOption[];
+  locked?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const { t, locale } = useLocale();
@@ -129,8 +144,10 @@ export function PurchaseOrderItemsForm({
     resolver: zodResolver(purchaseOrderItemsSchema),
     defaultValues: {
       items: items.length
-        ? items.map((item) => ({
-            ...item,
+        ? items.map(({ productId, quantity, unitCost }) => ({
+            productId,
+            quantity,
+            unitCost,
             updateProductPurchasePrice: true,
           }))
         : [{ productId: "", quantity: 1, unitCost: 0, updateProductPurchasePrice: true }],
@@ -144,6 +161,48 @@ export function PurchaseOrderItemsForm({
       sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0),
     0,
   );
+
+  if (locked) {
+    const lockedTotal = items.reduce(
+      (sum, item) => sum + item.quantity * item.unitCost,
+      0,
+    );
+    return (
+      <div className="space-y-4">
+        <div className={items.length > 5 ? "max-h-120 overflow-y-auto" : undefined}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.purchases.productLabel}</TableHead>
+                <TableHead>{t.purchases.quantityLabel}</TableHead>
+                <TableHead>{t.purchases.unitCostLabel}</TableHead>
+                <TableHead>{t.purchases.totalLabel}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={`${item.productId}-${index}`}>
+                  <TableCell className="font-medium">
+                    {item.productName ?? item.productId}
+                  </TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>{formatCurrency(item.unitCost, locale)}</TableCell>
+                  <TableCell>
+                    {formatCurrency(item.quantity * item.unitCost, locale)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="border-t pt-4">
+          <p className="font-medium">
+            {t.purchases.totalLabel}: {formatCurrency(lockedTotal, locale)}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   function onSubmit(values: PurchaseOrderItemsOutput) {
     startTransition(async () => {

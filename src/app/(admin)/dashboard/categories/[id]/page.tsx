@@ -104,6 +104,7 @@ export default async function CategoryProfilePage({
             <p><span className="text-muted-foreground">{t.categories.columnSlug}: </span><span dir="ltr">{category.slug}</span></p>
             <p><span className="text-muted-foreground">{t.categories.columnParent}: </span>{category.parent?.name ?? "—"}</p>
             <p><span className="text-muted-foreground">{t.categories.childrenLabel}: </span>{category.children.length.toLocaleString(locale)}</p>
+            <p><span className="text-muted-foreground">{t.common.createdByLabel}: </span>{category.createdBy?.name ?? t.common.unknownEmployee}</p>
           </div>
         </CardContent>
       </Card>

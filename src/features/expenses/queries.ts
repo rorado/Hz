@@ -19,6 +19,7 @@ export async function getExpensesPage({
       orderBy: { date: "desc" },
       skip: (page - 1) * EXPENSES_PAGE_SIZE,
       take: EXPENSES_PAGE_SIZE,
+      include: { createdBy: { select: { name: true } } },
     }),
     prisma.expense.count({ where }),
     prisma.expense.aggregate({ where, _sum: { amount: true } }),

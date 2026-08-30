@@ -46,6 +46,7 @@ export async function getBrandProfile(id: string, productPage: number) {
       where: { id },
       include: {
         _count: { select: { products: true } },
+        createdBy: { select: { name: true } },
         products: {
           select: {
             id: true,

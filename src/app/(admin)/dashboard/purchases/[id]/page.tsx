@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { ClipboardList, Printer, UserCircle, Undo2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
 import { getPurchaseOrderById } from "@/features/purchases/queries";
 import { getProductPickerOptions } from "@/features/products/queries";
-import { PurchaseOrderActions } from "@/features/purchases/components/purchase-order-actions";
+import { PurchaseOrderStatusSelect } from "@/features/purchases/components/purchase-order-status-select";
+import { DeletePurchaseOrderButton } from "@/features/purchases/components/delete-purchase-order-button";
 import { PurchaseOrderItemsForm } from "@/features/purchases/components/purchase-order-items-form";
 import { RecordSupplierPaymentDialog } from "@/features/purchases/components/record-supplier-payment-dialog";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
@@ -92,10 +92,21 @@ export default async function PurchaseOrderDetailPage({
               <Printer className="size-4" />
               {t.purchases.printEnglishButton}
             </Button>
+            <DeletePurchaseOrderButton
+              purchaseOrderId={order.id}
+              orderNumber={order.orderNumber}
+            />
             <BackButton fallbackHref="/dashboard/purchases" />
           </div>
         }
       />
+
+      <p className="text-sm text-muted-foreground">
+        {t.common.createdByLabel}:{" "}
+        <span className="font-medium text-foreground">
+          {order.createdBy?.name ?? t.common.unknownEmployee}
+        </span>
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -113,10 +124,12 @@ export default async function PurchaseOrderDetailPage({
                 purchaseOrderId={order.id}
                 items={order.items.map((item) => ({
                   productId: item.productId,
+                  productName: item.product.name,
                   quantity: item.quantity,
                   unitCost: Number(item.unitCost),
                 }))}
                 products={products}
+                locked={order.status === "RECEIVED"}
               />
             </CardContent>
           </Card>
@@ -162,10 +175,10 @@ export default async function PurchaseOrderDetailPage({
               <CardTitle>{t.purchases.statusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Badge>{t.statusLabels.purchaseOrder[order.status]}</Badge>
-              {order.status === "PENDING" && (
-                <PurchaseOrderActions purchaseOrderId={order.id} />
-              )}
+              <PurchaseOrderStatusSelect
+                purchaseOrderId={order.id}
+                status={order.status}
+              />
               {order.receivedAt && (
                 <p className="text-xs text-muted-foreground">
                   {t.purchases.receivedAtLabel}{" "}

@@ -66,6 +66,6 @@ export function ReturnForm({ kind, sourceId, rows }: { kind: "sales" | "purchase
       <div className="space-y-2"><Label>{t.returns.refundAmount}</Label><Input type="number" min={0} max={total} step="0.01" value={refundAmount || ""} placeholder="0" onChange={(e) => setRefundAmount(Number(e.target.value))} /></div>
     </div>
     {error && <p className="text-sm text-destructive">{error}</p>}
-    <div className="flex items-center justify-between">{total > 0 ? <p className="text-lg font-semibold">{t.returns.productsTotal}: {formatCurrency(total, locale)}</p> : <span />}<Button onClick={submit} disabled={pending || !reason.trim() || total <= 0 || refundAmount > total}>{pending && <Loader2 className="size-4 animate-spin" />}{t.returns.confirm}</Button></div>
+    <div className="flex items-center justify-between">{total > 0 ? <p className="text-lg font-semibold">{t.returns.productsTotal}: {formatCurrency(total, locale)}</p> : <span />}<Button onClick={submit} disabled={pending || !reason.trim() || total <= 0 || refundAmount > total + 0.005}>{pending && <Loader2 className="size-4 animate-spin" />}{t.returns.confirm}</Button></div>
   </div>;
 }

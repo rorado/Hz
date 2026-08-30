@@ -97,7 +97,10 @@ export async function getSupplierById(id: string) {
 export async function getSupplierProfile(id: string) {
   const supplier = await prisma.supplier.findUnique({
     where: { id },
-    include: { balanceHistory: { orderBy: { createdAt: "desc" }, take: 50 } },
+    include: {
+      balanceHistory: { orderBy: { createdAt: "desc" }, take: 50 },
+      createdBy: { select: { name: true } },
+    },
   });
   if (!supplier) return null;
 

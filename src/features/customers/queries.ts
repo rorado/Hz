@@ -297,7 +297,10 @@ export async function findCustomerByPhone(phone: string, excludeId?: string) {
 }
 
 export async function getCustomerProfile(id: string) {
-  const customer = await prisma.customer.findUnique({ where: { id } });
+  const customer = await prisma.customer.findUnique({
+    where: { id },
+    include: { createdBy: { select: { name: true } } },
+  });
   if (!customer) return null;
 
   const [orders, invoices, balanceHistory] = await Promise.all([

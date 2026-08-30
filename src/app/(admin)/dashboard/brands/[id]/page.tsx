@@ -77,6 +77,7 @@ export default async function BrandProfilePage({
             <img src={brand.logoUrl} alt={brand.name} className="size-28 rounded-xl border object-contain p-2" />
           )}
           <p><span className="text-muted-foreground">{t.brands.columnSlug}: </span><span dir="ltr">{brand.slug}</span></p>
+          <p><span className="text-muted-foreground">{t.common.createdByLabel}: </span>{brand.createdBy?.name ?? t.common.unknownEmployee}</p>
         </CardContent>
       </Card>
 

@@ -54,6 +54,7 @@ export async function createSupplier(input: unknown): Promise<ActionResult> {
       phone: parsed.data.phone || null,
       email: parsed.data.email || null,
       address: parsed.data.address || null,
+      createdById: access.adminId,
     },
   });
 

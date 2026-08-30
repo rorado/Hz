@@ -311,6 +311,7 @@ export async function getProductProfile(id: string) {
       category: { select: { name: true } },
       brand: { select: { name: true } },
       images: { orderBy: { position: "asc" } },
+      createdBy: { select: { name: true } },
     },
   });
   if (!product) return null;
@@ -320,6 +321,7 @@ export async function getProductProfile(id: string) {
       where: { productId: id },
       orderBy: { createdAt: "desc" },
       take: PRODUCT_PROFILE_HISTORY_SIZE,
+      include: { createdBy: { select: { name: true } } },
     }),
     prisma.orderItem.findMany({
       where: { productId: id },

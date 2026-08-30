@@ -66,121 +66,121 @@ Every feature below was confirmed to exist in the codebase (route + server actio
 
 ### 2.1 Products & Catalog
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Product CRUD | Create/edit/delete products: name, SKU, barcode, category, brand, quantity, min stock level, 3 price tiers (price1/2/3), purchase price (cost), weight, status (Active/Inactive), up to several images | `PRODUCTS_VIEW` (list/view), `PRODUCTS_MANAGE` (create/edit/delete) | `/dashboard/products`, `/dashboard/products/[id]` |
-| Bulk delete | Select multiple products and delete them together (password-confirmed) | `PRODUCTS_MANAGE` | Products list, checkbox selection |
-| Barcode lookup | Find a product by scanning/typing its barcode (used throughout invoices, orders, purchases, inventory) | `PRODUCTS_VIEW` | Barcode scanner control embedded in several forms |
-| Image upload | Product photos uploaded directly to Cloudinary from the browser (signed upload) | `PRODUCTS_MANAGE` | Product create/edit form |
-| Bulk import | Upload an `.xlsx` file to create/update many products at once; streams progress back live (NDJSON) | `PRODUCTS_MANAGE` | Products page import action |
-| Categories CRUD | Hierarchical categories (a category can have a parent), each with a slug and optional image | `PRODUCTS_VIEW`/`PRODUCTS_MANAGE` | `/dashboard/categories`, `/dashboard/categories/[id]` |
-| Brands CRUD | Brand name, slug, logo | `PRODUCTS_VIEW`/`PRODUCTS_MANAGE` | `/dashboard/brands`, `/dashboard/brands/[id]` |
+| Feature         | What it does                                                                                                                                                                                           | Permission                                                          | UI location                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------- |
+| Product CRUD    | Create/edit/delete products: name, SKU, barcode, category, brand, quantity, min stock level, 3 price tiers (price1/2/3), purchase price (cost), weight, status (Active/Inactive), up to several images | `PRODUCTS_VIEW` (list/view), `PRODUCTS_MANAGE` (create/edit/delete) | `/dashboard/products`, `/dashboard/products/[id]`     |
+| Bulk delete     | Select multiple products and delete them together (password-confirmed)                                                                                                                                 | `PRODUCTS_MANAGE`                                                   | Products list, checkbox selection                     |
+| Barcode lookup  | Find a product by scanning/typing its barcode (used throughout invoices, orders, purchases, inventory)                                                                                                 | `PRODUCTS_VIEW`                                                     | Barcode scanner control embedded in several forms     |
+| Image upload    | Product photos uploaded directly to Cloudinary from the browser (signed upload)                                                                                                                        | `PRODUCTS_MANAGE`                                                   | Product create/edit form                              |
+| Bulk import     | Upload an `.xlsx` file to create/update many products at once; streams progress back live (NDJSON)                                                                                                     | `PRODUCTS_MANAGE`                                                   | Products page import action                           |
+| Categories CRUD | Hierarchical categories (a category can have a parent), each with a slug and optional image                                                                                                            | `PRODUCTS_VIEW`/`PRODUCTS_MANAGE`                                   | `/dashboard/categories`, `/dashboard/categories/[id]` |
+| Brands CRUD     | Brand name, slug, logo                                                                                                                                                                                 | `PRODUCTS_VIEW`/`PRODUCTS_MANAGE`                                   | `/dashboard/brands`, `/dashboard/brands/[id]`         |
 
 ### 2.2 Inventory
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Record inventory movement | Manually record IN, OUT, or ADJUSTMENT stock movements for a product with a reason/reference | `INVENTORY_MANAGE` | `/dashboard/inventory` |
-| Low-stock table | Lists products at/under their `minStockLevel`; each row can jump straight into "record movement" pre-filled for that product, or open the product's profile | `INVENTORY_VIEW` | `/dashboard/inventory` |
-| Movement history | `InventoryMovement` records (IN/OUT/ADJUSTMENT/SALE_RETURN/PURCHASE_RETURN) are written automatically by sales, purchases, and returns, in addition to manual entries | `INVENTORY_VIEW` | Inventory page / product profile |
-| Damaged/defective tracking | Product carries `damagedQuantity`/`defectiveQuantity` counters, populated by the returns flow | `INVENTORY_VIEW` | Product profile |
+| Feature                    | What it does                                                                                                                                                          | Permission         | UI location                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------- |
+| Record inventory movement  | Manually record IN, OUT, or ADJUSTMENT stock movements for a product with a reason/reference                                                                          | `INVENTORY_MANAGE` | `/dashboard/inventory`           |
+| Low-stock table            | Lists products at/under their `minStockLevel`; each row can jump straight into "record movement" pre-filled for that product, or open the product's profile           | `INVENTORY_VIEW`   | `/dashboard/inventory`           |
+| Movement history           | `InventoryMovement` records (IN/OUT/ADJUSTMENT/SALE_RETURN/PURCHASE_RETURN) are written automatically by sales, purchases, and returns, in addition to manual entries | `INVENTORY_VIEW`   | Inventory page / product profile |
+| Damaged/defective tracking | Product carries `damagedQuantity`/`defectiveQuantity` counters, populated by the returns flow                                                                         | `INVENTORY_VIEW`   | Product profile                  |
 
 ### 2.3 Customers
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Customer CRUD | Name, phone, email, address, notes, favorite flag | `CUSTOMERS_VIEW`/`CUSTOMERS_MANAGE` | `/dashboard/customers`, `/dashboard/customers/[id]` |
-| Duplicate-phone detection | While adding/editing, warns if the phone number already belongs to another customer, with options to update the existing record, keep it as-is, or save as a separate record anyway | `CUSTOMERS_MANAGE` | Customer form |
-| Fuzzy name/phone search | Search customers by phone (exact/partial) or by name using `pg_trgm` similarity over a normalized Arabic name, so spelling variants still match | `CUSTOMERS_VIEW` | Customer picker (used in invoices, orders) |
-| Customer balance | A running account credit/debit balance, separate from unpaid-invoice debt. Adjustable manually with a reason; every change is logged | `CUSTOMERS_MANAGE` (adjust) / `CUSTOMERS_VIEW` (see) | Customer profile |
-| Balance history | Full audit trail of every balance change (previous → new, reason, note, linked invoice if any) | `CUSTOMERS_VIEW` | Customer profile |
-| Favorite customers | Toggle a "favorite" flag; favorites sort first in the customer list | `CUSTOMERS_MANAGE` | Customers list |
-| Customer profile — Overview | Totals purchased/paid, current balance, outstanding invoices breakdown, personal info, full order/invoice history, payment history, balance history | `CUSTOMERS_VIEW` | `/dashboard/customers/[id]` |
-| Customer profile — Compare Customer Purchases | Rich, date-range-scoped view: a paired-bar chart comparing each purchased product's price then vs. now, plus a paginated products table with the same comparison. Presets: Today/7 days/30 days/This month/Last month/This year/Custom | `CUSTOMERS_VIEW` | `/dashboard/customers/[id]?tab=statement` |
-| Printable account statement | A separate, print/PDF-oriented statement (invoices + payments + totals for a date range), reusing the app's print/PDF infrastructure | `CUSTOMERS_VIEW` | `/dashboard/customers/[id]/statement` |
-| Bulk delete customers | Select and delete multiple customers (password-confirmed) | `CUSTOMERS_MANAGE` | Customers list |
+| Feature                                       | What it does                                                                                                                                                                                                                           | Permission                                           | UI location                                         |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| Customer CRUD                                 | Name, phone, email, address, notes, favorite flag                                                                                                                                                                                      | `CUSTOMERS_VIEW`/`CUSTOMERS_MANAGE`                  | `/dashboard/customers`, `/dashboard/customers/[id]` |
+| Duplicate-phone detection                     | While adding/editing, warns if the phone number already belongs to another customer, with options to update the existing record, keep it as-is, or save as a separate record anyway                                                    | `CUSTOMERS_MANAGE`                                   | Customer form                                       |
+| Fuzzy name/phone search                       | Search customers by phone (exact/partial) or by name using `pg_trgm` similarity over a normalized Arabic name, so spelling variants still match                                                                                        | `CUSTOMERS_VIEW`                                     | Customer picker (used in invoices, orders)          |
+| Customer balance                              | A running account credit/debit balance, separate from unpaid-invoice debt. Adjustable manually with a reason; every change is logged                                                                                                   | `CUSTOMERS_MANAGE` (adjust) / `CUSTOMERS_VIEW` (see) | Customer profile                                    |
+| Balance history                               | Full audit trail of every balance change (previous → new, reason, note, linked invoice if any)                                                                                                                                         | `CUSTOMERS_VIEW`                                     | Customer profile                                    |
+| Favorite customers                            | Toggle a "favorite" flag; favorites sort first in the customer list                                                                                                                                                                    | `CUSTOMERS_MANAGE`                                   | Customers list                                      |
+| Customer profile — Overview                   | Totals purchased/paid, current balance, outstanding invoices breakdown, personal info, full order/invoice history, payment history, balance history                                                                                    | `CUSTOMERS_VIEW`                                     | `/dashboard/customers/[id]`                         |
+| Customer profile — Compare Customer Purchases | Rich, date-range-scoped view: a paired-bar chart comparing each purchased product's price then vs. now, plus a paginated products table with the same comparison. Presets: Today/7 days/30 days/This month/Last month/This year/Custom | `CUSTOMERS_VIEW`                                     | `/dashboard/customers/[id]?tab=statement`           |
+| Printable account statement                   | A separate, print/PDF-oriented statement (invoices + payments + totals for a date range), reusing the app's print/PDF infrastructure                                                                                                   | `CUSTOMERS_VIEW`                                     | `/dashboard/customers/[id]/statement`               |
+| Bulk delete customers                         | Select and delete multiple customers (password-confirmed)                                                                                                                                                                              | `CUSTOMERS_MANAGE`                                   | Customers list                                      |
 
 ### 2.4 Orders
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Orders list/management | Staff view of all orders, status (Pending/Processing/Completed/Cancelled), search | `ORDERS_VIEW` | `/dashboard/orders` |
-| Create order | Staff create an order directly | `ORDERS_MANAGE` | `/dashboard/orders/new` |
-| Edit order items/status | Change item quantities/prices, update status, reassign or edit the linked customer | `ORDERS_MANAGE` | `/dashboard/orders/[id]` |
-| Convert order → invoice | An invoice can be created from an order (`getOrCreateInvoiceForOrder`), turning it into a tracked sale with payment | `INVOICES_MANAGE` | Order detail page |
-| Bulk delete orders | | `ORDERS_MANAGE` | Orders list |
+| Feature                 | What it does                                                                                                        | Permission        | UI location              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------ |
+| Orders list/management  | Staff view of all orders, status (Pending/Processing/Completed/Cancelled), search                                   | `ORDERS_VIEW`     | `/dashboard/orders`      |
+| Create order            | Staff create an order directly                                                                                      | `ORDERS_MANAGE`   | `/dashboard/orders/new`  |
+| Edit order items/status | Change item quantities/prices, update status, reassign or edit the linked customer                                  | `ORDERS_MANAGE`   | `/dashboard/orders/[id]` |
+| Convert order → invoice | An invoice can be created from an order (`getOrCreateInvoiceForOrder`), turning it into a tracked sale with payment | `INVOICES_MANAGE` | Order detail page        |
+| Bulk delete orders      |                                                                                                                     | `ORDERS_MANAGE`   | Orders list              |
 
 ### 2.5 Invoices (sales)
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Create invoice | Pick/create a customer, add line items (product, quantity, unit price — 3 price tiers or custom), language (AR/EN/FR) for the printed document, payment method, initial payment | `INVOICES_MANAGE` | `/dashboard/invoices/new` |
-| Sequence number | Every invoice gets an atomic, sequential counter (001, 002, 003…) shown in the admin UI, separate from the random customer-facing `invoiceNumber` (e.g. `INV-XXXXXX`); never printed on the customer document | automatic | Invoices list & profile |
-| Stock check before saving | Validates requested quantities against current stock; can be overridden to allow negative stock with an explicit confirmation | `INVOICES_MANAGE` | Invoice form |
-| Payments | Record one or more payments against an invoice (cash, bank transfer, card, "from balance", other); partial payments set status to Partially Paid; full payment sets Paid | `INVOICES_MANAGE` | Invoice profile |
-| Pay across multiple invoices | A single payment can be applied across several of a customer's outstanding invoices at once | `INVOICES_MANAGE` | Invoice/customer payment flow |
-| Balance effects | Paying with "customer balance", overpaying (credit), editing/cancelling an invoice, or merging old debt into a new invoice all adjust `Customer.balance` and are logged to `CustomerBalanceHistory` | automatic | Invoice actions |
-| Edit invoice | Change items/customer/payment method after creation; recalculates totals and balance effects | `INVOICES_MANAGE` | Invoice profile |
-| Delete invoice(s) | Requires the delete-confirmation password; if the invoice had a balance effect, asks explicitly whether to reverse that effect | `INVOICES_MANAGE` | Invoices list / profile |
-| Print / PDF | Printable invoice document in the selected language, with a "save as PDF" option | `INVOICES_VIEW` | `/dashboard/invoices/[id]/print` |
-| Quick add by category/brand | A side panel to bulk-add all products in a chosen category or brand as line items in one click | `INVOICES_MANAGE` | Invoice form (new & edit), same component reused in Purchases |
+| Feature                      | What it does                                                                                                                                                                                                  | Permission        | UI location                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------- |
+| Create invoice               | Pick/create a customer, add line items (product, quantity, unit price — 3 price tiers or custom), language (AR/EN/FR) for the printed document, payment method, initial payment                               | `INVOICES_MANAGE` | `/dashboard/invoices/new`                                     |
+| Sequence number              | Every invoice gets an atomic, sequential counter (001, 002, 003…) shown in the admin UI, separate from the random customer-facing `invoiceNumber` (e.g. `INV-XXXXXX`); never printed on the customer document | automatic         | Invoices list & profile                                       |
+| Stock check before saving    | Validates requested quantities against current stock; can be overridden to allow negative stock with an explicit confirmation                                                                                 | `INVOICES_MANAGE` | Invoice form                                                  |
+| Payments                     | Record one or more payments against an invoice (cash, bank transfer, card, "from balance", other); partial payments set status to Partially Paid; full payment sets Paid                                      | `INVOICES_MANAGE` | Invoice profile                                               |
+| Pay across multiple invoices | A single payment can be applied across several of a customer's outstanding invoices at once                                                                                                                   | `INVOICES_MANAGE` | Invoice/customer payment flow                                 |
+| Balance effects              | Paying with "customer balance", overpaying (credit), editing/cancelling an invoice, or merging old debt into a new invoice all adjust `Customer.balance` and are logged to `CustomerBalanceHistory`           | automatic         | Invoice actions                                               |
+| Edit invoice                 | Change items/customer/payment method after creation; recalculates totals and balance effects                                                                                                                  | `INVOICES_MANAGE` | Invoice profile                                               |
+| Delete invoice(s)            | Requires the delete-confirmation password; if the invoice had a balance effect, asks explicitly whether to reverse that effect                                                                                | `INVOICES_MANAGE` | Invoices list / profile                                       |
+| Print / PDF                  | Printable invoice document in the selected language, with a "save as PDF" option                                                                                                                              | `INVOICES_VIEW`   | `/dashboard/invoices/[id]/print`                              |
+| Quick add by category/brand  | A side panel to bulk-add all products in a chosen category or brand as line items in one click                                                                                                                | `INVOICES_MANAGE` | Invoice form (new & edit), same component reused in Purchases |
 
 ### 2.6 Suppliers & Purchases
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Supplier CRUD | Name, phone, email, address, running balance | `SUPPLIERS_VIEW`/`SUPPLIERS_MANAGE` | `/dashboard/suppliers`, `/dashboard/suppliers/[id]` |
-| Supplier balance | Adjustable, with a logged history (`SupplierBalanceHistory`) — credited automatically by purchase returns, debited by payments | `SUPPLIERS_MANAGE` (adjust) | Supplier profile |
-| Create purchase order | Pick a supplier, add items (product, quantity, unit cost), optionally update the product's stored `purchasePrice` from what was paid | `PURCHASES_MANAGE` | `/dashboard/purchases/new` |
-| Quick add by category/brand | Same bulk-add-by-category/brand panel as invoices, positioned in a sticky side panel | `PURCHASES_MANAGE` | Purchase order form |
-| Receive purchase order | Marks it Received and increases product stock (`InventoryMovement` type `IN`) | `PURCHASES_MANAGE` | `/dashboard/purchases/[id]` |
-| Cancel purchase order | Marks it Cancelled (no stock effect) | `PURCHASES_MANAGE` | Purchase order detail |
-| Supplier payments | Record payments against a purchase order (cash/bank/card/other); tracks paid amount and payment status | `PURCHASES_MANAGE` | Purchase order detail |
-| Edit purchase items | Adjust quantities/costs on an existing order | `PURCHASES_MANAGE` | Purchase order detail |
-| Print purchase order | Printable document, language selectable per order | `PURCHASES_VIEW` | `/dashboard/purchases/[id]/print` |
-| Delete purchase order(s) | Password-confirmed | `PURCHASES_MANAGE` | Purchases list/detail |
+| Feature                     | What it does                                                                                                                         | Permission                          | UI location                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------- |
+| Supplier CRUD               | Name, phone, email, address, running balance                                                                                         | `SUPPLIERS_VIEW`/`SUPPLIERS_MANAGE` | `/dashboard/suppliers`, `/dashboard/suppliers/[id]` |
+| Supplier balance            | Adjustable, with a logged history (`SupplierBalanceHistory`) — credited automatically by purchase returns, debited by payments       | `SUPPLIERS_MANAGE` (adjust)         | Supplier profile                                    |
+| Create purchase order       | Pick a supplier, add items (product, quantity, unit cost), optionally update the product's stored `purchasePrice` from what was paid | `PURCHASES_MANAGE`                  | `/dashboard/purchases/new`                          |
+| Quick add by category/brand | Same bulk-add-by-category/brand panel as invoices, positioned in a sticky side panel                                                 | `PURCHASES_MANAGE`                  | Purchase order form                                 |
+| Receive purchase order      | Marks it Received and increases product stock (`InventoryMovement` type `IN`)                                                        | `PURCHASES_MANAGE`                  | `/dashboard/purchases/[id]`                         |
+| Cancel purchase order       | Marks it Cancelled (no stock effect)                                                                                                 | `PURCHASES_MANAGE`                  | Purchase order detail                               |
+| Supplier payments           | Record payments against a purchase order (cash/bank/card/other); tracks paid amount and payment status                               | `PURCHASES_MANAGE`                  | Purchase order detail                               |
+| Edit purchase items         | Adjust quantities/costs on an existing order                                                                                         | `PURCHASES_MANAGE`                  | Purchase order detail                               |
+| Print purchase order        | Printable document, language selectable per order                                                                                    | `PURCHASES_VIEW`                    | `/dashboard/purchases/[id]/print`                   |
+| Delete purchase order(s)    | Password-confirmed                                                                                                                   | `PURCHASES_MANAGE`                  | Purchases list/detail                               |
 
 ### 2.7 Returns
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Sales return | Return items from a specific invoice; each returned item is tagged Good/Damaged/Defective, with a refund method (cash/card/bank/customer credit/none) and refund status; optionally restocks the item | `RETURNS_MANAGE` | `/dashboard/sales-returns/new`, `/dashboard/sales-returns/[id]` |
-| Purchase return | Return items from a specific purchase order back to the supplier, with a refund method and status | `RETURNS_MANAGE` | `/dashboard/purchase-returns/new`, `/dashboard/purchase-returns/[id]` |
-| Return source search | Look up the invoice/purchase order to return against | `RETURNS_VIEW` | Return creation forms |
-| Returns lists | Browse all sales returns / purchase returns | `RETURNS_VIEW` | `/dashboard/sales-returns`, `/dashboard/purchase-returns` |
+| Feature              | What it does                                                                                                                                                                                          | Permission       | UI location                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| Sales return         | Return items from a specific invoice; each returned item is tagged Good/Damaged/Defective, with a refund method (cash/card/bank/customer credit/none) and refund status; optionally restocks the item | `RETURNS_MANAGE` | `/dashboard/sales-returns/new`, `/dashboard/sales-returns/[id]`       |
+| Purchase return      | Return items from a specific purchase order back to the supplier, with a refund method and status                                                                                                     | `RETURNS_MANAGE` | `/dashboard/purchase-returns/new`, `/dashboard/purchase-returns/[id]` |
+| Return source search | Look up the invoice/purchase order to return against                                                                                                                                                  | `RETURNS_VIEW`   | Return creation forms                                                 |
+| Returns lists        | Browse all sales returns / purchase returns                                                                                                                                                           | `RETURNS_VIEW`   | `/dashboard/sales-returns`, `/dashboard/purchase-returns`             |
 
 ### 2.8 Expenses
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
+| Feature      | What it does                                                                       | Permission                        | UI location           |
+| ------------ | ---------------------------------------------------------------------------------- | --------------------------------- | --------------------- |
 | Expense CRUD | Category (Rent/Salaries/Transportation/Utilities/Other), amount, description, date | `EXPENSES_VIEW`/`EXPENSES_MANAGE` | `/dashboard/expenses` |
-| Bulk delete | | `EXPENSES_MANAGE` | Expenses list |
+| Bulk delete  |                                                                                    | `EXPENSES_MANAGE`                 | Expenses list         |
 
 ### 2.9 Reports
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
+| Feature        | What it does                                                                                              | Permission     | UI location                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------- |
 | Report browser | Six report types: Inventory, Products, Orders, Customers, Purchases, Suppliers — each paginated on-screen | `REPORTS_VIEW` | `/dashboard/reports`, `/dashboard/reports/{inventory,products,orders,customers,purchases,suppliers}` |
-| Export | Download any report as CSV, XLSX, or JSON, with an optional column subset and row limit | `REPORTS_VIEW` | Report pages, via `/api/reports/export` |
+| Export         | Download any report as CSV, XLSX, or JSON, with an optional column subset and row limit                   | `REPORTS_VIEW` | Report pages, via `/api/reports/export`                                                              |
 
 ### 2.10 Dashboard (analytics)
 
-| Feature | What it does | Permission | UI location |
-|---|---|---|---|
-| Overview stats | Total products, customers, active orders, low-stock count, total owed by customers, total inventory purchase value | none beyond being logged in (root `/dashboard` is deliberately ungated) | `/dashboard` |
-| Period analytics | Revenue, invoice count, average invoice, order count, new customers, purchases total — for a selectable date range (Today/7d/30d/90d/This month/Last month/This year/All time/Custom) | same | `/dashboard` |
-| Revenue vs. purchases trend chart | Time-bucketed (hour/day/month, auto-chosen by range length) area chart | same | `/dashboard` |
-| Top products / top customers | Ranked lists for the selected period | same | `/dashboard` |
-| Category sales, payment status, order status, expenses breakdown charts | Pie/bar charts for the selected period | same | `/dashboard` |
+| Feature                                                                 | What it does                                                                                                                                                                          | Permission                                                              | UI location  |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------ |
+| Overview stats                                                          | Total products, customers, active orders, low-stock count, total owed by customers, total inventory purchase value                                                                    | none beyond being logged in (root `/dashboard` is deliberately ungated) | `/dashboard` |
+| Period analytics                                                        | Revenue, invoice count, average invoice, order count, new customers, purchases total — for a selectable date range (Today/7d/30d/90d/This month/Last month/This year/All time/Custom) | same                                                                    | `/dashboard` |
+| Revenue vs. purchases trend chart                                       | Time-bucketed (hour/day/month, auto-chosen by range length) area chart                                                                                                                | same                                                                    | `/dashboard` |
+| Top products / top customers                                            | Ranked lists for the selected period                                                                                                                                                  | same                                                                    | `/dashboard` |
+| Category sales, payment status, order status, expenses breakdown charts | Pie/bar charts for the selected period                                                                                                                                                | same                                                                    | `/dashboard` |
 
 ### 2.11 Admin Settings
 
 See [Section 4](#4-admin-guide) for full step-by-step coverage. Summary:
 
-| Feature | Permission |
-|---|---|
-| User management (create/edit/reset password/activate-deactivate/delete) | `USERS_MANAGE` |
-| Role management (create/edit/delete, permission matrix) | `USERS_MANAGE` |
+| Feature                                                                       | Permission        |
+| ----------------------------------------------------------------------------- | ----------------- |
+| User management (create/edit/reset password/activate-deactivate/delete)       | `USERS_MANAGE`    |
+| Role management (create/edit/delete, permission matrix)                       | `USERS_MANAGE`    |
 | Appearance (app name, short name, light-mode color tokens, reset to defaults) | `SETTINGS_MANAGE` |
 
 ---
@@ -189,12 +189,12 @@ See [Section 4](#4-admin-guide) for full step-by-step coverage. Summary:
 
 ### Roles
 
-There is no fixed list of role *names* — roles are records in the database that an admin creates. Two are seeded automatically:
+There is no fixed list of role _names_ — roles are records in the database that an admin creates. Two are seeded automatically:
 
-| Role | `isSystem` | `isFullAccess` | Notes |
-|---|---|---|---|
-| **Admin** | `true` | `true` | Seeded once by `prisma/seed.ts`. Bypasses every permission check. Cannot be deleted or edited (name/full-access flag locked) because `isSystem` is true. |
-| **Staff** | `false` | `false` | Seeded with zero permissions by default — an admin must grant it permissions via the Roles page. |
+| Role      | `isSystem` | `isFullAccess` | Notes                                                                                                                                                    |
+| --------- | ---------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin** | `true`     | `true`         | Seeded once by `prisma/seed.ts`. Bypasses every permission check. Cannot be deleted or edited (name/full-access flag locked) because `isSystem` is true. |
+| **Staff** | `false`    | `false`        | Seeded with zero permissions by default — an admin must grant it permissions via the Roles page.                                                         |
 
 An admin can create additional custom roles freely (e.g. "Cashier", "Warehouse"), each with its own hand-picked set of permissions, and can also create another full-access role if desired.
 
@@ -202,25 +202,25 @@ An admin can create additional custom roles freely (e.g. "Cashier", "Warehouse")
 
 Permissions are **per-module, split into VIEW and MANAGE**, plus two standalone administrative permissions. 22 values total, defined as the `PermissionKey` enum in `prisma/schema.prisma`:
 
-| Module | View permission | Manage permission |
-|---|---|---|
-| Products | `PRODUCTS_VIEW` | `PRODUCTS_MANAGE` |
-| Orders | `ORDERS_VIEW` | `ORDERS_MANAGE` |
-| Customers | `CUSTOMERS_VIEW` | `CUSTOMERS_MANAGE` |
-| Inventory | `INVENTORY_VIEW` | `INVENTORY_MANAGE` |
-| Purchases | `PURCHASES_VIEW` | `PURCHASES_MANAGE` |
-| Invoices | `INVOICES_VIEW` | `INVOICES_MANAGE` |
-| Suppliers | `SUPPLIERS_VIEW` | `SUPPLIERS_MANAGE` |
-| Expenses | `EXPENSES_VIEW` | `EXPENSES_MANAGE` |
-| Reports | `REPORTS_VIEW` | `REPORTS_MANAGE` (reserved — no UI currently distinguishes report *management* from viewing; only `REPORTS_VIEW` is actually checked anywhere) |
-| Returns | `RETURNS_VIEW` | `RETURNS_MANAGE` |
+| Module    | View permission  | Manage permission                                                                                                                              |
+| --------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Products  | `PRODUCTS_VIEW`  | `PRODUCTS_MANAGE`                                                                                                                              |
+| Orders    | `ORDERS_VIEW`    | `ORDERS_MANAGE`                                                                                                                                |
+| Customers | `CUSTOMERS_VIEW` | `CUSTOMERS_MANAGE`                                                                                                                             |
+| Inventory | `INVENTORY_VIEW` | `INVENTORY_MANAGE`                                                                                                                             |
+| Purchases | `PURCHASES_VIEW` | `PURCHASES_MANAGE`                                                                                                                             |
+| Invoices  | `INVOICES_VIEW`  | `INVOICES_MANAGE`                                                                                                                              |
+| Suppliers | `SUPPLIERS_VIEW` | `SUPPLIERS_MANAGE`                                                                                                                             |
+| Expenses  | `EXPENSES_VIEW`  | `EXPENSES_MANAGE`                                                                                                                              |
+| Reports   | `REPORTS_VIEW`   | `REPORTS_MANAGE` (reserved — no UI currently distinguishes report _management_ from viewing; only `REPORTS_VIEW` is actually checked anywhere) |
+| Returns   | `RETURNS_VIEW`   | `RETURNS_MANAGE`                                                                                                                               |
 
 Standalone (not tied to a module, not shown in the module VIEW/MANAGE matrix):
 
-| Permission | Controls |
-|---|---|
-| `USERS_MANAGE` | Users page, Roles & Permissions page |
-| `SETTINGS_MANAGE` | Appearance / system settings page |
+| Permission        | Controls                             |
+| ----------------- | ------------------------------------ |
+| `USERS_MANAGE`    | Users page, Roles & Permissions page |
+| `SETTINGS_MANAGE` | Appearance / system settings page    |
 
 `MANAGE` generally implies the ability to create/edit/delete within that module; `VIEW` alone means read-only access to that module's list/detail pages. Note: in a handful of places a "manage-only" action reads related data via a `VIEW`-gated helper internally — the enforcement described in the Backend & API section reflects what's actually checked at each entry point.
 
@@ -235,12 +235,12 @@ Standalone (not tied to a module, not shown in the module VIEW/MANAGE matrix):
 
 ### What happens without permission
 
-| Context | Result |
-|---|---|
-| Visiting a gated dashboard page | Redirected to `/dashboard/access-denied` with a clear message |
-| Calling a gated server action | Action returns a localized error object, e.g. `{ error: "You don't have sufficient permission to perform this action" }`; nothing is written to the database |
-| Calling a gated API route | Real `403 Forbidden` JSON response (or `401` if not logged in at all) |
-| Nav item for a module you can't view | Not rendered in the sidebar at all |
+| Context                              | Result                                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Visiting a gated dashboard page      | Redirected to `/dashboard/access-denied` with a clear message                                                                                                |
+| Calling a gated server action        | Action returns a localized error object, e.g. `{ error: "You don't have sufficient permission to perform this action" }`; nothing is written to the database |
+| Calling a gated API route            | Real `403 Forbidden` JSON response (or `401` if not logged in at all)                                                                                        |
+| Nav item for a module you can't view | Not rendered in the sidebar at all                                                                                                                           |
 
 ### Admin-only functionality
 
@@ -354,38 +354,38 @@ If a workflow step requires a permission you don't have (e.g. you can view invoi
 
 All dashboard pages live under `/dashboard/**` and require being logged in (enforced in `src/proxy.ts`, which redirects an unauthenticated visitor to `/login`). Each page below additionally requires the listed permission via `requirePageAccess()`.
 
-| Page | Path | Permission | Purpose |
-|---|---|---|---|
-| Dashboard overview | `/dashboard` | none (just logged in) | Stats + analytics, see §2.10 |
-| Products list | `/dashboard/products` | `PRODUCTS_VIEW` | Browse/search/filter products, bulk actions, import |
-| Product profile | `/dashboard/products/[id]` | `PRODUCTS_VIEW` | Full detail, edit, movement history, buyers list |
-| Categories list/profile | `/dashboard/categories`, `/dashboard/categories/[id]` | `PRODUCTS_VIEW` | Category tree management |
-| Brands list/profile | `/dashboard/brands`, `/dashboard/brands/[id]` | `PRODUCTS_VIEW` | Brand management |
-| Inventory | `/dashboard/inventory` | `INVENTORY_VIEW`(page)/`INVENTORY_MANAGE`(record movement) | Low-stock table, manual stock movements |
-| Customers list | `/dashboard/customers` | `CUSTOMERS_VIEW` | Search/filter/sort customers, debt filter |
-| Customer profile | `/dashboard/customers/[id]` | `CUSTOMERS_VIEW` | Overview tab + Statement tab (see §2.3) |
-| Customer statement (print) | `/dashboard/customers/[id]/statement` | `CUSTOMERS_VIEW` | Print/PDF-ready ledger for a date range |
-| Orders list | `/dashboard/orders` | `ORDERS_VIEW` | All orders, status filter |
-| New order | `/dashboard/orders/new` | `ORDERS_MANAGE` | Manually create an order |
-| Order detail | `/dashboard/orders/[id]` | `ORDERS_VIEW`(view)/`ORDERS_MANAGE`(edit) | Status, items, convert to invoice |
-| Invoices list | `/dashboard/invoices` | `INVOICES_VIEW` | All invoices, payment-status filter, search |
-| New invoice | `/dashboard/invoices/new` | `INVOICES_MANAGE` | Create a sale |
-| Invoice detail | `/dashboard/invoices/[id]` | `INVOICES_VIEW`(view)/`INVOICES_MANAGE`(edit/payments) | Full invoice, payments, edit |
-| Invoice print | `/dashboard/invoices/[id]/print` | `INVOICES_VIEW` | Printable document |
-| Suppliers list/profile | `/dashboard/suppliers`, `/dashboard/suppliers/[id]` | `SUPPLIERS_VIEW`/`SUPPLIERS_MANAGE` | Supplier management, balance |
-| Purchases list | `/dashboard/purchases` | `PURCHASES_VIEW` | All purchase orders |
-| New purchase order | `/dashboard/purchases/new` | `PURCHASES_MANAGE` | Create a purchase order |
-| Purchase order detail | `/dashboard/purchases/[id]` | `PURCHASES_VIEW`(view)/`PURCHASES_MANAGE`(receive/cancel/pay) | Full order, payments |
-| Purchase order print | `/dashboard/purchases/[id]/print` | `PURCHASES_VIEW` | Printable document |
-| Sales returns list/new/detail | `/dashboard/sales-returns[/…]` | `RETURNS_VIEW`/`RETURNS_MANAGE` | Return items from an invoice |
-| Purchase returns list/new/detail | `/dashboard/purchase-returns[/…]` | `RETURNS_VIEW`/`RETURNS_MANAGE` | Return items to a supplier |
-| Expenses | `/dashboard/expenses` | `EXPENSES_VIEW`/`EXPENSES_MANAGE` | Expense tracking |
-| Reports index | `/dashboard/reports` | `REPORTS_VIEW` | Links into the six report types |
-| Report pages | `/dashboard/reports/{inventory,products,orders,customers,purchases,suppliers}` | `REPORTS_VIEW` | On-screen paginated report + export |
-| Users | `/dashboard/settings/users` | `USERS_MANAGE` | User CRUD, see §4.1–4.5 |
-| Roles & Permissions | `/dashboard/settings/roles` | `USERS_MANAGE` | Role CRUD, permission matrix |
-| Appearance | `/dashboard/settings/appearance` | `SETTINGS_MANAGE` | Branding & theme colors |
-| Access denied | `/dashboard/access-denied` | — | Shown when a logged-in user lacks the permission for the page they tried to reach |
+| Page                             | Path                                                                           | Permission                                                    | Purpose                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Dashboard overview               | `/dashboard`                                                                   | none (just logged in)                                         | Stats + analytics, see §2.10                                                      |
+| Products list                    | `/dashboard/products`                                                          | `PRODUCTS_VIEW`                                               | Browse/search/filter products, bulk actions, import                               |
+| Product profile                  | `/dashboard/products/[id]`                                                     | `PRODUCTS_VIEW`                                               | Full detail, edit, movement history, buyers list                                  |
+| Categories list/profile          | `/dashboard/categories`, `/dashboard/categories/[id]`                          | `PRODUCTS_VIEW`                                               | Category tree management                                                          |
+| Brands list/profile              | `/dashboard/brands`, `/dashboard/brands/[id]`                                  | `PRODUCTS_VIEW`                                               | Brand management                                                                  |
+| Inventory                        | `/dashboard/inventory`                                                         | `INVENTORY_VIEW`(page)/`INVENTORY_MANAGE`(record movement)    | Low-stock table, manual stock movements                                           |
+| Customers list                   | `/dashboard/customers`                                                         | `CUSTOMERS_VIEW`                                              | Search/filter/sort customers, debt filter                                         |
+| Customer profile                 | `/dashboard/customers/[id]`                                                    | `CUSTOMERS_VIEW`                                              | Overview tab + Statement tab (see §2.3)                                           |
+| Customer statement (print)       | `/dashboard/customers/[id]/statement`                                          | `CUSTOMERS_VIEW`                                              | Print/PDF-ready ledger for a date range                                           |
+| Orders list                      | `/dashboard/orders`                                                            | `ORDERS_VIEW`                                                 | All orders, status filter                                                         |
+| New order                        | `/dashboard/orders/new`                                                        | `ORDERS_MANAGE`                                               | Manually create an order                                                          |
+| Order detail                     | `/dashboard/orders/[id]`                                                       | `ORDERS_VIEW`(view)/`ORDERS_MANAGE`(edit)                     | Status, items, convert to invoice                                                 |
+| Invoices list                    | `/dashboard/invoices`                                                          | `INVOICES_VIEW`                                               | All invoices, payment-status filter, search                                       |
+| New invoice                      | `/dashboard/invoices/new`                                                      | `INVOICES_MANAGE`                                             | Create a sale                                                                     |
+| Invoice detail                   | `/dashboard/invoices/[id]`                                                     | `INVOICES_VIEW`(view)/`INVOICES_MANAGE`(edit/payments)        | Full invoice, payments, edit                                                      |
+| Invoice print                    | `/dashboard/invoices/[id]/print`                                               | `INVOICES_VIEW`                                               | Printable document                                                                |
+| Suppliers list/profile           | `/dashboard/suppliers`, `/dashboard/suppliers/[id]`                            | `SUPPLIERS_VIEW`/`SUPPLIERS_MANAGE`                           | Supplier management, balance                                                      |
+| Purchases list                   | `/dashboard/purchases`                                                         | `PURCHASES_VIEW`                                              | All purchase orders                                                               |
+| New purchase order               | `/dashboard/purchases/new`                                                     | `PURCHASES_MANAGE`                                            | Create a purchase order                                                           |
+| Purchase order detail            | `/dashboard/purchases/[id]`                                                    | `PURCHASES_VIEW`(view)/`PURCHASES_MANAGE`(receive/cancel/pay) | Full order, payments                                                              |
+| Purchase order print             | `/dashboard/purchases/[id]/print`                                              | `PURCHASES_VIEW`                                              | Printable document                                                                |
+| Sales returns list/new/detail    | `/dashboard/sales-returns[/…]`                                                 | `RETURNS_VIEW`/`RETURNS_MANAGE`                               | Return items from an invoice                                                      |
+| Purchase returns list/new/detail | `/dashboard/purchase-returns[/…]`                                              | `RETURNS_VIEW`/`RETURNS_MANAGE`                               | Return items to a supplier                                                        |
+| Expenses                         | `/dashboard/expenses`                                                          | `EXPENSES_VIEW`/`EXPENSES_MANAGE`                             | Expense tracking                                                                  |
+| Reports index                    | `/dashboard/reports`                                                           | `REPORTS_VIEW`                                                | Links into the six report types                                                   |
+| Report pages                     | `/dashboard/reports/{inventory,products,orders,customers,purchases,suppliers}` | `REPORTS_VIEW`                                                | On-screen paginated report + export                                               |
+| Users                            | `/dashboard/settings/users`                                                    | `USERS_MANAGE`                                                | User CRUD, see §4.1–4.5                                                           |
+| Roles & Permissions              | `/dashboard/settings/roles`                                                    | `USERS_MANAGE`                                                | Role CRUD, permission matrix                                                      |
+| Appearance                       | `/dashboard/settings/appearance`                                               | `SETTINGS_MANAGE`                                             | Branding & theme colors                                                           |
+| Access denied                    | `/dashboard/access-denied`                                                     | —                                                             | Shown when a logged-in user lacks the permission for the page they tried to reach |
 
 ---
 
@@ -463,34 +463,34 @@ The technologies this system is built with:
 
 These are genuine REST-style endpoints with real HTTP status codes (unlike Server Actions, which return `{ error }` values instead of statuses).
 
-| Method | Path | Purpose | Auth | Permission | Notes / errors |
-|---|---|---|---|---|---|
-| `GET`/`POST` | `/api/auth/[...nextauth]` | NextAuth's own sign-in/session/callback machinery | — | — | Framework-managed, not custom application logic |
-| `POST` | `/api/cloudinary/sign` | Returns a signed Cloudinary upload payload (timestamp, signature, folder, API key, cloud name) for direct browser upload | Required | `PRODUCTS_MANAGE` | `401` not logged in, `403` missing permission |
-| `POST` | `/api/products/import` | Streams NDJSON progress events while bulk-importing products from an uploaded `.xlsx` file | Required | `PRODUCTS_MANAGE` | `401`/`403` as above; `400` if no file, or file isn't `.xlsx`; per-row errors are streamed as NDJSON events rather than failing the whole request |
-| `GET` | `/api/reports/export?type=&format=&limit=&columns=` | Exports one of six report types (`inventory`, `products`, `orders`, `customers`, `purchases`, `suppliers`) as `csv` (default), `xlsx`, or `json`, with optional column subset (`columns=0,2,4`) and row `limit` | Required | `REPORTS_VIEW` | `401`/`403` as above; `400` if `type` isn't one of the six known report types |
+| Method       | Path                                                | Purpose                                                                                                                                                                                                         | Auth     | Permission        | Notes / errors                                                                                                                                    |
+| ------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`/`POST` | `/api/auth/[...nextauth]`                           | NextAuth's own sign-in/session/callback machinery                                                                                                                                                               | —        | —                 | Framework-managed, not custom application logic                                                                                                   |
+| `POST`       | `/api/cloudinary/sign`                              | Returns a signed Cloudinary upload payload (timestamp, signature, folder, API key, cloud name) for direct browser upload                                                                                        | Required | `PRODUCTS_MANAGE` | `401` not logged in, `403` missing permission                                                                                                     |
+| `POST`       | `/api/products/import`                              | Streams NDJSON progress events while bulk-importing products from an uploaded `.xlsx` file                                                                                                                      | Required | `PRODUCTS_MANAGE` | `401`/`403` as above; `400` if no file, or file isn't `.xlsx`; per-row errors are streamed as NDJSON events rather than failing the whole request |
+| `GET`        | `/api/reports/export?type=&format=&limit=&columns=` | Exports one of six report types (`inventory`, `products`, `orders`, `customers`, `purchases`, `suppliers`) as `csv` (default), `xlsx`, or `json`, with optional column subset (`columns=0,2,4`) and row `limit` | Required | `REPORTS_VIEW`    | `401`/`403` as above; `400` if `type` isn't one of the six known report types                                                                     |
 
 ### 9.2 Server Actions (by feature)
 
 These live in each feature's `actions.ts`, are invoked directly from forms/components (not fetched by URL), and every mutating one calls `requirePermission()` first. Grouped by module — permission shown once per module since it's consistent per action name (`*_MANAGE` for writes):
 
-| Module | Actions | Permission |
-|---|---|---|
-| **Auth** | `authenticate`, `logout` | none (public) |
-| **Products** | `findProductIdByBarcode`, `createProduct`, `updateProduct`, `deleteProduct`, `deleteProducts` | `PRODUCTS_MANAGE` (writes) |
-| **Categories** | `createCategory`, `updateCategory`, `deleteCategory`, `deleteCategories` | `PRODUCTS_MANAGE` |
-| **Brands** | `createBrand`, `updateBrand`, `deleteBrand`, `deleteBrands` | `PRODUCTS_MANAGE` |
-| **Inventory** | `recordInventoryMovement` | `INVENTORY_MANAGE` |
-| **Customers** | `createCustomer`, `updateCustomer`, `adjustCustomerBalanceManual`, `findCustomerByPhoneAction`, `deleteCustomer`, `deleteCustomers`, `toggleCustomerFavorite` | `CUSTOMERS_MANAGE` |
-| **Orders** | `updateOrderStatus`, `getOrderStockIssue`, `updateOrderItems`, `reassignOrderCustomer`, `saveOrderCustomerInfo`, `createOrder`, `deleteOrder`, `deleteOrders` | `ORDERS_MANAGE` |
-| **Invoices** | `checkInvoiceStockAvailability`, `fetchCustomerOutstandingInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`, `deleteInvoices`, `getOrCreateInvoiceForOrder`, `recordPayment`, `recordPaymentAcrossInvoices`, `updatePayment`, `deletePayment` | `INVOICES_MANAGE` |
-| **Suppliers** | `adjustSupplierBalance`, `createSupplier`, `updateSupplier`, `deleteSupplier`, `deleteSuppliers` | `SUPPLIERS_MANAGE` |
-| **Purchases** | `createPurchaseOrder`, `updatePurchaseOrderItems`, `recordSupplierPayment`, `deleteSupplierPayment`, `receivePurchaseOrder`, `cancelPurchaseOrder`, `deletePurchaseOrder`, `deletePurchaseOrders` | `PURCHASES_MANAGE` |
-| **Returns** | `searchReturnSources`, `createSalesReturn`, `createPurchaseReturn` | `RETURNS_VIEW` (search) / `RETURNS_MANAGE` (create) |
-| **Expenses** | `createExpense`, `updateExpense`, `deleteExpense`, `deleteExpenses` | `EXPENSES_MANAGE` |
-| **Users** | `createUser`, `updateUser`, `resetUserPassword`, `toggleUserActive`, `deleteUser`, `deleteUsers` | `USERS_MANAGE` |
-| **Roles** | `createRole`, `updateRole`, `deleteRole` | `USERS_MANAGE` |
-| **Settings** | `updateSystemSettings` | `SETTINGS_MANAGE` |
+| Module         | Actions                                                                                                                                                                                                                                                  | Permission                                          |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Auth**       | `authenticate`, `logout`                                                                                                                                                                                                                                 | none (public)                                       |
+| **Products**   | `findProductIdByBarcode`, `createProduct`, `updateProduct`, `deleteProduct`, `deleteProducts`                                                                                                                                                            | `PRODUCTS_MANAGE` (writes)                          |
+| **Categories** | `createCategory`, `updateCategory`, `deleteCategory`, `deleteCategories`                                                                                                                                                                                 | `PRODUCTS_MANAGE`                                   |
+| **Brands**     | `createBrand`, `updateBrand`, `deleteBrand`, `deleteBrands`                                                                                                                                                                                              | `PRODUCTS_MANAGE`                                   |
+| **Inventory**  | `recordInventoryMovement`                                                                                                                                                                                                                                | `INVENTORY_MANAGE`                                  |
+| **Customers**  | `createCustomer`, `updateCustomer`, `adjustCustomerBalanceManual`, `findCustomerByPhoneAction`, `deleteCustomer`, `deleteCustomers`, `toggleCustomerFavorite`                                                                                            | `CUSTOMERS_MANAGE`                                  |
+| **Orders**     | `updateOrderStatus`, `getOrderStockIssue`, `updateOrderItems`, `reassignOrderCustomer`, `saveOrderCustomerInfo`, `createOrder`, `deleteOrder`, `deleteOrders`                                                                                            | `ORDERS_MANAGE`                                     |
+| **Invoices**   | `checkInvoiceStockAvailability`, `fetchCustomerOutstandingInvoices`, `createInvoice`, `updateInvoice`, `deleteInvoice`, `deleteInvoices`, `getOrCreateInvoiceForOrder`, `recordPayment`, `recordPaymentAcrossInvoices`, `updatePayment`, `deletePayment` | `INVOICES_MANAGE`                                   |
+| **Suppliers**  | `adjustSupplierBalance`, `createSupplier`, `updateSupplier`, `deleteSupplier`, `deleteSuppliers`                                                                                                                                                         | `SUPPLIERS_MANAGE`                                  |
+| **Purchases**  | `createPurchaseOrder`, `updatePurchaseOrderItems`, `recordSupplierPayment`, `deleteSupplierPayment`, `receivePurchaseOrder`, `cancelPurchaseOrder`, `deletePurchaseOrder`, `deletePurchaseOrders`                                                        | `PURCHASES_MANAGE`                                  |
+| **Returns**    | `searchReturnSources`, `createSalesReturn`, `createPurchaseReturn`                                                                                                                                                                                       | `RETURNS_VIEW` (search) / `RETURNS_MANAGE` (create) |
+| **Expenses**   | `createExpense`, `updateExpense`, `deleteExpense`, `deleteExpenses`                                                                                                                                                                                      | `EXPENSES_MANAGE`                                   |
+| **Users**      | `createUser`, `updateUser`, `resetUserPassword`, `toggleUserActive`, `deleteUser`, `deleteUsers`                                                                                                                                                         | `USERS_MANAGE`                                      |
+| **Roles**      | `createRole`, `updateRole`, `deleteRole`                                                                                                                                                                                                                 | `USERS_MANAGE`                                      |
+| **Settings**   | `updateSystemSettings`                                                                                                                                                                                                                                   | `SETTINGS_MANAGE`                                   |
 
 Every action in this table returns an `ActionResult`-shaped value (`{ error?: string }` on failure; `void`/data on success) rather than an HTTP status — that's the nature of Next.js Server Actions. Deletions of invoices, customers, payments, and users additionally require the `DELETE_CONFIRM_PASSWORD` value to be supplied and correct.
 
@@ -498,13 +498,13 @@ Every action in this table returns an `ActionResult`-shaped value (`{ error?: st
 
 Every error message returned by a server action or API route is looked up from the app's dictionary (`ar`/`en`/`fr`) based on the visitor's locale cookie, not a fixed string — the English text shown below is just that lookup's English value.
 
-| Situation | Server Action | Route Handler |
-|---|---|---|
-| Not logged in | `{ error: "You must log in first" }` (localized) | `401` JSON `{ error }` |
-| Logged in, missing permission | `{ error: "You don't have sufficient permission to perform this action" }` (localized) | `403` JSON `{ error }` |
-| Invalid input (zod) | `{ error: <validation message> }` | `400` for malformed request shape (e.g. bad file type) |
-| Record not found | Page-level: Next.js `notFound()` → its own not-found boundary | n/a for the current API routes |
-| Server/database error | Generally surfaced as `{ error: <message> }`; unhandled exceptions fall back to Next.js's default error handling | `500` implicitly via unhandled exceptions |
+| Situation                     | Server Action                                                                                                    | Route Handler                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Not logged in                 | `{ error: "You must log in first" }` (localized)                                                                 | `401` JSON `{ error }`                                 |
+| Logged in, missing permission | `{ error: "You don't have sufficient permission to perform this action" }` (localized)                           | `403` JSON `{ error }`                                 |
+| Invalid input (zod)           | `{ error: <validation message> }`                                                                                | `400` for malformed request shape (e.g. bad file type) |
+| Record not found              | Page-level: Next.js `notFound()` → its own not-found boundary                                                    | n/a for the current API routes                         |
+| Server/database error         | Generally surfaced as `{ error: <message> }`; unhandled exceptions fall back to Next.js's default error handling | `500` implicitly via unhandled exceptions              |
 
 ---
 
@@ -512,13 +512,13 @@ Every error message returned by a server action or API route is looked up from t
 
 ### Login problems
 
-- **"Invalid credentials" even though the password looks right** — login always checks the `Admin` table in the database (bcrypt-compared), not the `SEED_ADMIN_PASSWORD` env var — that variable is only used once, by `prisma/seed.ts`, to create the *initial* account. If the password was changed since via the Users page, use the current one.
+- **"Invalid credentials" even though the password looks right** — login always checks the `Admin` table in the database (bcrypt-compared), not the `SEED_ADMIN_PASSWORD` env var — that variable is only used once, by `prisma/seed.ts`, to create the _initial_ account. If the password was changed since via the Users page, use the current one.
 - **Account can't log in at all** — check whether the user was deactivated (`isActive = false`); `authorize()` rejects inactive accounts outright.
 
 ### `403` / "permission denied"
 
 - Confirm the user's role actually has the relevant `*_VIEW`/`*_MANAGE` permission on the **Roles & Permissions** page.
-- Remember permissions are checked fresh on every action — if you just granted one, the user does not need to log out/in, but *you* (the admin) may need to refresh the roles page to see the change reflected in the matrix UI.
+- Remember permissions are checked fresh on every action — if you just granted one, the user does not need to log out/in, but _you_ (the admin) may need to refresh the roles page to see the change reflected in the matrix UI.
 - If you're testing as the affected user and still see it after confirming the role has the permission, double check they're actually assigned that role (Users page).
 
 ### `401` / "must log in first"
@@ -550,5 +550,3 @@ Every error message returned by a server action or API route is looked up from t
 - **Root `/dashboard` is intentionally ungated.** Any logged-in user can see the overview stats/analytics regardless of their permissions — this includes revenue, customer, and purchase figures even if the user lacks `REPORTS_VIEW`, `CUSTOMERS_VIEW`, etc. This is a deliberate design choice (documented in the code as "left ungated by design"), not an oversight, but it does mean the dashboard overview is not permission-scoped the way every other page is.
 - **Dashboard "top customers" widget** shows customer names/figures to any logged-in user, independent of whether they hold `CUSTOMERS_VIEW` — a direct consequence of the point above.
 - **Page-level access denial returns HTTP 200, not 403/404.** Because of how Next.js streaming/`loading.tsx` interacts with `redirect()`/`notFound()` inside a nested page, a permission-denied page redirect to `/dashboard/access-denied` cannot carry a real 403 status code by the time it fires — the browser sees a 200 for the redirected page. The redirect and message are still correct and no denied data is ever included in the response; only the raw HTTP status code is not meaningful here. Server Actions and the real API routes under `/api/**` are unaffected and return correct `401`/`403` statuses.
-- **A leaked database credential was found and fixed during this documentation pass.** `.env.example` (a file intended to be safe to commit) contained a real Neon Postgres connection string with a live password, and it had already been committed and pushed to the project's **public** GitHub repository. The current working copy of `.env.example` has been redacted, but the credential remains in git history and was exposed publicly — **the actual database password should be rotated on the Neon dashboard**; editing the file alone does not undo the exposure.
-- **`README.md` is still the default `create-next-app` boilerplate** and describes none of this project's actual setup — this document (`SYSTEM_DOCUMENTATION.md`) is the accurate reference; consider pointing `README.md` at it.

@@ -90,6 +90,7 @@ export async function getOrderById(id: string) {
         },
       },
       customer: true,
+      createdBy: { select: { name: true } },
     },
   });
 }

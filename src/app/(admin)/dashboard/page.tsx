@@ -32,7 +32,9 @@ import { CategorySalesChart } from "@/features/dashboard/components/category-sal
 import { OrderStatusChart } from "@/features/dashboard/components/order-status-chart";
 import { RankedListCard } from "@/features/dashboard/components/ranked-list-card";
 import { ExpensesChart } from "@/features/dashboard/components/expenses-chart";
+import { redirect } from "next/navigation";
 import { formatCurrency } from "@/lib/currency";
+import { hasPermission, getFirstAccessiblePath } from "@/lib/permissions";
 import { getLocale, getDictionary } from "@/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,15 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }) {
+  // This is also the page login lands everyone on, so a user without
+  // DASHBOARD_VIEW must never dead-end here on the generic access-denied
+  // screen — forward them straight to whichever page they actually do have
+  // access to instead (same fallback the access-denied page's own "back"
+  // link uses).
+  if (!(await hasPermission("DASHBOARD_VIEW"))) {
+    redirect(await getFirstAccessiblePath());
+  }
+
   const params = await searchParams;
   const range = resolveDateRange(params);
 

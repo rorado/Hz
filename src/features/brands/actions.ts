@@ -26,6 +26,7 @@ export async function createBrand(input: unknown): Promise<ActionResult> {
         slug: parsed.data.slug,
         logoUrl: parsed.data.logo?.secureUrl ?? null,
         logoPublicId: parsed.data.logo?.publicId ?? null,
+        createdById: access.adminId,
       },
     });
   } catch (error) {
