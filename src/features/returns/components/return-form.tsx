@@ -60,7 +60,7 @@ export function ReturnForm({ kind, sourceId, rows }: { kind: "sales" | "purchase
       </tr>; })}</tbody></table>
     </div>
     <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
-      <div className="space-y-2"><Label>{t.returns.reason}</Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} required /></div>
+      <div className="space-y-2"><Label>{t.returns.reason} <span className="text-destructive">*</span></Label><Textarea value={reason} onChange={(e) => setReason(e.target.value)} required /></div>
       <div className="space-y-2"><Label>{t.returns.notes}</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
       <div className="space-y-2"><Label>{t.returns.refundMethod}</Label><Select value={refundMethod} onValueChange={(v) => v && setRefundMethod(v)}><SelectTrigger><SelectValue>{(value: string) => methodLabels[value]}</SelectValue></SelectTrigger><SelectContent>{(kind === "sales" ? ["CASH","CARD","BANK_TRANSFER","CUSTOMER_CREDIT","NO_IMMEDIATE_REFUND"] : ["CASH","BANK_TRANSFER","SUPPLIER_CREDIT","NO_IMMEDIATE_REFUND"]).map((value) => <SelectItem key={value} value={value}>{methodLabels[value]}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label>{t.returns.refundAmount}</Label><Input type="number" min={0} max={total} step="0.01" value={refundAmount || ""} placeholder="0" onChange={(e) => setRefundAmount(Number(e.target.value))} /></div>

@@ -456,9 +456,12 @@ export async function deletePurchaseOrder(id: string): Promise<ActionResult> {
 
   const order = await prisma.purchaseOrder.findUnique({
     where: { id },
-    include: { items: true },
+    include: { items: true, _count: { select: { returns: true } } },
   });
   if (!order) return { error: t.purchases.notFoundError };
+  if (order._count.returns > 0) {
+    return { error: t.purchases.cannotDeleteReturnedError };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -493,14 +496,19 @@ export async function deletePurchaseOrders(
   const t = await getDictionary();
 
   let failedCount = 0;
+  let blockedByReturnsCount = 0;
   for (const id of ids) {
     try {
       const order = await prisma.purchaseOrder.findUnique({
         where: { id },
-        include: { items: true },
+        include: { items: true, _count: { select: { returns: true } } },
       });
       if (!order) {
         failedCount++;
+        continue;
+      }
+      if (order._count.returns > 0) {
+        blockedByReturnsCount++;
         continue;
       }
       await prisma.$transaction(async (tx) => {
@@ -517,6 +525,13 @@ export async function deletePurchaseOrders(
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard");
 
+  if (blockedByReturnsCount > 0) {
+    return {
+      error: formatMessage(t.purchases.bulkDeleteReturnedErrorTemplate, {
+        count: blockedByReturnsCount,
+      }),
+    };
+  }
   if (failedCount > 0) {
     return {
       error: formatMessage(t.purchases.bulkDeleteErrorTemplate, { count: failedCount }),

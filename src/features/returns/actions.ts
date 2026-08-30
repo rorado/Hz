@@ -6,8 +6,12 @@ import { auth } from "@/lib/auth";
 import { requirePermission, hasPermission } from "@/lib/permissions";
 import { salesReturnSchema, purchaseReturnSchema } from "./schema";
 import type { Prisma } from "@/generated/prisma/client";
+import type { ZodError } from "zod";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { adjustCustomerBalance } from "@/features/customers/balance";
 
 type Result = { success?: boolean; id?: string; error?: string };
 const cents = (value: number) => Math.round(value * 100) / 100;
@@ -90,13 +94,42 @@ function returnActionError(error: unknown, fallback: string, safeMessages: strin
   return safeMessages.includes(error.message) ? error.message : fallback;
 }
 
+/**
+ * Sales and purchase returns share the same field names (reason, notes,
+ * items, refundAmount, refundMethod), so one lookup covers both schemas —
+ * points at exactly which field/rule failed instead of the generic "check
+ * the return data" message.
+ */
+function describeReturnValidationError(t: Dictionary, error: ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return t.returns.invalidData;
+  const field = issue.path[0];
+
+  if (field === "reason") {
+    if (issue.code === "too_small") return t.returns.reasonTooShortError;
+    if (issue.code === "too_big") return t.returns.reasonTooLongError;
+  }
+  if (field === "notes" && issue.code === "too_big") {
+    return t.returns.notesTooLongError;
+  }
+  if (field === "items" && issue.code === "too_small") {
+    return t.returns.noItemsSelectedError;
+  }
+  if (field === "refundAmount") return t.returns.invalidRefundAmountError;
+  if (field === "refundMethod") return t.returns.invalidRefundMethodError;
+  if (field === "invoiceId" || field === "purchaseId") {
+    return t.returns.noSourceSelectedError;
+  }
+  return t.returns.invalidData;
+}
+
 export async function createSalesReturn(input: unknown): Promise<Result> {
   const [session,t] = await Promise.all([auth(),getDictionary()]);
   if (!session?.user?.id) return { error: t.returns.unauthorized };
   const access = await requirePermission("RETURNS_MANAGE");
   if (!access.ok) return { error: access.error };
   const parsed = salesReturnSchema.safeParse(input);
-  if (!parsed.success) return { error: t.returns.invalidData };
+  if (!parsed.success) return { error: describeReturnValidationError(t, parsed.error) };
 
   try {
     const createdById = session.user.id;
@@ -184,7 +217,7 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
   const access = await requirePermission("RETURNS_MANAGE");
   if (!access.ok) return { error: access.error };
   const parsed = purchaseReturnSchema.safeParse(input);
-  if (!parsed.success) return { error: t.returns.invalidData };
+  if (!parsed.success) return { error: describeReturnValidationError(t, parsed.error) };
   try {
     const createdById = session.user.id;
     const result = await prisma.$transaction(async (tx) => {
@@ -253,4 +286,287 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
     if(error instanceof Error && (error.message.startsWith(quantityPrefix) || error.message.startsWith(stockPrefix))) safe.push(error.message);
     return { error: returnActionError(error, t.returns.createPurchaseError,safe) };
   }
+}
+
+type SalesReturnWithItems = Prisma.SalesReturnGetPayload<{
+  include: { items: true; invoice: { select: { invoiceNumber: true } } };
+}>;
+
+/**
+ * Reverses exactly what creating a sales return did: the stock (or
+ * damaged/defective counter) each item added back, and — if the refund was
+ * credited to the customer's رصيد — that credit. Then deletes the return
+ * itself. Shared by the single and bulk delete actions so both stay in
+ * sync. The quantity reversal is guarded against going negative (e.g. the
+ * restocked units were already resold since); the other two condition
+ * counters aren't, matching how loosely those auxiliary counters are
+ * already tracked elsewhere.
+ */
+async function reverseAndDeleteSalesReturn(
+  tx: Prisma.TransactionClient,
+  existing: SalesReturnWithItems,
+  t: Dictionary,
+) {
+  for (const item of existing.items) {
+    if (!item.productId) continue;
+    if (item.condition === "GOOD") {
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, quantity: { gte: item.quantity } },
+        data: { quantity: { decrement: item.quantity } },
+      });
+      if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+    } else if (item.condition === "DAMAGED") {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { damagedQuantity: { decrement: item.quantity } },
+      });
+    } else {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { defectiveQuantity: { decrement: item.quantity } },
+      });
+    }
+    await tx.inventoryMovement.create({
+      data: {
+        productId: item.productId,
+        type: "SALE_RETURN",
+        quantity: -item.quantity,
+        reference: existing.returnNumber,
+        reason: formatMessage(t.returns.deletedReturnReasonTemplate, {
+          number: existing.returnNumber,
+        }),
+      },
+    });
+  }
+  if (
+    existing.refundMethod === "CUSTOMER_CREDIT" &&
+    existing.customerId &&
+    Number(existing.refundAmount) > 0
+  ) {
+    await adjustCustomerBalance(tx, existing.customerId, -Number(existing.refundAmount), {
+      reason: "MANUAL_ADJUSTMENT",
+      invoiceId: existing.invoiceId,
+      invoiceNumber: existing.invoice.invoiceNumber,
+      note: formatMessage(t.returns.deletedReturnCreditNoteTemplate, {
+        number: existing.returnNumber,
+      }),
+    });
+  }
+  await tx.salesReturn.delete({ where: { id: existing.id } });
+}
+
+export async function deleteSalesReturn(id: string, password: string): Promise<Result> {
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+
+  const existing = await prisma.salesReturn.findUnique({
+    where: { id },
+    include: { items: true, invoice: { select: { invoiceNumber: true } } },
+  });
+  if (!existing) return { error: t.returns.notFoundError };
+
+  try {
+    await prisma.$transaction((tx) => reverseAndDeleteSalesReturn(tx, existing, t));
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      return { error: t.returns.deleteInsufficientStockError };
+    }
+    return { error: t.returns.deleteSalesError };
+  }
+
+  revalidatePath("/dashboard/sales-returns");
+  revalidatePath(`/dashboard/invoices/${existing.invoiceId}`);
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
+  return { success: true };
+}
+
+export async function deleteSalesReturns(
+  ids: string[],
+  password?: string,
+): Promise<Result> {
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+  if (ids.length === 0) return { success: true };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+
+  let failedCount = 0;
+  const invoiceIds = new Set<string>();
+  const customerIds = new Set<string>();
+  for (const id of ids) {
+    try {
+      const existing = await prisma.salesReturn.findUnique({
+        where: { id },
+        include: { items: true, invoice: { select: { invoiceNumber: true } } },
+      });
+      if (!existing) {
+        failedCount++;
+        continue;
+      }
+      await prisma.$transaction((tx) => reverseAndDeleteSalesReturn(tx, existing, t));
+      invoiceIds.add(existing.invoiceId);
+      if (existing.customerId) customerIds.add(existing.customerId);
+    } catch {
+      failedCount++;
+    }
+  }
+
+  revalidatePath("/dashboard/sales-returns");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  for (const invoiceId of invoiceIds) revalidatePath(`/dashboard/invoices/${invoiceId}`);
+  for (const customerId of customerIds) revalidatePath(`/dashboard/customers/${customerId}`);
+
+  if (failedCount > 0) {
+    return {
+      error: formatMessage(t.returns.bulkDeleteSalesErrorTemplate, { count: failedCount }),
+    };
+  }
+  return { success: true };
+}
+
+type PurchaseReturnWithItems = Prisma.PurchaseReturnGetPayload<{
+  include: { items: true };
+}>;
+
+/**
+ * Reverses exactly what creating a purchase return did: the stock it
+ * removed (returned to the supplier) and, if the refund was credited to
+ * the supplier's رصيد, that credit. Then deletes the return itself. Shared
+ * by the single and bulk delete actions.
+ */
+async function reverseAndDeletePurchaseReturn(
+  tx: Prisma.TransactionClient,
+  existing: PurchaseReturnWithItems,
+  t: Dictionary,
+  createdById: string,
+) {
+  for (const item of existing.items) {
+    await tx.product.update({
+      where: { id: item.productId },
+      data: { quantity: { increment: item.quantity } },
+    });
+    await tx.inventoryMovement.create({
+      data: {
+        productId: item.productId,
+        type: "PURCHASE_RETURN",
+        quantity: item.quantity,
+        reference: existing.returnNumber,
+        reason: formatMessage(t.returns.deletedReturnReasonTemplate, {
+          number: existing.returnNumber,
+        }),
+      },
+    });
+  }
+  if (existing.refundMethod === "SUPPLIER_CREDIT" && Number(existing.refundAmount) > 0) {
+    const supplier = await tx.supplier.findUniqueOrThrow({
+      where: { id: existing.supplierId },
+    });
+    const previousBalance = Number(supplier.balance);
+    const amount = Number(existing.refundAmount);
+    const newBalance = previousBalance - amount;
+    await tx.supplier.update({
+      where: { id: existing.supplierId },
+      data: { balance: newBalance },
+    });
+    await tx.supplierBalanceHistory.create({
+      data: {
+        supplierId: existing.supplierId,
+        purchaseOrderId: existing.purchaseId,
+        reference: existing.returnNumber,
+        previousBalance,
+        change: -amount,
+        newBalance,
+        reason: "MANUAL_ADJUSTMENT",
+        note: formatMessage(t.returns.deletedReturnSupplierCreditNoteTemplate, {
+          number: existing.returnNumber,
+        }),
+        createdById,
+      },
+    });
+  }
+  await tx.purchaseReturn.delete({ where: { id: existing.id } });
+}
+
+export async function deletePurchaseReturn(id: string, password: string): Promise<Result> {
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+
+  const existing = await prisma.purchaseReturn.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+  if (!existing) return { error: t.returns.notFoundError };
+
+  try {
+    await prisma.$transaction((tx) =>
+      reverseAndDeletePurchaseReturn(tx, existing, t, access.adminId),
+    );
+  } catch {
+    return { error: t.returns.deletePurchaseError };
+  }
+
+  revalidatePath("/dashboard/purchase-returns");
+  revalidatePath(`/dashboard/purchases/${existing.purchaseId}`);
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/suppliers/${existing.supplierId}`);
+  return { success: true };
+}
+
+export async function deletePurchaseReturns(
+  ids: string[],
+  password?: string,
+): Promise<Result> {
+  const access = await requirePermission("RETURNS_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+  if (ids.length === 0) return { success: true };
+  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+
+  let failedCount = 0;
+  const purchaseIds = new Set<string>();
+  const supplierIds = new Set<string>();
+  for (const id of ids) {
+    try {
+      const existing = await prisma.purchaseReturn.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!existing) {
+        failedCount++;
+        continue;
+      }
+      await prisma.$transaction((tx) =>
+        reverseAndDeletePurchaseReturn(tx, existing, t, access.adminId),
+      );
+      purchaseIds.add(existing.purchaseId);
+      supplierIds.add(existing.supplierId);
+    } catch {
+      failedCount++;
+    }
+  }
+
+  revalidatePath("/dashboard/purchase-returns");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  for (const purchaseId of purchaseIds) revalidatePath(`/dashboard/purchases/${purchaseId}`);
+  for (const supplierId of supplierIds) revalidatePath(`/dashboard/suppliers/${supplierId}`);
+
+  if (failedCount > 0) {
+    return {
+      error: formatMessage(t.returns.bulkDeletePurchaseErrorTemplate, { count: failedCount }),
+    };
+  }
+  return { success: true };
 }

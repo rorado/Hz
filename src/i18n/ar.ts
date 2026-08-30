@@ -352,9 +352,9 @@ export const ar = {
     columnBrand: "العلامة التجارية",
     columnQuantity: "الكمية",
     deleteDescription:
-      'تحذير: سيتم حذف المنتج "{name}" نهائياً، مع صوره وجميع أسطره المرتبطة في الطلبات والفواتير والمشتريات والمرتجعات وحركات المخزون. ستُعاد حساب إجماليات المستندات المتبقية. لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.',
+      'تحذير: سيتم حذف المنتج "{name}" نهائياً مع صوره. لا يمكن حذفه إذا كان مرتبطاً بفاتورة أو طلب أو أمر شراء أو مرتجع شراء — ستظهر رسالة توضح السجلات المرتبطة به في هذه الحالة. لا يمكن التراجع عن الحذف، ويجب إدخال كلمة مرور الحذف للمتابعة.',
     bulkDeleteDescription:
-      "تحذير: سيتم حذف المنتجات المحددة نهائياً مع صورها وجميع أسطر الطلبات والفواتير والمشتريات والمرتجعات وحركات المخزون المرتبطة بها. لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.",
+      "تحذير: سيتم حذف المنتجات المحددة نهائياً مع صورها. لن يُحذف أي منتج مرتبط بفاتورة أو طلب أو أمر شراء أو مرتجع شراء. لا يمكن التراجع عن الحذف، ويجب إدخال كلمة مرور الحذف للمتابعة.",
     detailsDialogTitle: "تفاصيل المنتج",
     barcodeColumnLabel: "الباركود",
     stockLabel: "المخزون",
@@ -389,8 +389,17 @@ export const ar = {
     createError: "حدث خطأ أثناء إضافة المنتج",
     updateError: "حدث خطأ أثناء تحديث المنتج",
     notFoundError: "المنتج غير موجود",
-    deleteError: "تعذر حذف المنتج وجميع سجلاته المرتبطة",
-    bulkDeleteError: "تعذر حذف المنتجات وجميع سجلاتها المرتبطة",
+    deleteError: "تعذر حذف المنتج",
+    bulkDeleteError: "تعذر حذف المنتجات",
+    bulkDeleteErrorTemplate:
+      "تعذر حذف {count} من المنتجات لارتباطها بسجلات أخرى (فواتير أو طلبات أو أوامر شراء)",
+    cannotDeleteLinkedIntro:
+      "لا يمكن حذف هذا المنتج لأنه مرتبط بالسجلات التالية. احذفها أو عدّلها أولاً ثم أعد المحاولة:",
+    linkedInvoicesTemplate: "فواتير: {list}",
+    linkedOrdersTemplate: "طلبات: {list}",
+    linkedPurchaseOrdersTemplate: "أوامر شراء: {list}",
+    linkedPurchaseReturnsTemplate: "مرتجعات شراء: {list}",
+    andMoreTemplate: "و{count} أخرى",
     profileLabel: "ملف المنتج",
     currentStockLabel: "الكمية الحالية",
     totalSoldLabel: "إجمالي المباع",
@@ -804,6 +813,12 @@ export const ar = {
     createError: "حدث خطأ أثناء إنشاء الفاتورة",
     notFoundError: "الفاتورة غير موجودة",
     updateError: "حدث خطأ أثناء تحديث الفاتورة",
+    cannotEditReturnedError:
+      "لا يمكن تعديل عناصر هذه الفاتورة لوجود مرتجع مبيعات مرتبط بها. أنشئ مرتجعاً إضافياً لتصحيح الكمية، أو احذف المرتجع الحالي أولاً إذا أردت تعديل العناصر مباشرة.",
+    cannotDeleteReturnedError:
+      "لا يمكن حذف هذه الفاتورة لوجود مرتجع مبيعات مرتبط بها. احذف المرتجع أولاً إذا أردت حذف الفاتورة.",
+    bulkDeleteReturnedErrorTemplate:
+      "تعذر حذف {count} من الفواتير لوجود مرتجعات مبيعات مرتبطة بها. احذف تلك المرتجعات أولاً.",
     deleteError: "حدث خطأ أثناء حذف الفاتورة، الرجاء المحاولة مرة أخرى",
     bulkDeleteError: "حدث خطأ أثناء حذف الفواتير المحددة، الرجاء المحاولة مرة أخرى",
     orderNotFoundError: "الطلب غير موجود",
@@ -955,6 +970,10 @@ export const ar = {
     statusUpdateError: "حدث خطأ أثناء تحديث حالة أمر الشراء",
     cannotEditReceivedError:
       "لا يمكن تعديل عناصر أمر شراء تم استلامه بالفعل. أعد حالته إلى قيد الانتظار أولاً.",
+    cannotDeleteReturnedError:
+      "لا يمكن حذف أمر الشراء هذا لوجود مرتجع مشتريات مرتبط به. احذف المرتجع أولاً إذا أردت حذف الأمر.",
+    bulkDeleteReturnedErrorTemplate:
+      "تعذر حذف {count} من أوامر الشراء لوجود مرتجعات مشتريات مرتبطة بها. احذف تلك المرتجعات أولاً.",
     deleteError: "تعذر حذف أمر الشراء",
     bulkDeleteErrorTemplate: "تعذر حذف {count} من أوامر الشراء",
   },
@@ -1208,12 +1227,36 @@ export const ar = {
     noReturns: "لا توجد مرتجعات.", noInvoiceReturns: "لا توجد مرتجعات لهذه الفاتورة.", piece: "قطعة",
     confirmed: "مؤكد", cancelled: "ملغى", pending: "قيد الانتظار", completed: "مكتمل", credited: "أضيف للرصيد", notRequired: "غير مطلوب",
     unauthorized: "غير مصرح", invalidData: "تحقق من بيانات المرتجع", createSalesError: "تعذر إنشاء مرتجع المبيعات",
+    reasonTooShortError: "سبب الإرجاع يجب أن يتكون من حرفين على الأقل",
+    reasonTooLongError: "سبب الإرجاع طويل جداً (500 حرف كحد أقصى)",
+    notesTooLongError: "الملاحظات طويلة جداً (1000 حرف كحد أقصى)",
+    noItemsSelectedError: "اختر منتجاً واحداً على الأقل لإرجاعه",
+    invalidRefundAmountError: "الرجاء إدخال مبلغ مسترد صحيح",
+    invalidRefundMethodError: "الرجاء اختيار طريقة إعادة أموال صحيحة",
+    noSourceSelectedError: "الرجاء اختيار الفاتورة أو أمر الشراء أولاً",
     createPurchaseError: "تعذر إنشاء مرتجع المشتريات", invoiceNotFound: "الفاتورة غير موجودة", purchaseNotFound: "فاتورة الشراء غير موجودة",
     receivedOnly: "يمكن الإرجاع فقط من فاتورة مستلمة", invalidInvoiceItem: "أحد عناصر الفاتورة غير صالح",
     invalidPurchaseItem: "أحد عناصر فاتورة الشراء غير صالح", refundExceedsValue: "مبلغ الاسترداد أكبر من قيمة المنتجات المرتجعة",
     quantityExceedsTemplate: "لا يمكن إرجاع {requested} من المنتج «{product}». الكمية في الفاتورة الأصلية: {sold}، المرتجع سابقًا: {returned}، والمتبقي القابل للإرجاع: {available} فقط.", stockInsufficientTemplate: "المخزون المتاح للمنتج {product} غير كافٍ",
     adminVerificationError: "تعذر التحقق من حساب المدير", conditionAudit: "الحالة", employeeAudit: "الموظف",
     customerCreditNote: "رصيد من مرتجع {number}", supplierCreditNote: "رصيد من مرتجع المشتريات {number}",
+    viewDetails: "عرض التفاصيل", notFoundError: "المرتجع غير موجود",
+    deleteSalesError: "تعذر حذف مرتجع المبيعات", deletePurchaseError: "تعذر حذف مرتجع المشتريات",
+    deleteInsufficientStockError:
+      "تعذر حذف المرتجع لأن كمية من المنتج المرتجع أُعيد بيعها منذ ذلك الحين، ما يجعل التراجع عن المخزون يؤدي إلى قيمة سالبة.",
+    deleteSalesDescription:
+      'تحذير: سيُحذف المرتجع "{number}" نهائياً، وسيُتراجع عن أثره على المخزون ورصيد العميل (إن وُجد). لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.',
+    deletePurchaseDescription:
+      'تحذير: سيُحذف مرتجع المشتريات "{number}" نهائياً، وسيُتراجع عن أثره على المخزون ورصيد المورد (إن وُجد). لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.',
+    deletedReturnReasonTemplate: "حذف المرتجع {number}",
+    deletedReturnCreditNoteTemplate: "التراجع عن رصيد المرتجع {number} بعد حذفه",
+    deletedReturnSupplierCreditNoteTemplate: "التراجع عن رصيد مرتجع المشتريات {number} بعد حذفه",
+    bulkDeleteSalesErrorTemplate: "تعذر حذف {count} من مرتجعات المبيعات",
+    bulkDeletePurchaseErrorTemplate: "تعذر حذف {count} من مرتجعات المشتريات",
+    bulkDeleteSalesDescription:
+      "تحذير: سيتم حذف المرتجعات المحددة نهائياً، وسيُتراجع عن أثرها على المخزون ورصيد العملاء (إن وُجد). لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.",
+    bulkDeletePurchaseDescription:
+      "تحذير: سيتم حذف مرتجعات المشتريات المحددة نهائياً، وسيُتراجع عن أثرها على المخزون ورصيد الموردين (إن وُجد). لا يمكن التراجع عن هذا الإجراء، ويجب إدخال كلمة مرور الحذف للمتابعة.",
   },
   reports: {
     productsTitle: "تقرير المنتجات",

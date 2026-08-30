@@ -353,9 +353,9 @@ export const en = {
     columnBrand: "Brand",
     columnQuantity: "Quantity",
     deleteDescription:
-      'Warning: product "{name}" will be permanently deleted with its images and every related order, invoice, purchase, return, and inventory-movement line. Remaining document totals will be recalculated. This cannot be undone, and the deletion password is required.',
+      'Warning: product "{name}" will be permanently deleted along with its images. It cannot be deleted while linked to an invoice, order, purchase order, or purchase return — you\'ll see a message listing exactly what\'s linked in that case. This cannot be undone, and the deletion password is required.',
     bulkDeleteDescription:
-      "Warning: the selected products will be permanently deleted with their images and every related order, invoice, purchase, return, and inventory-movement line. This cannot be undone, and the deletion password is required.",
+      "Warning: the selected products will be permanently deleted along with their images. Any product linked to an invoice, order, purchase order, or purchase return will not be deleted. This cannot be undone, and the deletion password is required.",
     detailsDialogTitle: "Product details",
     barcodeColumnLabel: "Barcode",
     stockLabel: "Stock",
@@ -390,8 +390,17 @@ export const en = {
     createError: "An error occurred while adding the product",
     updateError: "An error occurred while updating the product",
     notFoundError: "Product not found",
-    deleteError: "Could not delete the product and all its linked records",
-    bulkDeleteError: "Could not delete the products and all their linked records",
+    deleteError: "Could not delete the product",
+    bulkDeleteError: "Could not delete the products",
+    bulkDeleteErrorTemplate:
+      "Could not delete {count} of the products because they are linked to other records (invoices, orders, or purchase orders)",
+    cannotDeleteLinkedIntro:
+      "This product can't be deleted because it's linked to the following records. Remove or edit them first, then try again:",
+    linkedInvoicesTemplate: "Invoices: {list}",
+    linkedOrdersTemplate: "Orders: {list}",
+    linkedPurchaseOrdersTemplate: "Purchase orders: {list}",
+    linkedPurchaseReturnsTemplate: "Purchase returns: {list}",
+    andMoreTemplate: "and {count} more",
     profileLabel: "Product profile",
     currentStockLabel: "Current quantity",
     totalSoldLabel: "Total sold",
@@ -810,6 +819,12 @@ export const en = {
     createError: "An error occurred while creating the invoice",
     notFoundError: "Invoice not found",
     updateError: "An error occurred while updating the invoice",
+    cannotEditReturnedError:
+      "This invoice's items can't be edited because a sales return already exists against it. Create an additional return to correct the quantity, or delete the existing return first if you need to edit the items directly.",
+    cannotDeleteReturnedError:
+      "This invoice can't be deleted because a sales return already exists against it. Delete the return first if you need to delete the invoice.",
+    bulkDeleteReturnedErrorTemplate:
+      "Could not delete {count} of the invoices because they have sales returns against them. Delete those returns first.",
     deleteError: "An error occurred while deleting the invoice, please try again",
     bulkDeleteError: "An error occurred while deleting the selected invoices, please try again",
     orderNotFoundError: "Order not found",
@@ -962,6 +977,10 @@ export const en = {
     statusUpdateError: "An error occurred while updating the purchase order status",
     cannotEditReceivedError:
       "Items on an already-received purchase order cannot be edited. Set its status back to pending first.",
+    cannotDeleteReturnedError:
+      "This purchase order can't be deleted because a purchase return already exists against it. Delete the return first if you need to delete the order.",
+    bulkDeleteReturnedErrorTemplate:
+      "Could not delete {count} of the purchase orders because they have purchase returns against them. Delete those returns first.",
     deleteError: "Could not delete the purchase order",
     bulkDeleteErrorTemplate: "Could not delete {count} of the purchase orders",
   },
@@ -1216,12 +1235,36 @@ export const en = {
     noReturns: "No returns.", noInvoiceReturns: "No returns for this invoice.", piece: "item",
     confirmed: "Confirmed", cancelled: "Cancelled", pending: "Pending", completed: "Completed", credited: "Credited", notRequired: "Not required",
     unauthorized: "Unauthorized", invalidData: "Check the return data", createSalesError: "Could not create the sales return",
+    reasonTooShortError: "The return reason must be at least 2 characters",
+    reasonTooLongError: "The return reason is too long (500 characters max)",
+    notesTooLongError: "The notes are too long (1000 characters max)",
+    noItemsSelectedError: "Select at least one product to return",
+    invalidRefundAmountError: "Please enter a valid refund amount",
+    invalidRefundMethodError: "Please choose a valid refund method",
+    noSourceSelectedError: "Please select the invoice or purchase order first",
     createPurchaseError: "Could not create the purchase return", invoiceNotFound: "Invoice not found", purchaseNotFound: "Purchase order not found",
     receivedOnly: "Returns can only be created from a received purchase order", invalidInvoiceItem: "An invoice item is invalid",
     invalidPurchaseItem: "A purchase order item is invalid", refundExceedsValue: "The refund exceeds the value of returned products",
     quantityExceedsTemplate: "Cannot return {requested} units of “{product}”. Original invoice quantity: {sold}, previously returned: {returned}, remaining returnable quantity: only {available}.", stockInsufficientTemplate: "Available stock for {product} is insufficient",
     adminVerificationError: "Could not verify the administrator account", conditionAudit: "Condition", employeeAudit: "Employee",
     customerCreditNote: "Credit from return {number}", supplierCreditNote: "Credit from purchase return {number}",
+    viewDetails: "View details", notFoundError: "Return not found",
+    deleteSalesError: "Could not delete the sales return", deletePurchaseError: "Could not delete the purchase return",
+    deleteInsufficientStockError:
+      "Could not delete the return because some of the returned product has since been resold, which would take the reversed stock negative.",
+    deleteSalesDescription:
+      'Warning: return "{number}" will be permanently deleted, reversing its effect on inventory and the customer\'s رصيد (if any). This cannot be undone, and the deletion password is required.',
+    deletePurchaseDescription:
+      'Warning: purchase return "{number}" will be permanently deleted, reversing its effect on inventory and the supplier\'s رصيد (if any). This cannot be undone, and the deletion password is required.',
+    deletedReturnReasonTemplate: "Deleted return {number}",
+    deletedReturnCreditNoteTemplate: "Reversal of return {number}'s credit after deletion",
+    deletedReturnSupplierCreditNoteTemplate: "Reversal of purchase return {number}'s credit after deletion",
+    bulkDeleteSalesErrorTemplate: "Could not delete {count} of the sales returns",
+    bulkDeletePurchaseErrorTemplate: "Could not delete {count} of the purchase returns",
+    bulkDeleteSalesDescription:
+      "Warning: the selected returns will be permanently deleted, reversing their effect on inventory and customers' رصيد (if any). This cannot be undone, and the deletion password is required.",
+    bulkDeletePurchaseDescription:
+      "Warning: the selected purchase returns will be permanently deleted, reversing their effect on inventory and suppliers' رصيد (if any). This cannot be undone, and the deletion password is required.",
   },
   reports: {
     productsTitle: "Products report",

@@ -361,9 +361,9 @@ export const fr = {
     columnBrand: "Marque",
     columnQuantity: "Quantité",
     deleteDescription:
-      'Avertissement : le produit « {name} » sera définitivement supprimé avec ses images et toutes les lignes associées des commandes, factures, achats, retours et mouvements de stock. Les totaux restants seront recalculés. Cette action est irréversible et nécessite le mot de passe de suppression.',
+      'Avertissement : le produit « {name} » sera définitivement supprimé avec ses images. Il ne peut pas être supprimé s\'il est lié à une facture, une commande, un bon de commande ou un retour fournisseur — un message listera alors précisément ce qui y est lié. Cette action est irréversible et nécessite le mot de passe de suppression.',
     bulkDeleteDescription:
-      "Avertissement : les produits sélectionnés seront définitivement supprimés avec leurs images et toutes les lignes associées des commandes, factures, achats, retours et mouvements de stock. Cette action est irréversible et nécessite le mot de passe de suppression.",
+      "Avertissement : les produits sélectionnés seront définitivement supprimés avec leurs images. Tout produit lié à une facture, une commande, un bon de commande ou un retour fournisseur ne sera pas supprimé. Cette action est irréversible et nécessite le mot de passe de suppression.",
     detailsDialogTitle: "Détails du produit",
     barcodeColumnLabel: "Code-barres",
     stockLabel: "Stock",
@@ -398,8 +398,17 @@ export const fr = {
     createError: "Une erreur s'est produite lors de l'ajout du produit",
     updateError: "Une erreur s'est produite lors de la mise à jour du produit",
     notFoundError: "Produit introuvable",
-    deleteError: "Impossible de supprimer le produit et tous ses enregistrements liés",
-    bulkDeleteError: "Impossible de supprimer les produits et tous leurs enregistrements liés",
+    deleteError: "Impossible de supprimer le produit",
+    bulkDeleteError: "Impossible de supprimer les produits",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} produit(s) car ils sont liés à d'autres enregistrements (factures, commandes ou bons de commande)",
+    cannotDeleteLinkedIntro:
+      "Ce produit ne peut pas être supprimé car il est lié aux enregistrements suivants. Supprimez-les ou modifiez-les d'abord, puis réessayez :",
+    linkedInvoicesTemplate: "Factures : {list}",
+    linkedOrdersTemplate: "Commandes : {list}",
+    linkedPurchaseOrdersTemplate: "Bons de commande : {list}",
+    linkedPurchaseReturnsTemplate: "Retours fournisseur : {list}",
+    andMoreTemplate: "et {count} de plus",
     profileLabel: "Profil du produit",
     currentStockLabel: "Quantité actuelle",
     totalSoldLabel: "Total vendu",
@@ -828,6 +837,12 @@ export const fr = {
     createError: "Une erreur s'est produite lors de la création de la facture",
     notFoundError: "Facture introuvable",
     updateError: "Une erreur s'est produite lors de la mise à jour de la facture",
+    cannotEditReturnedError:
+      "Les articles de cette facture ne peuvent pas être modifiés car un retour client existe déjà pour elle. Créez un retour supplémentaire pour corriger la quantité, ou supprimez d'abord le retour existant si vous devez modifier les articles directement.",
+    cannotDeleteReturnedError:
+      "Cette facture ne peut pas être supprimée car un retour client existe déjà pour elle. Supprimez d'abord le retour si vous devez supprimer la facture.",
+    bulkDeleteReturnedErrorTemplate:
+      "Impossible de supprimer {count} facture(s) car des retours clients leur sont associés. Supprimez d'abord ces retours.",
     deleteError: "Une erreur s'est produite lors de la suppression de la facture, veuillez réessayer",
     bulkDeleteError: "Une erreur s'est produite lors de la suppression des factures sélectionnées, veuillez réessayer",
     orderNotFoundError: "Commande introuvable",
@@ -983,6 +998,10 @@ export const fr = {
     statusUpdateError: "Une erreur s'est produite lors de la mise à jour du statut du bon de commande",
     cannotEditReceivedError:
       "Les articles d'un bon de commande déjà reçu ne peuvent pas être modifiés. Remettez d'abord son statut à « en attente ».",
+    cannotDeleteReturnedError:
+      "Ce bon de commande ne peut pas être supprimé car un retour fournisseur existe déjà pour lui. Supprimez d'abord le retour si vous devez supprimer le bon de commande.",
+    bulkDeleteReturnedErrorTemplate:
+      "Impossible de supprimer {count} bon(s) de commande car des retours fournisseur leur sont associés. Supprimez d'abord ces retours.",
     deleteError: "Impossible de supprimer le bon de commande",
     bulkDeleteErrorTemplate: "Impossible de supprimer {count} bon(s) de commande",
   },
@@ -1238,12 +1257,36 @@ export const fr = {
     noReturns: "Aucun retour.", noInvoiceReturns: "Aucun retour pour cette facture.", piece: "article",
     confirmed: "Confirmé", cancelled: "Annulé", pending: "En attente", completed: "Terminé", credited: "Crédité", notRequired: "Non requis",
     unauthorized: "Non autorisé", invalidData: "Vérifiez les données du retour", createSalesError: "Impossible de créer le retour de vente",
+    reasonTooShortError: "Le motif du retour doit contenir au moins 2 caractères",
+    reasonTooLongError: "Le motif du retour est trop long (500 caractères maximum)",
+    notesTooLongError: "Les notes sont trop longues (1000 caractères maximum)",
+    noItemsSelectedError: "Sélectionnez au moins un produit à retourner",
+    invalidRefundAmountError: "Veuillez saisir un montant remboursé valide",
+    invalidRefundMethodError: "Veuillez choisir un moyen de remboursement valide",
+    noSourceSelectedError: "Veuillez d'abord sélectionner la facture ou le bon de commande",
     createPurchaseError: "Impossible de créer le retour d'achat", invoiceNotFound: "Facture introuvable", purchaseNotFound: "Bon d'achat introuvable",
     receivedOnly: "Seul un bon reçu peut faire l'objet d'un retour", invalidInvoiceItem: "Un article de la facture est invalide",
     invalidPurchaseItem: "Un article du bon d'achat est invalide", refundExceedsValue: "Le remboursement dépasse la valeur des produits retournés",
     quantityExceedsTemplate: "Impossible de retourner {requested} unités de « {product} ». Quantité sur la facture d'origine : {sold}, déjà retournée : {returned}, quantité restante pouvant être retournée : {available} seulement.", stockInsufficientTemplate: "Le stock disponible de {product} est insuffisant",
     adminVerificationError: "Impossible de vérifier le compte administrateur", conditionAudit: "État", employeeAudit: "Employé",
     customerCreditNote: "Crédit du retour {number}", supplierCreditNote: "Crédit du retour d'achat {number}",
+    viewDetails: "Voir les détails", notFoundError: "Retour introuvable",
+    deleteSalesError: "Impossible de supprimer le retour client", deletePurchaseError: "Impossible de supprimer le retour fournisseur",
+    deleteInsufficientStockError:
+      "Impossible de supprimer ce retour car une partie du produit retourné a été revendue depuis, ce qui rendrait le stock négatif.",
+    deleteSalesDescription:
+      'Avertissement : le retour « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du client (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.',
+    deletePurchaseDescription:
+      'Avertissement : le retour fournisseur « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du fournisseur (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.',
+    deletedReturnReasonTemplate: "Retour {number} supprimé",
+    deletedReturnCreditNoteTemplate: "Annulation du crédit du retour {number} après suppression",
+    deletedReturnSupplierCreditNoteTemplate: "Annulation du crédit du retour fournisseur {number} après suppression",
+    bulkDeleteSalesErrorTemplate: "Impossible de supprimer {count} retour(s) client",
+    bulkDeletePurchaseErrorTemplate: "Impossible de supprimer {count} retour(s) fournisseur",
+    bulkDeleteSalesDescription:
+      "Avertissement : les retours sélectionnés seront définitivement supprimés, annulant leur effet sur le stock et le رصيد des clients (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.",
+    bulkDeletePurchaseDescription:
+      "Avertissement : les retours fournisseur sélectionnés seront définitivement supprimés, annulant leur effet sur le stock et le رصيد des fournisseurs (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.",
   },
   reports: {
     productsTitle: "Rapport des produits",

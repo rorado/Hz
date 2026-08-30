@@ -131,6 +131,12 @@ export default async function InvoiceEditPage({
         )}
       </div>
 
+      {invoice.returns.length > 0 && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-400">
+          {t.invoices.cannotEditReturnedError}
+        </p>
+      )}
+
       <InvoiceForm
           invoice={{
             id: invoice.id,

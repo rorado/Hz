@@ -10,6 +10,7 @@ import { computePaymentStatus } from "@/lib/money";
 import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
+import { formatMessage } from "@/i18n/format";
 import { getAvailableStockIssue, validateAvailableStock } from "@/lib/stock-validation";
 import type {
   InvoiceLanguage,
@@ -210,9 +211,22 @@ export async function updateInvoice(
 
   const existing = await prisma.invoice.findUnique({
     where: { id },
-    include: { payments: true, items: true },
+    include: {
+      payments: true,
+      items: true,
+      _count: { select: { returns: true } },
+    },
   });
   if (!existing) return { error: t.invoices.notFoundError };
+
+  // Editing rewrites every item row from scratch (delete + recreate below),
+  // but a sales return references its original InvoiceItem row with a
+  // restrict-on-delete relation — deleting it would hit a foreign-key
+  // violation. Once a return exists, further corrections belong in a new
+  // return rather than rewriting the invoice's own history.
+  if (existing._count.returns > 0) {
+    return { error: t.invoices.cannotEditReturnedError };
+  }
 
   if (!options?.allowNegativeStock) {
     const stockError = await validateAvailableStock(parsed.data.items, existing.items);
@@ -424,8 +438,14 @@ export async function deleteInvoice(
     return { error: await getDeletePasswordError() };
   }
 
-  const existing = await prisma.invoice.findUnique({ where: { id } });
+  const existing = await prisma.invoice.findUnique({
+    where: { id },
+    include: { _count: { select: { returns: true } } },
+  });
   if (!existing) return { error: t.invoices.notFoundError };
+  if (existing._count.returns > 0) {
+    return { error: t.invoices.cannotDeleteReturnedError };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -455,22 +475,38 @@ export async function deleteInvoices(
   const decisionById = new Map(decisions.map((d) => [d.id, d.applyBalanceChange]));
   const ids = decisions.map((d) => d.id);
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      const invoices = await tx.invoice.findMany({ where: { id: { in: ids } } });
+  const invoices = await prisma.invoice.findMany({
+    where: { id: { in: ids } },
+    include: { _count: { select: { returns: true } } },
+  });
+  const deletable = invoices.filter((invoice) => invoice._count.returns === 0);
+  const blockedCount = ids.length - deletable.length;
 
-      for (const invoice of invoices) {
-        await reverseInvoiceBalanceOnDelete(tx, invoice, decisionById.get(invoice.id));
-      }
-
-      await tx.invoice.deleteMany({ where: { id: { in: ids } } });
-    });
-  } catch {
-    return { error: t.invoices.bulkDeleteError };
+  if (deletable.length > 0) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const invoice of deletable) {
+          await reverseInvoiceBalanceOnDelete(tx, invoice, decisionById.get(invoice.id));
+        }
+        await tx.invoice.deleteMany({
+          where: { id: { in: deletable.map((invoice) => invoice.id) } },
+        });
+      });
+    } catch {
+      return { error: t.invoices.bulkDeleteError };
+    }
   }
 
   revalidatePath("/dashboard/invoices");
   revalidatePath("/dashboard");
+
+  if (blockedCount > 0) {
+    return {
+      error: formatMessage(t.invoices.bulkDeleteReturnedErrorTemplate, {
+        count: blockedCount,
+      }),
+    };
+  }
   return { success: true };
 }
 
