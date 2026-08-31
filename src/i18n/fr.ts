@@ -28,18 +28,23 @@ export const fr = {
     openPdf: "Ouvrir en PDF",
     pdfError: "Impossible de générer le PDF, veuillez réessayer",
     scanBarcode: "Scanner le code-barres",
-    barcodeScannerUnsupported: "Ce navigateur ne prend pas en charge le scanner",
+    barcodeScannerUnsupported:
+      "Ce navigateur ne prend pas en charge le scanner",
     barcodeCameraError: "Impossible d'accéder à la caméra",
     barcodeProductNotFound: "Aucun produit ne correspond à ce code-barres",
     barcodeInputPlaceholder: "Saisir le code-barres",
     confirm: "Confirmer",
-    insufficientStockTemplate: "Stock insuffisant : demandé {requested}, disponible {available}",
-    insufficientProductStockTemplate: "Stock insuffisant pour « {product} » : demandé {requested}, disponible {available}",
+    insufficientStockTemplate:
+      "Stock insuffisant : demandé {requested}, disponible {available}",
+    insufficientProductStockTemplate:
+      "Stock insuffisant pour « {product} » : demandé {requested}, disponible {available}",
     insufficientStockTitle: "Stock insuffisant",
     insufficientStockHelp: "Réduisez la quantité demandée avant d'enregistrer.",
     reviewQuantity: "Vérifier la quantité",
-    negativeStockWarning: "Continuer autorisera un stock négatif lors de la déduction.",
-    allowNegativeStock: "Je comprends et j'autorise un stock négatif pour cette opération.",
+    negativeStockWarning:
+      "Continuer autorisera un stock négatif lors de la déduction.",
+    allowNegativeStock:
+      "Je comprends et j'autorise un stock négatif pour cette opération.",
     continueAnyway: "Continuer quand même",
     deletePasswordLabel: "Mot de passe de suppression",
     deletePasswordPlaceholder: "Saisissez le mot de passe pour continuer",
@@ -64,7 +69,8 @@ export const fr = {
       "Une erreur s'est produite lors du téléversement des images",
     addImages: "Ajouter des images",
     loginRequiredError: "Vous devez d'abord vous connecter",
-    insufficientPermissionError: "Vous n'avez pas la permission suffisante pour effectuer cette action",
+    insufficientPermissionError:
+      "Vous n'avez pas la permission suffisante pour effectuer cette action",
     createdByLabel: "Employé",
     unknownEmployee: "Inconnu",
     deletePasswordError: "Mot de passe incorrect",
@@ -135,11 +141,14 @@ export const fr = {
     statPartnersLabel: "Entreprises partenaires",
     howToOrderTitle: "Comment commander ?",
     howToOrderStep1Title: "Parcourez les produits",
-    howToOrderStep1Desc: "Explorez notre catalogue et choisissez ce qu'il vous faut",
+    howToOrderStep1Desc:
+      "Explorez notre catalogue et choisissez ce qu'il vous faut",
     howToOrderStep2Title: "Ajoutez au panier",
-    howToOrderStep2Desc: "Ajoutez les produits souhaités à votre panier avec les quantités voulues",
+    howToOrderStep2Desc:
+      "Ajoutez les produits souhaités à votre panier avec les quantités voulues",
     howToOrderStep3Title: "Confirmez la commande",
-    howToOrderStep3Desc: "Envoyez votre commande et notre équipe vous contactera pour confirmer le prix et la livraison",
+    howToOrderStep3Desc:
+      "Envoyez votre commande et notre équipe vous contactera pour confirmer le prix et la livraison",
     footerAboutText:
       "Un catalogue de produits constamment mis à jour, avec un service client de qualité et une confirmation rapide des commandes.",
     footerQuickLinksTitle: "Service client",
@@ -164,9 +173,12 @@ export const fr = {
     heroCtaSecondary: "Explorer les catégories",
     heroBadgeTitle: "Produits fiables",
     heroBadgeSubtitle: "Haute qualité",
-    highlightAuthenticDesc: "Nous vérifions la qualité de chaque produit avant de l'ajouter à notre catalogue",
-    highlightFastConfirmationDesc: "Notre équipe vous contacte en quelques minutes pour confirmer la commande",
-    highlightInventoryTrackingDesc: "Nous n'affichons que les produits réellement en stock",
+    highlightAuthenticDesc:
+      "Nous vérifions la qualité de chaque produit avant de l'ajouter à notre catalogue",
+    highlightFastConfirmationDesc:
+      "Notre équipe vous contacte en quelques minutes pour confirmer la commande",
+    highlightInventoryTrackingDesc:
+      "Nous n'affichons que les produits réellement en stock",
     shopByCategoryTitle: "Achetez par catégorie",
     howToOrderStep4Title: "Recevez votre commande",
     howToOrderStep4Desc: "Nous vous contacterons pour organiser la livraison",
@@ -361,7 +373,7 @@ export const fr = {
     columnBrand: "Marque",
     columnQuantity: "Quantité",
     deleteDescription:
-      'Avertissement : le produit « {name} » sera définitivement supprimé avec ses images. Il ne peut pas être supprimé s\'il est lié à une facture, une commande, un bon de commande ou un retour fournisseur — un message listera alors précisément ce qui y est lié. Cette action est irréversible et nécessite le mot de passe de suppression.',
+      "Avertissement : le produit « {name} » sera définitivement supprimé avec ses images. Il ne peut pas être supprimé s'il est lié à une facture, une commande, un bon de commande ou un retour fournisseur — un message listera alors précisément ce qui y est lié. Cette action est irréversible et nécessite le mot de passe de suppression.",
     bulkDeleteDescription:
       "Avertissement : les produits sélectionnés seront définitivement supprimés avec leurs images. Tout produit lié à une facture, une commande, un bon de commande ou un retour fournisseur ne sera pas supprimé. Cette action est irréversible et nécessite le mot de passe de suppression.",
     detailsDialogTitle: "Détails du produit",
@@ -394,7 +406,8 @@ export const fr = {
     toastUpdated: "Produit mis à jour avec succès",
     toastCreated: "Produit ajouté avec succès",
     validationError: "Veuillez vérifier les données saisies",
-    uniqueFieldsError: "Le SKU, le lien ou le code-barres est déjà utilisé par un autre produit",
+    uniqueFieldsError:
+      "Le SKU, le lien ou le code-barres est déjà utilisé par un autre produit",
     createError: "Une erreur s'est produite lors de l'ajout du produit",
     updateError: "Une erreur s'est produite lors de la mise à jour du produit",
     notFoundError: "Produit introuvable",
@@ -536,8 +549,10 @@ export const fr = {
     customerNotFoundError: "Client introuvable",
     productNotFoundError: "Un des produits est introuvable",
     createError: "Une erreur s'est produite lors de la création de la commande",
-    cannotDeleteLinkedError: "Cette commande ne peut pas être supprimée car elle est liée à une facture antérieure",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} commande(s) car elles sont liées à des factures antérieures",
+    cannotDeleteLinkedError:
+      "Cette commande ne peut pas être supprimée car elle est liée à une facture antérieure",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} commande(s) car elles sont liées à des factures antérieures",
   },
   cart: {
     nameRequiredError: "Le nom est requis",
@@ -546,7 +561,8 @@ export const fr = {
     invalidEmailError: "Adresse e-mail invalide",
     minOneItemError: "Vous devez ajouter au moins un produit",
     productUnavailableError: "Un des produits n'est pas disponible",
-    insufficientQuantityErrorTemplate: 'Le produit "{product}" n\'est pas disponible dans la quantité demandée',
+    insufficientQuantityErrorTemplate:
+      'Le produit "{product}" n\'est pas disponible dans la quantité demandée',
     successMessage: "Votre commande a été créée avec succès",
     invalidDataError: "Données invalides",
     createError: "Une erreur s'est produite lors de la création de la commande",
@@ -664,16 +680,20 @@ export const fr = {
     favoriteToggleDescription:
       "Les clients favoris apparaissent en premier dans la liste des clients",
     validationError: "Veuillez vérifier les données saisies",
-    phoneTakenError: "Un client avec ce numéro de téléphone est déjà enregistré",
+    phoneTakenError:
+      "Un client avec ce numéro de téléphone est déjà enregistré",
     invalidAmountError: "Veuillez entrer un montant valide",
     notFoundError: "Client introuvable",
-    cannotDeleteLinkedError: "Ce client ne peut pas être supprimé car il est lié à des commandes antérieures",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} client(s) car ils sont liés à des commandes antérieures",
+    cannotDeleteLinkedError:
+      "Ce client ne peut pas être supprimé car il est lié à des commandes antérieures",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} client(s) car ils sont liés à des commandes antérieures",
   },
   customerStatement: {
     tabOverview: "Aperçu",
     tabStatement: "Comparer les achats du client",
-    description: "Une vue financière et d'achat complète de ce client pour la période sélectionnée.",
+    description:
+      "Une vue financière et d'achat complète de ce client pour la période sélectionnée.",
     totalPurchases: "Total des achats",
     orderCount: "Nombre de factures",
     totalQuantity: "Quantité totale achetée",
@@ -705,7 +725,8 @@ export const fr = {
     columnStatus: "Statut",
     noTransactions: "Aucune opération à afficher",
     emptyTitle: "Aucun achat trouvé pour cette période",
-    emptyDescription: "Essayez de changer la période pour voir d'autres données.",
+    emptyDescription:
+      "Essayez de changer la période pour voir d'autres données.",
     changeRangeButton: "Changer la période",
     printButton: "Imprimer / Exporter le relevé",
     tooltipPurchased: "Quantité achetée",
@@ -836,23 +857,30 @@ export const fr = {
     insufficientStockFallbackError: "Quantité disponible insuffisante",
     createError: "Une erreur s'est produite lors de la création de la facture",
     notFoundError: "Facture introuvable",
-    updateError: "Une erreur s'est produite lors de la mise à jour de la facture",
+    updateError:
+      "Une erreur s'est produite lors de la mise à jour de la facture",
     cannotEditReturnedError:
       "Les articles de cette facture ne peuvent pas être modifiés car un retour client existe déjà pour elle. Créez un retour supplémentaire pour corriger la quantité, ou supprimez d'abord le retour existant si vous devez modifier les articles directement.",
     cannotDeleteReturnedError:
       "Cette facture ne peut pas être supprimée car un retour client existe déjà pour elle. Supprimez d'abord le retour si vous devez supprimer la facture.",
     bulkDeleteReturnedErrorTemplate:
       "Impossible de supprimer {count} facture(s) car des retours clients leur sont associés. Supprimez d'abord ces retours.",
-    deleteError: "Une erreur s'est produite lors de la suppression de la facture, veuillez réessayer",
-    bulkDeleteError: "Une erreur s'est produite lors de la suppression des factures sélectionnées, veuillez réessayer",
+    deleteError:
+      "Une erreur s'est produite lors de la suppression de la facture, veuillez réessayer",
+    bulkDeleteError:
+      "Une erreur s'est produite lors de la suppression des factures sélectionnées, veuillez réessayer",
     orderNotFoundError: "Commande introuvable",
     invalidAmountError: "Veuillez entrer un montant valide",
-    paymentError: "Une erreur s'est produite lors de l'enregistrement du paiement",
+    paymentError:
+      "Une erreur s'est produite lors de l'enregistrement du paiement",
     customerNotFoundError: "Client introuvable",
-    selectedInvoicesNotFoundError: "Les factures sélectionnées sont introuvables",
+    selectedInvoicesNotFoundError:
+      "Les factures sélectionnées sont introuvables",
     paymentNotFoundError: "Paiement introuvable",
-    paymentUpdateError: "Une erreur s'est produite lors de la modification du paiement",
-    paymentDeleteError: "Une erreur s'est produite lors de la suppression du paiement",
+    paymentUpdateError:
+      "Une erreur s'est produite lors de la modification du paiement",
+    paymentDeleteError:
+      "Une erreur s'est produite lors de la suppression du paiement",
   },
   suppliers: {
     addButton: "Ajouter un fournisseur",
@@ -895,7 +923,8 @@ export const fr = {
     availableBalance: "Crédit disponible",
     insufficientBalance: "Le crédit fournisseur est insuffisant",
     adjustBalance: "Ajuster le crédit",
-    adjustBalanceDescription: "Ajoutez ou déduisez manuellement le crédit du fournisseur. L'opération sera enregistrée dans l'historique.",
+    adjustBalanceDescription:
+      "Ajoutez ou déduisez manuellement le crédit du fournisseur. L'opération sera enregistrée dans l'historique.",
     increaseBalance: "Ajouter du crédit",
     decreaseBalance: "Déduire du crédit",
     adjustmentAmount: "Montant",
@@ -914,10 +943,13 @@ export const fr = {
     negativeBalanceError: "Le solde du fournisseur ne peut pas devenir négatif",
     adjustError: "Impossible d'ajuster le solde",
     validationError: "Veuillez vérifier les données saisies",
-    cannotDeleteLinkedError: "Ce fournisseur ne peut pas être supprimé car il est lié à des bons de commande antérieurs",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} fournisseur(s) car ils sont liés à des bons de commande antérieurs",
+    cannotDeleteLinkedError:
+      "Ce fournisseur ne peut pas être supprimé car il est lié à des bons de commande antérieurs",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} fournisseur(s) car ils sont liés à des bons de commande antérieurs",
     productsDeliveredTitle: "Produits livrés",
-    noProductsDelivered: "Aucun produit livré par ce fournisseur pour le moment",
+    noProductsDelivered:
+      "Aucun produit livré par ce fournisseur pour le moment",
     productsSearchPlaceholder: "Rechercher un produit...",
     columnProduct: "Produit",
     columnQuantity: "Quantité",
@@ -985,17 +1017,22 @@ export const fr = {
     createButton: "Créer le bon de commande",
     validationError: "Veuillez vérifier les données saisies",
     notFoundError: "Bon de commande introuvable",
-    itemsUpdateError: "Une erreur s'est produite lors de la mise à jour des articles du bon de commande",
+    itemsUpdateError:
+      "Une erreur s'est produite lors de la mise à jour des articles du bon de commande",
     invalidAmountError: "Veuillez entrer un montant valide",
-    amountExceedsRemainingError: "Le montant dépasse le solde restant du bon de commande",
+    amountExceedsRemainingError:
+      "Le montant dépasse le solde restant du bon de commande",
     insufficientSupplierBalanceError: "Solde du fournisseur insuffisant",
-    paymentError: "Une erreur s'est produite lors de l'enregistrement du paiement",
+    paymentError:
+      "Une erreur s'est produite lors de l'enregistrement du paiement",
     paymentNotFoundError: "Paiement introuvable",
-    paymentDeleteError: "Une erreur s'est produite lors de la suppression du paiement",
+    paymentDeleteError:
+      "Une erreur s'est produite lors de la suppression du paiement",
     alreadyReceivedError: "Cette commande a déjà été reçue",
     cannotCancelError: "Cette commande ne peut pas être annulée",
     invalidStatusError: "Statut invalide",
-    statusUpdateError: "Une erreur s'est produite lors de la mise à jour du statut du bon de commande",
+    statusUpdateError:
+      "Une erreur s'est produite lors de la mise à jour du statut du bon de commande",
     cannotEditReceivedError:
       "Les articles d'un bon de commande déjà reçu ne peuvent pas être modifiés. Remettez d'abord son statut à « en attente ».",
     cannotDeleteReturnedError:
@@ -1003,7 +1040,8 @@ export const fr = {
     bulkDeleteReturnedErrorTemplate:
       "Impossible de supprimer {count} bon(s) de commande car des retours fournisseur leur sont associés. Supprimez d'abord ces retours.",
     deleteError: "Impossible de supprimer le bon de commande",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} bon(s) de commande",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} bon(s) de commande",
   },
   categories: {
     addButton: "Ajouter une catégorie",
@@ -1038,9 +1076,12 @@ export const fr = {
     createError: "Une erreur s'est produite lors de l'ajout de la catégorie",
     selfParentError: "Une catégorie ne peut pas être son propre parent",
     notFoundError: "Catégorie introuvable",
-    updateError: "Une erreur s'est produite lors de la mise à jour de la catégorie",
-    cannotDeleteLinkedError: "Cette catégorie ne peut pas être supprimée car elle est liée à des produits ou sous-catégories",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} catégorie(s) car elles sont liées à des produits ou sous-catégories",
+    updateError:
+      "Une erreur s'est produite lors de la mise à jour de la catégorie",
+    cannotDeleteLinkedError:
+      "Cette catégorie ne peut pas être supprimée car elle est liée à des produits ou sous-catégories",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} catégorie(s) car elles sont liées à des produits ou sous-catégories",
   },
   brands: {
     addButton: "Ajouter une marque",
@@ -1069,9 +1110,12 @@ export const fr = {
     slugTakenError: "Ce lien est déjà utilisé par une autre marque",
     createError: "Une erreur s'est produite lors de l'ajout de la marque",
     notFoundError: "Marque introuvable",
-    updateError: "Une erreur s'est produite lors de la mise à jour de la marque",
-    cannotDeleteLinkedError: "Cette marque ne peut pas être supprimée car elle est liée à des produits",
-    bulkDeleteErrorTemplate: "Impossible de supprimer {count} marque(s) car elles sont liées à des produits",
+    updateError:
+      "Une erreur s'est produite lors de la mise à jour de la marque",
+    cannotDeleteLinkedError:
+      "Cette marque ne peut pas être supprimée car elle est liée à des produits",
+    bulkDeleteErrorTemplate:
+      "Impossible de supprimer {count} marque(s) car elles sont liées à des produits",
   },
   inventory: {
     lowStockTitle: "Produits en stock faible",
@@ -1102,13 +1146,15 @@ export const fr = {
     toastRecorded: "Mouvement de stock enregistré avec succès",
     validationError: "Veuillez vérifier les données saisies",
     notFoundError: "Produit introuvable",
-    exceedsAvailableError: "La quantité à retirer est supérieure à la quantité actuellement disponible",
+    exceedsAvailableError:
+      "La quantité à retirer est supérieure à la quantité actuellement disponible",
   },
   users: {
     searchPlaceholder: "Rechercher par nom ou e-mail...",
     addButton: "Ajouter un utilisateur",
     emptyTitle: "Aucun utilisateur",
-    emptyDescription: "Les comptes utilisateurs ajoutés au système apparaîtront ici",
+    emptyDescription:
+      "Les comptes utilisateurs ajoutés au système apparaîtront ici",
     columnName: "Nom",
     columnEmail: "E-mail",
     columnRole: "Rôle",
@@ -1126,24 +1172,32 @@ export const fr = {
     deleteDescription: 'L\'utilisateur "{name}" sera définitivement supprimé.',
     resetPasswordButton: "Réinitialiser le mot de passe",
     resetPasswordTitle: "Réinitialiser le mot de passe",
-    resetPasswordDescription: "Entrez un nouveau mot de passe pour cet utilisateur",
+    resetPasswordDescription:
+      "Entrez un nouveau mot de passe pour cet utilisateur",
     newPasswordLabel: "Nouveau mot de passe",
     toastPasswordReset: "Mot de passe mis à jour avec succès",
     activateButton: "Activer",
     deactivateButton: "Désactiver",
     validationError: "Veuillez vérifier les données saisies",
     emailTakenError: "Cet e-mail est déjà utilisé",
-    createError: "Une erreur s'est produite lors de la création de l'utilisateur",
+    createError:
+      "Une erreur s'est produite lors de la création de l'utilisateur",
     notFoundError: "Utilisateur introuvable",
     cannotChangeOwnRoleError: "Vous ne pouvez pas changer votre propre rôle",
     roleNotFoundError: "Le rôle sélectionné est introuvable",
-    cannotRemoveLastAdminError: "Impossible de retirer l'accès du dernier administrateur du système",
-    updateError: "Une erreur s'est produite lors de la mise à jour de l'utilisateur",
-    cannotDeactivateSelfError: "Vous ne pouvez pas désactiver votre propre compte",
-    cannotDeactivateLastAdminError: "Impossible de désactiver le dernier administrateur du système",
+    cannotRemoveLastAdminError:
+      "Impossible de retirer l'accès du dernier administrateur du système",
+    updateError:
+      "Une erreur s'est produite lors de la mise à jour de l'utilisateur",
+    cannotDeactivateSelfError:
+      "Vous ne pouvez pas désactiver votre propre compte",
+    cannotDeactivateLastAdminError:
+      "Impossible de désactiver le dernier administrateur du système",
     cannotDeleteSelfError: "Vous ne pouvez pas supprimer votre propre compte",
-    cannotDeleteLastAdminError: "Impossible de supprimer le dernier administrateur du système",
-    cannotDeleteLinkedError: "Cet utilisateur ne peut pas être supprimé car il est lié à des opérations antérieures",
+    cannotDeleteLastAdminError:
+      "Impossible de supprimer le dernier administrateur du système",
+    cannotDeleteLinkedError:
+      "Cet utilisateur ne peut pas être supprimé car il est lié à des opérations antérieures",
     bulkDeleteErrorTemplate: "Impossible de supprimer {count} utilisateur(s)",
   },
   roles: {
@@ -1176,8 +1230,10 @@ export const fr = {
     cannotRemoveFullAccessError:
       "Impossible de retirer l'accès complet de ce rôle car cela laisserait le système sans administrateur actif",
     updateError: "Une erreur s'est produite lors de la mise à jour du rôle",
-    cannotDeleteSystemRoleError: "Le rôle Admin intégré ne peut pas être supprimé",
-    cannotDeleteLinkedRoleError: "Impossible de supprimer un rôle attribué à des utilisateurs",
+    cannotDeleteSystemRoleError:
+      "Le rôle Admin intégré ne peut pas être supprimé",
+    cannotDeleteLinkedRoleError:
+      "Impossible de supprimer un rôle attribué à des utilisateurs",
     modules: {
       PRODUCTS: "Produits",
       ORDERS: "Commandes",
@@ -1197,12 +1253,14 @@ export const fr = {
     appNameLabel: "Nom du système",
     appShortNameLabel: "Nom court (titre de l'onglet du navigateur)",
     lightThemeTitle: "Mode clair",
-    colorPickerHint: "Cliquez sur la pastille pour choisir une couleur, ou collez une valeur directement dans le champ",
+    colorPickerHint:
+      "Cliquez sur la pastille pour choisir une couleur, ou collez une valeur directement dans le champ",
     darkThemeTitle: "Mode sombre",
     toastUpdated: "Paramètres d'apparence enregistrés avec succès",
     resetAllButton: "Restaurer les paramètres par défaut",
     resetColorButton: "Restaurer la couleur par défaut",
-    toastDefaultsLoaded: "Valeurs par défaut chargées — cliquez sur Enregistrer pour les appliquer",
+    toastDefaultsLoaded:
+      "Valeurs par défaut chargées — cliquez sur Enregistrer pour les appliquer",
     tokens: {
       primary: "Couleur principale",
       secondary: "Couleur secondaire",
@@ -1236,53 +1294,126 @@ export const fr = {
     validationError: "Veuillez vérifier les données saisies",
   },
   returns: {
-    product: "Produit", skuBarcode: "SKU / Code-barres", sold: "Vendue", purchased: "Achetée",
-    returnedBefore: "Déjà retournée", available: "Disponible", quantity: "Quantité", condition: "État",
-    stock: "Stock", price: "Prix", total: "Total", good: "Bon état", damaged: "Endommagé", defective: "Défectueux",
-    reason: "Motif du retour", notes: "Notes", refundMethod: "Mode de remboursement", refundAmount: "Montant remboursé",
-    productsTotal: "Total des produits", confirm: "Confirmer le retour",
-    cash: "Espèces", card: "Carte", bankTransfer: "Virement bancaire", customerCredit: "Crédit client",
-    supplierCredit: "Crédit fournisseur", noImmediateRefund: "Aucun remboursement immédiat",
-    salesTitle: "Retours de ventes", salesDescription: "Créer et suivre les retours et remboursements clients",
-    purchaseTitle: "Retours d'achats", purchaseDescription: "Retourner des produits au fournisseur et suivre la compensation",
-    newReturn: "Nouveau retour", newSalesTitle: "Créer un retour de vente", newPurchaseTitle: "Créer un retour d'achat",
-    chooseSalesInvoice: "Choisir la facture de vente", chooseReceivedPurchase: "Choisir le bon d'achat reçu",
-    salesSearch: "Rechercher par facture, client ou téléphone", purchaseSearch: "Rechercher par facture ou fournisseur",
-    searchHint: "Saisissez le numéro de facture ou le nom du client/fournisseur.", noInvoiceMatch: "Aucune facture ne correspond à la recherche.",
-    returnNumber: "N° de retour", invoice: "Facture", purchaseInvoice: "Bon d'achat", customer: "Client", supplier: "Fournisseur",
-    date: "Date", items: "Produits", amount: "Montant", status: "Statut", employee: "Employé",
-    originalInvoice: "Facture d'origine", printReceipt: "Imprimer le reçu", returnDate: "Date du retour",
-    refundStatus: "Statut du remboursement", restock: "Remis en stock", yes: "Oui", no: "Non",
-    compensationMethod: "Mode de compensation", compensationStatus: "Statut de compensation", returnHistory: "Historique des retours",
-    noReturns: "Aucun retour.", noInvoiceReturns: "Aucun retour pour cette facture.", piece: "article",
-    confirmed: "Confirmé", cancelled: "Annulé", pending: "En attente", completed: "Terminé", credited: "Crédité", notRequired: "Non requis",
-    unauthorized: "Non autorisé", invalidData: "Vérifiez les données du retour", createSalesError: "Impossible de créer le retour de vente",
-    reasonTooShortError: "Le motif du retour doit contenir au moins 2 caractères",
-    reasonTooLongError: "Le motif du retour est trop long (500 caractères maximum)",
+    product: "Produit",
+    skuBarcode: "SKU / Code-barres",
+    sold: "Vendue",
+    purchased: "Achetée",
+    returnedBefore: "Déjà retournée",
+    available: "Disponible",
+    quantity: "Quantité",
+    condition: "État",
+    stock: "Stock",
+    price: "Prix",
+    total: "Total",
+    good: "Bon état",
+    damaged: "Endommagé",
+    defective: "Défectueux",
+    reason: "Motif du retour",
+    notes: "Notes",
+    refundMethod: "Mode de remboursement",
+    refundAmount: "Montant remboursé",
+    productsTotal: "Total des produits",
+    confirm: "Confirmer le retour",
+    cash: "Espèces",
+    card: "Carte",
+    bankTransfer: "Virement bancaire",
+    customerCredit: "Crédit client",
+    supplierCredit: "Crédit fournisseur",
+    noImmediateRefund: "Aucun remboursement immédiat",
+    salesTitle: "Retours de ventes",
+    salesDescription: "Créer et suivre les retours et remboursements clients",
+    purchaseTitle: "Retours d'achats",
+    purchaseDescription:
+      "Retourner des produits au fournisseur et suivre la compensation",
+    newReturn: "Nouveau retour",
+    newSalesTitle: "Créer un retour de vente",
+    newPurchaseTitle: "Créer un retour d'achat",
+    chooseSalesInvoice: "Choisir la facture de vente",
+    chooseReceivedPurchase: "Choisir le bon d'achat reçu",
+    salesSearch: "Rechercher par facture, client ou téléphone",
+    purchaseSearch: "Rechercher par facture ou fournisseur",
+    searchHint:
+      "Saisissez le numéro de facture ou le nom du client/fournisseur.",
+    noInvoiceMatch: "Aucune facture ne correspond à la recherche.",
+    returnNumber: "N° de retour",
+    invoice: "Facture",
+    purchaseInvoice: "Bon d'achat",
+    customer: "Client",
+    supplier: "Fournisseur",
+    date: "Date",
+    items: "Produits",
+    amount: "Montant",
+    status: "Statut",
+    employee: "Employé",
+    originalInvoice: "Facture d'origine",
+    printReceipt: "Imprimer le reçu",
+    returnDate: "Date du retour",
+    refundStatus: "Statut du remboursement",
+    restock: "Remis en stock",
+    yes: "Oui",
+    no: "Non",
+    compensationMethod: "Mode de compensation",
+    compensationStatus: "Statut de compensation",
+    returnHistory: "Historique des retours",
+    noReturns: "Aucun retour.",
+    noInvoiceReturns: "Aucun retour pour cette facture.",
+    piece: "article",
+    confirmed: "Confirmé",
+    cancelled: "Annulé",
+    pending: "En attente",
+    completed: "Terminé",
+    credited: "Crédité",
+    notRequired: "Non requis",
+    unauthorized: "Non autorisé",
+    invalidData: "Vérifiez les données du retour",
+    createSalesError: "Impossible de créer le retour de vente",
+    reasonTooShortError:
+      "Le motif du retour doit contenir au moins 2 caractères",
+    reasonTooLongError:
+      "Le motif du retour est trop long (500 caractères maximum)",
     notesTooLongError: "Les notes sont trop longues (1000 caractères maximum)",
     noItemsSelectedError: "Sélectionnez au moins un produit à retourner",
     invalidRefundAmountError: "Veuillez saisir un montant remboursé valide",
-    invalidRefundMethodError: "Veuillez choisir un moyen de remboursement valide",
-    noSourceSelectedError: "Veuillez d'abord sélectionner la facture ou le bon de commande",
-    createPurchaseError: "Impossible de créer le retour d'achat", invoiceNotFound: "Facture introuvable", purchaseNotFound: "Bon d'achat introuvable",
-    receivedOnly: "Seul un bon reçu peut faire l'objet d'un retour", invalidInvoiceItem: "Un article de la facture est invalide",
-    invalidPurchaseItem: "Un article du bon d'achat est invalide", refundExceedsValue: "Le remboursement dépasse la valeur des produits retournés",
-    quantityExceedsTemplate: "Impossible de retourner {requested} unités de « {product} ». Quantité sur la facture d'origine : {sold}, déjà retournée : {returned}, quantité restante pouvant être retournée : {available} seulement.", stockInsufficientTemplate: "Le stock disponible de {product} est insuffisant",
-    adminVerificationError: "Impossible de vérifier le compte administrateur", conditionAudit: "État", employeeAudit: "Employé",
-    customerCreditNote: "Crédit du retour {number}", supplierCreditNote: "Crédit du retour d'achat {number}",
-    viewDetails: "Voir les détails", notFoundError: "Retour introuvable",
-    deleteSalesError: "Impossible de supprimer le retour client", deletePurchaseError: "Impossible de supprimer le retour fournisseur",
+    invalidRefundMethodError:
+      "Veuillez choisir un moyen de remboursement valide",
+    noSourceSelectedError:
+      "Veuillez d'abord sélectionner la facture ou le bon de commande",
+    createPurchaseError: "Impossible de créer le retour d'achat",
+    invoiceNotFound: "Facture introuvable",
+    purchaseNotFound: "Bon d'achat introuvable",
+    receivedOnly: "Seul un bon reçu peut faire l'objet d'un retour",
+    invalidInvoiceItem: "Un article de la facture est invalide",
+    invalidPurchaseItem: "Un article du bon d'achat est invalide",
+    refundExceedsValue:
+      "Le remboursement dépasse la valeur des produits retournés",
+    quantityExceedsTemplate:
+      "Impossible de retourner {requested} unités de « {product} ». Quantité sur la facture d'origine : {sold}, déjà retournée : {returned}, quantité restante pouvant être retournée : {available} seulement.",
+    stockInsufficientTemplate:
+      "Le stock disponible de {product} est insuffisant",
+    adminVerificationError: "Impossible de vérifier le compte administrateur",
+    conditionAudit: "État",
+    employeeAudit: "Employé",
+    customerCreditNote: "Crédit du retour {number}",
+    supplierCreditNote: "Crédit du retour d'achat {number}",
+    viewDetails: "Voir les détails",
+    notFoundError: "Retour introuvable",
+    deleteSalesError: "Impossible de supprimer le retour client",
+    deletePurchaseError: "Impossible de supprimer le retour fournisseur",
     deleteInsufficientStockError:
       "Impossible de supprimer ce retour car une partie du produit retourné a été revendue depuis, ce qui rendrait le stock négatif.",
     deleteSalesDescription:
-      'Avertissement : le retour « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du client (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.',
+      "Avertissement : le retour « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du client (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.",
     deletePurchaseDescription:
-      'Avertissement : le retour fournisseur « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du fournisseur (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.',
+      "Avertissement : le retour fournisseur « {number} » sera définitivement supprimé, annulant son effet sur le stock et le رصيد du fournisseur (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.",
     deletedReturnReasonTemplate: "Retour {number} supprimé",
-    deletedReturnCreditNoteTemplate: "Annulation du crédit du retour {number} après suppression",
-    deletedReturnSupplierCreditNoteTemplate: "Annulation du crédit du retour fournisseur {number} après suppression",
-    bulkDeleteSalesErrorTemplate: "Impossible de supprimer {count} retour(s) client",
-    bulkDeletePurchaseErrorTemplate: "Impossible de supprimer {count} retour(s) fournisseur",
+    deletedReturnCreditNoteTemplate:
+      "Annulation du crédit du retour {number} après suppression",
+    deletedReturnSupplierCreditNoteTemplate:
+      "Annulation du crédit du retour fournisseur {number} après suppression",
+    bulkDeleteSalesErrorTemplate:
+      "Impossible de supprimer {count} retour(s) client",
+    bulkDeletePurchaseErrorTemplate:
+      "Impossible de supprimer {count} retour(s) fournisseur",
     bulkDeleteSalesDescription:
       "Avertissement : les retours sélectionnés seront définitivement supprimés, annulant leur effet sur le stock et le رصيد des clients (le cas échéant). Cette action est irréversible et nécessite le mot de passe de suppression.",
     bulkDeletePurchaseDescription:
@@ -1309,12 +1440,14 @@ export const fr = {
     exportExcel: "Exporter Excel",
     exportPdf: "Exporter PDF",
     exportPrint: "Imprimer / PDF",
-    exportCountDescription: "Choisissez le nombre d'éléments à inclure dans le fichier exporté",
+    exportCountDescription:
+      "Choisissez le nombre d'éléments à inclure dans le fichier exporté",
     exportAllOption: "Tous les éléments",
     exportFirstNTemplate: "Les {count} premiers éléments",
     exportConfirmButton: "Exporter",
     exportPreparingMessage: "Préparation du fichier...",
-    exportPreparingProgressTemplate: "Préparation de la page {current} sur {total}...",
+    exportPreparingProgressTemplate:
+      "Préparation de la page {current} sur {total}...",
     exportFinalizingMessage: "Finalisation...",
     exportLanguageLabel: "Langue d'export",
     exportColumnsLabel: "Colonnes à exporter",
@@ -1341,6 +1474,15 @@ export const fr = {
     columnImages: "Images",
     columnReceivedDate: "Date de réception",
     columnAddress: "Adresse",
+    columnAsOfDate: "Date du rapport",
+    columnValue: "Valeur du stock",
+    allSuppliersOption: "Tous les fournisseurs",
+    inventoryAsOfDateLabel: "Voir le stock tel qu'il était le",
+    inventoryAsOfDescriptionTemplate: "État du stock tel qu'il était le {date}",
+    inventorySearchPlaceholder: "Rechercher par nom ou SKU",
+    totalProductsLabel: "Nombre de produits",
+    totalQuantityLabel: "Quantité totale",
+    totalValueLabel: "Valeur totale du stock",
     unauthorizedError: "Non autorisé",
     invalidReportTypeError: "Type de rapport invalide",
   },

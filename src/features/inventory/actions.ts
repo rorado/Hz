@@ -36,8 +36,13 @@ export async function recordInventoryMovement(
     newQuantity = product.quantity - quantity;
     movementQuantity = quantity;
   } else {
+    // Stored as a signed delta (new - old), not Math.abs of it — an
+    // unsigned magnitude here would make this row's direction
+    // unrecoverable later (e.g. when reconstructing historical stock by
+    // walking movements backward from the live quantity), since the same
+    // ADJUSTMENT type label covers both increases and decreases.
     newQuantity = quantity;
-    movementQuantity = Math.abs(quantity - product.quantity);
+    movementQuantity = quantity - product.quantity;
   }
 
   await prisma.$transaction([

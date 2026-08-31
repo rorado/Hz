@@ -192,6 +192,16 @@ function buildLoadingOverlay(message: string) {
   };
 }
 
+function applyExtraParams(
+  params: URLSearchParams,
+  extraParams: Record<string, string> | undefined,
+) {
+  if (!extraParams) return;
+  for (const [key, value] of Object.entries(extraParams)) {
+    params.set(key, value);
+  }
+}
+
 function chunkRows<T>(rows: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < rows.length; i += size) {
@@ -203,9 +213,21 @@ function chunkRows<T>(rows: T[], size: number): T[][] {
 export function ReportExportButtons({
   type,
   total,
+  extraParams,
+  fileSuffix,
 }: {
   type: string;
   total: number;
+  /** Extra query params appended to every export request — e.g. a report's
+   * active filters (an "as of" date, a supplier id, a search query) — so
+   * the exported file always matches exactly what's shown on screen. */
+  extraParams?: Record<string, string>;
+  /** Appended to the pdf/print download filename so an export taken under
+   * a specific filter is identifiable from its filename alone, e.g.
+   * "inventory-2026-08-15". CSV/XLSX filenames are named server-side from
+   * the same extraParams instead, since those downloads go straight to the
+   * API route rather than through client-side file-saving code. */
+  fileSuffix?: string;
 }) {
   const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
@@ -240,6 +262,7 @@ export function ReportExportButtons({
         limit: "1",
         lang: forLang,
       });
+      applyExtraParams(params, extraParams);
       const response = await fetch(`/api/reports/export?${params.toString()}`);
       if (!response.ok) throw new Error("column request failed");
       const payload = (await response.json()) as { headers: string[] };
@@ -290,6 +313,7 @@ export function ReportExportButtons({
       const params = new URLSearchParams({ type, format: "json", lang });
       if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
       params.set("columns", chosenColumns.join(","));
+      applyExtraParams(params, extraParams);
       const response = await fetch(`/api/reports/export?${params.toString()}`);
       if (!response.ok) throw new Error("export request failed");
       const { headers, rows } = (await response.json()) as {
@@ -372,11 +396,12 @@ export function ReportExportButtons({
       if (!addedAnyPage) throw new Error("no pages were rendered");
 
       loading.setMessage(t.reports.exportFinalizingMessage);
-      pdf.setProperties({ title: `${type}.pdf` });
+      const fileBaseName = fileSuffix ? `${type}-${fileSuffix}` : type;
+      pdf.setProperties({ title: `${fileBaseName}.pdf` });
       const blobUrl = pdf.output("bloburl") as unknown as string;
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${type}.pdf`;
+      link.download = `${fileBaseName}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -409,6 +434,7 @@ export function ReportExportButtons({
       const params = new URLSearchParams({ type, format: "json", lang });
       if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
       params.set("columns", chosenColumns.join(","));
+      applyExtraParams(params, extraParams);
       const response = await fetch(`/api/reports/export?${params.toString()}`);
       if (!response.ok) throw new Error("print request failed");
 
@@ -478,6 +504,7 @@ export function ReportExportButtons({
     const params = new URLSearchParams({ type, format, lang });
     if (chosenLimit !== "all") params.set("limit", String(chosenLimit));
     params.set("columns", chosenColumns.join(","));
+    applyExtraParams(params, extraParams);
     window.location.href = `/api/reports/export?${params.toString()}`;
   }
 

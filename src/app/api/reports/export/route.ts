@@ -14,31 +14,59 @@ import { dictionaries, type Dictionary } from "@/i18n/dictionaries";
 import { isLocale } from "@/i18n/config";
 import { CURRENCY_LABEL } from "@/lib/currency";
 
+function endOfToday(): Date {
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+  return now;
+}
+
 type ReportPayload = { headers: string[]; rows: (string | number)[][] };
+
+/** Filters that only the inventory report currently reads — every other
+ * builder below ignores this 4th argument entirely (TS allows a function
+ * with fewer declared params to satisfy this Record's value type). */
+type ReportFilters = { asOfDate?: Date; supplierId?: string; query?: string };
 
 const REPORT_BUILDERS: Record<
   string,
-  (t: Dictionary, currency: string, limit?: number) => Promise<ReportPayload>
+  (
+    t: Dictionary,
+    currency: string,
+    limit?: number,
+    filters?: ReportFilters,
+  ) => Promise<ReportPayload>
 > = {
-  inventory: async (t, _currency, limit) => {
-    const products = await getInventoryReportData(limit);
+  inventory: async (t, currency, limit, filters) => {
+    const asOfDate = filters?.asOfDate ?? endOfToday();
+    const { items } = await getInventoryReportData({
+      asOfDate,
+      supplierId: filters?.supplierId,
+      query: filters?.query,
+      limit,
+    });
     return {
       headers: [
+        t.reports.columnAsOfDate,
         t.products.columnName,
         "SKU",
         t.products.columnCategory,
         t.products.columnBrand,
+        t.reports.columnSupplier,
         t.products.columnQuantity,
         t.reports.columnMinStock,
+        `${t.reports.columnValue} (${currency})`,
         t.common.status,
       ],
-      rows: products.map((product) => [
+      rows: items.map((product) => [
+        asOfDate.toISOString().slice(0, 10),
         product.name,
         product.sku,
-        product.category.name,
-        product.brand?.name ?? "",
+        product.categoryName,
+        product.brandName ?? "",
+        product.supplierName ?? "",
         product.quantity,
         product.minStockLevel,
+        product.value,
         t.statusLabels.productStatus[product.status],
       ]),
     };
@@ -196,8 +224,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: t.reports.invalidReportTypeError }, { status: 400 });
   }
 
+  // Historical "as of" cutoff — currently only consumed by the inventory
+  // builder, but parsed here uniformly with the same end-of-day convention
+  // used by the report page itself, so the export always matches what's on
+  // screen for whichever date/supplier/search filters are active there.
+  const asOfParam = searchParams.get("asOf");
+  const asOfDate =
+    asOfParam && /^\d{4}-\d{2}-\d{2}$/.test(asOfParam)
+      ? new Date(`${asOfParam}T23:59:59.999`)
+      : endOfToday();
+  const supplierId = searchParams.get("supplierId") || undefined;
+  const query = searchParams.get("q") || undefined;
+
   const currency = CURRENCY_LABEL[locale as keyof typeof CURRENCY_LABEL] ?? CURRENCY_LABEL.ar;
-  const payload = await builder(t, currency, limit);
+  const payload = await builder(t, currency, limit, { asOfDate, supplierId, query });
   const requestedColumns = searchParams
     .get("columns")
     ?.split(",")
@@ -219,13 +259,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ headers, rows });
   }
 
+  const fileBaseName =
+    type === "inventory" ? `${type}-${asOfDate.toISOString().slice(0, 10)}` : type;
+
   if (format === "xlsx") {
     const buffer = await buildXlsx(type, headers, rows);
     return new NextResponse(Buffer.from(buffer), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${type}.xlsx"`,
+        "Content-Disposition": `attachment; filename="${fileBaseName}.xlsx"`,
       },
     });
   }
@@ -234,7 +277,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${type}.csv"`,
+      "Content-Disposition": `attachment; filename="${fileBaseName}.csv"`,
     },
   });
 }
