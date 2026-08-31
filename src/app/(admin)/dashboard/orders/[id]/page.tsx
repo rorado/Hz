@@ -17,6 +17,7 @@ import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import type { Dictionary } from "@/i18n/dictionaries";
+import type { Prisma } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ function buildDefaultMessage(
   order: {
     customerName: string;
     orderNumber: string;
-    items: { product: { name: string }; quantity: number }[];
+    items: { product: { name: string }; quantity: number | Prisma.Decimal }[];
     total: unknown;
   },
   t: Dictionary,
@@ -60,7 +61,7 @@ export default async function OrderDetailPage({
     name: product.name,
     sku: product.sku,
     barcode: product.barcode,
-    quantity: product.quantity,
+    quantity: Number(product.quantity),
     categoryId: product.categoryId,
     categoryName: product.category.name,
     brandId: product.brandId,
@@ -102,10 +103,11 @@ export default async function OrderDetailPage({
                   id: item.id,
                   productId: item.productId,
                   productName: item.product.name,
-                  quantity: item.quantity,
+                  quantity: Number(item.quantity),
                   price: Number(item.price),
                   product: {
                     ...item.product,
+                    quantity: Number(item.product.quantity),
                     price1: Number(item.product.price1),
                     price2: Number(item.product.price2),
                     price3: Number(item.product.price3),

@@ -11,8 +11,7 @@ export const orderItemsSchema = z.object({
           .min(0, { error: "السعر يجب أن يكون رقماً موجباً" }),
         quantity: z.coerce
           .number()
-          .int()
-          .min(1, { error: "الكمية يجب أن تكون رقماً موجباً" }),
+          .min(0.001, { error: "الكمية يجب أن تكون رقماً موجباً" }),
       }),
     )
     .refine((items) => items.some((item) => item.productId !== ""))
@@ -35,8 +34,7 @@ export const createOrderSchema = z.object({
         productId: z.string(),
         quantity: z.coerce
           .number()
-          .int()
-          .min(1, { error: "الكمية يجب أن تكون رقماً موجباً" }),
+          .min(0.001, { error: "الكمية يجب أن تكون رقماً موجباً" }),
         price: z.coerce
           .number()
           .min(0, { error: "السعر يجب أن يكون رقماً موجباً" }),

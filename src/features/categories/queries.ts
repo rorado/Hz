@@ -81,10 +81,17 @@ export async function getCategoryProfile(id: string, productPage: number) {
   if (!category) return null;
 
   return {
-    category,
+    category: {
+      ...category,
+      products: category.products.map((product) => ({
+        ...product,
+        quantity: product.quantity.toNumber(),
+        minStockLevel: product.minStockLevel.toNumber(),
+      })),
+    },
     productsTotal: category._count.products,
     productsPageSize: CATEGORY_PROFILE_PRODUCTS_PAGE_SIZE,
-    totalStock: stock._sum.quantity ?? 0,
+    totalStock: stock._sum.quantity?.toNumber() ?? 0,
     lowStockCount: Number(lowStockRows[0]?.count ?? 0),
   };
 }

@@ -249,10 +249,12 @@ export async function getTopProducts(
 ): Promise<TopProduct[]> {
   const { from, to } = bounds(range);
   const rows = await prisma.$queryRaw<
-    { key: string; name: string; quantity: bigint; revenue: string }[]
+    { key: string; name: string; quantity: string; revenue: string }[]
   >`
     SELECT COALESCE(ii."productId", ii.name) as key, MIN(ii.name) as name,
-      SUM(ii.quantity)::bigint as quantity,
+      -- Not ::bigint — InvoiceItem.quantity carries up to 3 decimal
+      -- places now, and a bigint cast would truncate that.
+      SUM(ii.quantity)::numeric as quantity,
       SUM(ii.quantity * ii."unitPrice")::numeric as revenue
     FROM public."InvoiceItem" ii
     JOIN public."Invoice" i ON i.id = ii."invoiceId"

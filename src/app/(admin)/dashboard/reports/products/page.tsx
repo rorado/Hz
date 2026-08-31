@@ -73,7 +73,7 @@ export default async function ProductsReportPage({
               <TableCell>{formatCurrency(Number(product.price1), locale)}</TableCell>
               <TableCell>{formatCurrency(Number(product.price2), locale)}</TableCell>
               <TableCell>{formatCurrency(Number(product.price3), locale)}</TableCell>
-              <TableCell>{product.quantity.toLocaleString(locale)}</TableCell>
+              <TableCell>{Number(product.quantity).toLocaleString(locale)}</TableCell>
               <TableCell>
                 <Badge variant={product.status === "ACTIVE" ? "default" : "secondary"}>
                   {t.statusLabels.productStatus[product.status]}

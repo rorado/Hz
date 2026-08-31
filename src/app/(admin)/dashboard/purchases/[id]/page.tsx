@@ -125,7 +125,7 @@ export default async function PurchaseOrderDetailPage({
                 items={order.items.map((item) => ({
                   productId: item.productId,
                   productName: item.product.name,
-                  quantity: item.quantity,
+                  quantity: Number(item.quantity),
                   unitCost: Number(item.unitCost),
                 }))}
                 products={products}
@@ -220,7 +220,7 @@ export default async function PurchaseOrderDetailPage({
               amount: Number(payment.amount),
             }))}
           />
-          <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{order.returns.length===0?<p className="text-sm text-muted-foreground">لا توجد مرتجعات.</p>:<div className="space-y-2">{order.returns.map(r=><Link key={r.id} href={`/dashboard/purchase-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity,0)} قطعة</span></Link>)}</div>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{order.returns.length===0?<p className="text-sm text-muted-foreground">لا توجد مرتجعات.</p>:<div className="space-y-2">{order.returns.map(r=><Link key={r.id} href={`/dashboard/purchase-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity.toNumber(),0)} قطعة</span></Link>)}</div>}</CardContent></Card>
         </div>
       </div>
     </div>

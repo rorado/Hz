@@ -474,7 +474,8 @@ export function OrderItemsPriceForm({
                 <TableCell>
                   <Input
                     type="number"
-                    min={1}
+                    min={0.001}
+                    step="0.001"
                     className={`w-20 ${
                       selectedProduct && quantity > selectedProduct.quantity
                         ? "border-destructive ring-2 ring-destructive/20 focus-visible:border-destructive focus-visible:ring-destructive/30"

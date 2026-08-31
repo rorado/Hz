@@ -5,8 +5,7 @@ export const invoiceItemSchema = z.object({
   name: z.string().min(1, { error: "اسم المنتج مطلوب" }),
   quantity: z.coerce
     .number()
-    .int()
-    .min(1, { error: "الكمية يجب أن تكون رقماً موجباً" }),
+    .min(0.001, { error: "الكمية يجب أن تكون رقماً موجباً" }),
   unitPrice: z.coerce
     .number()
     .min(0, { error: "السعر يجب أن يكون رقماً موجباً" }),

@@ -520,6 +520,8 @@ export const ar = {
     newOrderStatusNote:
       "سيتم إنشاء الطلب بهذه الحالة، ويمكن تغييرها لاحقاً من صفحة الطلب.",
     invalidStatusError: "حالة غير صحيحة",
+    cannotChangeStatusInvoicedError:
+      "لا يمكن تغيير حالة هذا الطلب لأنه مرتبط بفاتورة صادرة — الفاتورة هي المرجع الفعلي لحركة المخزون الآن",
     notFoundError: "الطلب غير موجود",
     validationError: "الرجاء التحقق من البيانات المدخلة",
     addedProductNotFoundError: "أحد المنتجات المضافة غير موجود",
@@ -1400,6 +1402,9 @@ export const ar = {
     totalProductsLabel: "عدد المنتجات",
     totalQuantityLabel: "إجمالي الكمية",
     totalValueLabel: "إجمالي قيمة المخزون",
+    columnPriceBasis: "أساس السعر",
+    confirmedPriceBadge: "مؤكد تاريخياً",
+    estimatedPriceBadge: "تقديري",
     unauthorizedError: "غير مصرح",
     invalidReportTypeError: "نوع تقرير غير صحيح",
   },

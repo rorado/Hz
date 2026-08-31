@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of importProductsFromBuffer(buffer)) {
+        for await (const event of importProductsFromBuffer(buffer, access.adminId)) {
           controller.enqueue(encoder.encode(ndjson(event)));
         }
       } catch (error) {

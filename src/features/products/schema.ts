@@ -20,11 +20,9 @@ export const productSchema = z.object({
   brandId: z.string().nullable().optional(),
   quantity: z.coerce
     .number()
-    .int()
     .min(0, { error: "الكمية يجب أن تكون رقماً موجباً" }),
   minStockLevel: z.coerce
     .number()
-    .int()
     .min(0, { error: "الحد الأدنى يجب أن يكون رقماً موجباً" }),
   price1: z.coerce
     .number()

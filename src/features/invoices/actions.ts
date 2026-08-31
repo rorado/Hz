@@ -27,10 +27,12 @@ export async function checkInvoiceStockAvailability(
 ) {
   if (!(await hasPermission("INVOICES_MANAGE"))) return null;
   const existingItems = invoiceId
-    ? await prisma.invoiceItem.findMany({
-        where: { invoiceId },
-        select: { productId: true, quantity: true },
-      })
+    ? (
+        await prisma.invoiceItem.findMany({
+          where: { invoiceId },
+          select: { productId: true, quantity: true },
+        })
+      ).map((item) => ({ productId: item.productId, quantity: item.quantity.toNumber() }))
     : [];
   return getAvailableStockIssue(items, existingItems);
 }
@@ -228,8 +230,16 @@ export async function updateInvoice(
     return { error: t.invoices.cannotEditReturnedError };
   }
 
+  // existing.items' quantity is a live Prisma.Decimal — stock-validation.ts
+  // expects plain numbers (see its doc comment), so it's converted once
+  // here and reused by both call sites below.
+  const existingItemsForStockCheck = existing.items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity.toNumber(),
+  }));
+
   if (!options?.allowNegativeStock) {
-    const stockError = await validateAvailableStock(parsed.data.items, existing.items);
+    const stockError = await validateAvailableStock(parsed.data.items, existingItemsForStockCheck);
     if (stockError) return { error: stockError };
   }
 
@@ -251,12 +261,16 @@ export async function updateInvoice(
   // product's on-hand quantity (and everything derived from it — low-stock
   // count, total inventory value, movement history) silently drifts out of
   // sync with what the invoice actually says was sold.
+  // item.quantity here is a live Prisma.Decimal (InvoiceItem.quantity) —
+  // a native `+` would silently string-concatenate across multiple items
+  // for the same product instead of summing (Decimal.valueOf() returns a
+  // string). .toNumber() up front keeps this genuinely numeric.
   const existingQtyByProduct = new Map<string, number>();
   for (const item of existing.items) {
     if (!item.productId) continue;
     existingQtyByProduct.set(
       item.productId,
-      (existingQtyByProduct.get(item.productId) ?? 0) + item.quantity,
+      (existingQtyByProduct.get(item.productId) ?? 0) + item.quantity.toNumber(),
     );
   }
   const newQtyByProduct = new Map<string, number>();
@@ -379,7 +393,7 @@ export async function updateInvoice(
     });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-      const stockError = await validateAvailableStock(parsed.data.items, existing.items);
+      const stockError = await validateAvailableStock(parsed.data.items, existingItemsForStockCheck);
       return { error: stockError ?? t.invoices.insufficientStockFallbackError };
     }
     return { error: t.invoices.updateError };
@@ -427,6 +441,69 @@ async function reverseInvoiceBalanceOnDelete(
   });
 }
 
+/**
+ * Reverses the net stock effect an invoice's own movements had, before the
+ * invoice is deleted — mirrors reversePurchaseOrderStockOnDelete. Computed
+ * from the invoice's own InventoryMovement rows (reference = invoice id)
+ * rather than its current item list: an invoice generated for an order that
+ * was already COMPLETED never decremented stock itself in the first place
+ * (getOrCreateInvoiceForOrder skips that case, since the order's own
+ * completion already did), and an edited invoice's item list no longer
+ * reflects what was actually reserved at each point in time. Netting its
+ * own movements is correct in both cases, and naturally reverses nothing
+ * for an invoice that never touched stock to begin with.
+ */
+async function reverseInvoiceStockOnDelete(
+  tx: Prisma.TransactionClient,
+  invoice: { id: string; invoiceNumber: string },
+) {
+  const movements = await tx.inventoryMovement.findMany({
+    where: { reference: invoice.id, productId: { not: null } },
+    select: { productId: true, type: true, quantity: true },
+  });
+  // movement.quantity is a Prisma.Decimal — converting to a plain number
+  // before the `+` below avoids the same string-concatenation risk as
+  // elsewhere (Decimal.valueOf() returns a string, so a raw Decimal as
+  // a direct `+` operand silently concatenates instead of summing).
+  const netByProduct = new Map<string, number>();
+  for (const movement of movements) {
+    const quantity = movement.quantity.toNumber();
+    const effect = movement.type === "OUT" ? -quantity : quantity;
+    netByProduct.set(
+      movement.productId!,
+      (netByProduct.get(movement.productId!) ?? 0) + effect,
+    );
+  }
+
+  for (const [productId, net] of netByProduct) {
+    if (net === 0) continue;
+    if (net > 0) {
+      // The invoice's own movements added stock on net — reversing that
+      // removes it again, guarded the same way every other stock-removing
+      // reversal in this codebase is (e.g. reversePurchaseOrderStockOnDelete).
+      const updated = await tx.product.updateMany({
+        where: { id: productId, quantity: { gte: net } },
+        data: { quantity: { decrement: net } },
+      });
+      if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+    } else {
+      await tx.product.update({
+        where: { id: productId },
+        data: { quantity: { increment: -net } },
+      });
+    }
+    await tx.inventoryMovement.create({
+      data: {
+        productId,
+        type: net > 0 ? "OUT" : "IN",
+        quantity: Math.abs(net),
+        reference: invoice.id,
+        reason: `حذف فاتورة رقم ${invoice.invoiceNumber}`,
+      },
+    });
+  }
+}
+
 export async function deleteInvoice(
   id: string,
   options?: { applyBalanceChange?: boolean; password?: string },
@@ -449,14 +526,20 @@ export async function deleteInvoice(
 
   try {
     await prisma.$transaction(async (tx) => {
+      await reverseInvoiceStockOnDelete(tx, existing);
       await reverseInvoiceBalanceOnDelete(tx, existing, options?.applyBalanceChange);
       await tx.invoice.delete({ where: { id } });
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+      return { error: t.invoices.insufficientStockFallbackError };
+    }
     return { error: t.invoices.deleteError };
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
   return { success: true };
@@ -486,18 +569,24 @@ export async function deleteInvoices(
     try {
       await prisma.$transaction(async (tx) => {
         for (const invoice of deletable) {
+          await reverseInvoiceStockOnDelete(tx, invoice);
           await reverseInvoiceBalanceOnDelete(tx, invoice, decisionById.get(invoice.id));
         }
         await tx.invoice.deleteMany({
           where: { id: { in: deletable.map((invoice) => invoice.id) } },
         });
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
+        return { error: t.invoices.insufficientStockFallbackError };
+      }
       return { error: t.invoices.bulkDeleteError };
     }
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
 
   if (blockedCount > 0) {

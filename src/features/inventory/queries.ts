@@ -22,5 +22,9 @@ export async function getInventoryMovementsPage({ page }: { page: number }) {
     prisma.inventoryMovement.count({ where }),
   ]);
 
-  return { items, total, pageSize: MOVEMENTS_PAGE_SIZE };
+  return {
+    items: items.map((item) => ({ ...item, quantity: item.quantity.toNumber() })),
+    total,
+    pageSize: MOVEMENTS_PAGE_SIZE,
+  };
 }

@@ -16,9 +16,46 @@ export type InventoryHistoricalReportRow = {
   minStockLevel: number;
   status: "ACTIVE" | "INACTIVE";
   purchasePrice: number;
+  /** true when no ProductPriceHistory row exists on or before asOfDate, so
+   * `purchasePrice` above fell back to this product's *earliest* recorded
+   * price (never its current live price — that would make a fixed past
+   * date's value keep changing every time someone edits the price today)
+   * instead of a confirmed historical value — the caller must surface this
+   * rather than presenting the number as equally reliable either way. */
+  priceIsEstimated: boolean;
   value: number;
 };
 
+/**
+ * Reconstructs inventory as of a given date by walking every product's live
+ * quantity backward through InventoryMovement history (unaffected by this
+ * change — see the movement_effect/reversal CTEs), and separately looks up
+ * the purchasePrice actually in effect on that date via ProductPriceHistory
+ * (the historical_price CTE): the most recent row recorded at or before
+ * asOfDate.
+ *
+ * ProductPriceHistory only started being written when this report's price
+ * accuracy was added — every existing product got a one-time backfill (a
+ * baseline row dated the day this shipped, using whatever purchasePrice was
+ * on file then, plus real dated rows reconstructed from RECEIVED purchase
+ * orders where that history existed), and every product created since
+ * (manually, imported, or via a purchase order) gets its own anchor row the
+ * moment it's created. So a product with no row at or before asOfDate only
+ * happens when asOfDate predates that product's very first recorded price —
+ * there is no earlier data to have missed.
+ *
+ * That gap falls back to the *earliest* row this product has on record
+ * (flagged via `priceIsEstimated`), not the product's current live price:
+ * live price is deliberately never used as the historical fallback, because
+ * it changes every time someone edits the price — using it here would make
+ * a report for a *fixed* past date silently change value depending on when
+ * it's viewed (e.g. edit today's price and a report for yesterday would
+ * start showing today's new number). The earliest known row is stable and
+ * is the closest honest answer to "what did this product cost before we
+ * had any record of it." Only a product with literally zero history rows at
+ * all (which the write paths above should make impossible today) falls all
+ * the way back to Product.purchasePrice.
+ */
 async function fetchInventoryHistoricalReportRows({
   asOfDate,
   supplierId,
@@ -56,12 +93,13 @@ async function fetchInventoryHistoricalReportRows({
       brandName: string | null;
       supplierId: string | null;
       supplierName: string | null;
-      quantity: number;
-      minStockLevel: number;
+      quantity: string;
+      minStockLevel: string;
       status: "ACTIVE" | "INACTIVE";
       purchasePrice: string;
+      priceIsEstimated: boolean;
       totalCount: bigint;
-      totalQuantitySum: bigint | null;
+      totalQuantitySum: string | null;
       totalValueSum: string | null;
     }[]
   >`
@@ -73,7 +111,10 @@ async function fetchInventoryHistoricalReportRows({
       WHERE "productId" IS NOT NULL
     ),
     reversal AS (
-      SELECT "productId", SUM(effect)::int AS "reverseAmount"
+      -- Not ::int — quantities carry up to 3 decimal places now (e.g.
+      -- 1.5 kg), and truncating here would silently round every historical
+      -- reconstruction to a whole number.
+      SELECT "productId", SUM(effect)::numeric AS "reverseAmount"
       FROM movement_effect
       WHERE "createdAt" > ${asOfDate}
       GROUP BY "productId"
@@ -84,22 +125,45 @@ async function fetchInventoryHistoricalReportRows({
       JOIN public."PurchaseOrder" po ON po.id = poi."purchaseOrderId"
       WHERE po.status = 'RECEIVED' AND po."receivedAt" <= ${asOfDate}
       ORDER BY poi."productId", po."receivedAt" DESC, po.id DESC
+    ),
+    historical_price AS (
+      -- The purchase price actually in effect on asOfDate: the most recent
+      -- ProductPriceHistory row recorded at or before that date.
+      SELECT DISTINCT ON ("productId") "productId", "purchasePrice"
+      FROM public."ProductPriceHistory"
+      WHERE "createdAt" <= ${asOfDate}
+      ORDER BY "productId", "createdAt" DESC, id DESC
+    ),
+    earliest_price AS (
+      -- Fallback for a date before this product's first recorded price:
+      -- its oldest known row, never its current live price (see the doc
+      -- comment on fetchInventoryHistoricalReportRows for why).
+      SELECT DISTINCT ON ("productId") "productId", "purchasePrice"
+      FROM public."ProductPriceHistory"
+      ORDER BY "productId", "createdAt" ASC, id ASC
     )
     SELECT
       p.id, p.name, p.sku, p."minStockLevel", p.status,
-      p."purchasePrice"::numeric AS "purchasePrice",
+      COALESCE(hp."purchasePrice", ep."purchasePrice", p."purchasePrice")::numeric AS "purchasePrice",
+      (hp."productId" IS NULL) AS "priceIsEstimated",
       c.name AS "categoryName", b.name AS "brandName",
       s.id AS "supplierId", s.name AS "supplierName",
-      (p.quantity - COALESCE(r."reverseAmount", 0))::int AS "quantity",
+      -- Neither of the next two casts is ::int/::bigint for the same
+      -- reason as "reverseAmount" above — see the doc comment on
+      -- fetchInventoryHistoricalReportRows for the reconstruction this
+      -- feeds (e.g. 10.5 + 2.75 - 1.25 must stay 12.000, not round to 12).
+      (p.quantity - COALESCE(r."reverseAmount", 0))::numeric AS "quantity",
       COUNT(*) OVER()::bigint AS "totalCount",
-      SUM(p.quantity - COALESCE(r."reverseAmount", 0)) OVER()::bigint AS "totalQuantitySum",
-      SUM((p.quantity - COALESCE(r."reverseAmount", 0)) * p."purchasePrice") OVER()::numeric AS "totalValueSum"
+      SUM(p.quantity - COALESCE(r."reverseAmount", 0)) OVER()::numeric AS "totalQuantitySum",
+      SUM((p.quantity - COALESCE(r."reverseAmount", 0)) * COALESCE(hp."purchasePrice", ep."purchasePrice", p."purchasePrice")) OVER()::numeric AS "totalValueSum"
     FROM public."Product" p
     JOIN public."Category" c ON c.id = p."categoryId"
     LEFT JOIN public."Brand" b ON b.id = p."brandId"
     LEFT JOIN reversal r ON r."productId" = p.id
     LEFT JOIN latest_supplier ls ON ls."productId" = p.id
     LEFT JOIN public."Supplier" s ON s.id = ls."supplierId"
+    LEFT JOIN historical_price hp ON hp."productId" = p.id
+    LEFT JOIN earliest_price ep ON ep."productId" = p.id
     WHERE p."createdAt" <= ${asOfDate}
     ${searchClause}
     ${supplierClause}
@@ -116,6 +180,7 @@ async function fetchInventoryHistoricalReportRows({
   return {
     items: rows.map((row) => {
       const purchasePrice = Number(row.purchasePrice);
+      const quantity = Number(row.quantity);
       return {
         id: row.id,
         name: row.name,
@@ -124,11 +189,12 @@ async function fetchInventoryHistoricalReportRows({
         brandName: row.brandName,
         supplierId: row.supplierId,
         supplierName: row.supplierName,
-        quantity: row.quantity,
-        minStockLevel: row.minStockLevel,
+        quantity,
+        minStockLevel: Number(row.minStockLevel),
         status: row.status,
         purchasePrice,
-        value: row.quantity * purchasePrice,
+        priceIsEstimated: row.priceIsEstimated,
+        value: quantity * purchasePrice,
       };
     }),
     total,

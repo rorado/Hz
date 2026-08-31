@@ -117,6 +117,8 @@ export default async function ProductsPage({
         product={
           editingProduct && {
             ...editingProduct,
+            quantity: Number(editingProduct.quantity),
+            minStockLevel: Number(editingProduct.minStockLevel),
             price1: Number(editingProduct.price1),
             price2: Number(editingProduct.price2),
             price3: Number(editingProduct.price3),

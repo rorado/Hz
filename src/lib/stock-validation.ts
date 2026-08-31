@@ -10,6 +10,13 @@ export type AvailableStockIssue = {
   available: number;
 };
 
+/**
+ * `items`/`existingItems` must already be plain numbers — a caller passing
+ * live Prisma rows (e.g. InvoiceItem/OrderItem, whose `quantity` is a
+ * Prisma.Decimal) needs to map `Number(item.quantity)`/`item.quantity.toNumber()`
+ * first, or the accumulation below would silently string-concatenate
+ * instead of sum.
+ */
 export async function getAvailableStockIssue(
   items: Array<{ productId?: string | null; quantity: number }>,
   existingItems: Array<{ productId?: string | null; quantity: number }> = [],
@@ -40,8 +47,11 @@ export async function getAvailableStockIssue(
 
   for (const product of products) {
     const requested = requestedByProduct.get(product.id) ?? 0;
+    // product.quantity is a live Prisma.Decimal — .toNumber() before the
+    // `+` avoids silent string concatenation (Decimal.valueOf() returns a
+    // string, which a native `+` treats as a string operand).
     const available =
-      product.quantity + (existingByProduct.get(product.id) ?? 0);
+      product.quantity.toNumber() + (existingByProduct.get(product.id) ?? 0);
     if (requested > available) {
       return { product: product.name, requested, available };
     }

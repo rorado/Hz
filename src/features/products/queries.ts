@@ -74,7 +74,15 @@ export async function getProductsPage({
     ]),
   );
 
-  return { items, total, pageSize: PRODUCTS_PAGE_SIZE };
+  return {
+    items: items.map((item) => ({
+      ...item,
+      quantity: item.quantity.toNumber(),
+      minStockLevel: item.minStockLevel.toNumber(),
+    })),
+    total,
+    pageSize: PRODUCTS_PAGE_SIZE,
+  };
 }
 
 export async function getProductById(id: string) {
@@ -105,7 +113,7 @@ export async function getProductById(id: string) {
 }
 
 export async function getProductBySlug(slug: string) {
-  return prisma.product.findUnique({
+  const product = await prisma.product.findUnique({
     where: { slug },
     include: {
       images: { orderBy: { position: "asc" } },
@@ -113,6 +121,7 @@ export async function getProductBySlug(slug: string) {
       brand: true,
     },
   });
+  return product && { ...product, quantity: product.quantity.toNumber() };
 }
 
 export const PUBLIC_PRODUCTS_PAGE_SIZE = 12;
@@ -149,7 +158,11 @@ export async function getPublicProductsPage({
     ]),
   );
 
-  return { items, total, pageSize: PUBLIC_PRODUCTS_PAGE_SIZE };
+  return {
+    items: items.map((item) => ({ ...item, quantity: item.quantity.toNumber() })),
+    total,
+    pageSize: PUBLIC_PRODUCTS_PAGE_SIZE,
+  };
 }
 
 export const RELATED_PRODUCTS_LIMIT = 4;
@@ -161,7 +174,7 @@ export async function getRelatedProducts({
   categoryId: string;
   excludeProductId: string;
 }) {
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: {
       categoryId,
       status: "ACTIVE",
@@ -174,13 +187,15 @@ export async function getRelatedProducts({
     orderBy: { createdAt: "desc" },
     take: RELATED_PRODUCTS_LIMIT,
   });
+  return products.map((product) => ({ ...product, quantity: product.quantity.toNumber() }));
 }
 
 export async function getProductSelectOptions() {
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true, sku: true, barcode: true, quantity: true },
   });
+  return products.map((product) => ({ ...product, quantity: product.quantity.toNumber() }));
 }
 
 /** Product options carrying the three price tiers, for pickers that let the
@@ -208,13 +223,16 @@ export async function getProductPickerOptions() {
 export const LOW_STOCK_PAGE_SIZE = 10;
 
 export async function getLowStockProductsPage({ page }: { page: number }) {
+  // quantity/minStockLevel are now DECIMAL columns — node-postgres returns
+  // NUMERIC values as strings (same as every other Decimal column already
+  // read via $queryRaw in this codebase, e.g. purchasePrice), not numbers.
   const rows = await prisma.$queryRaw<
     {
       id: string;
       name: string;
       sku: string;
-      quantity: number;
-      minStockLevel: number;
+      quantity: string;
+      minStockLevel: string;
       totalCount: bigint;
     }[]
   >`SELECT id, name, sku, quantity, "minStockLevel", COUNT(*) OVER()::bigint AS "totalCount"
@@ -226,7 +244,11 @@ export async function getLowStockProductsPage({ page }: { page: number }) {
   const total = rows.length > 0 ? Number(rows[0].totalCount) : 0;
 
   return {
-    items: rows.map(({ totalCount, ...row }) => row),
+    items: rows.map(({ totalCount, quantity, minStockLevel, ...row }) => ({
+      ...row,
+      quantity: Number(quantity),
+      minStockLevel: Number(minStockLevel),
+    })),
     total,
     pageSize: LOW_STOCK_PAGE_SIZE,
   };
@@ -249,7 +271,7 @@ export async function getProductCustomersPage({
       customerId: string | null;
       customerName: string;
       customerPhone: string;
-      totalQuantity: number;
+      totalQuantity: string;
       ordersCount: number;
       lastPurchaseAt: Date;
       totalCount: bigint;
@@ -273,7 +295,7 @@ export async function getProductCustomersPage({
         "customerId",
         (ARRAY_AGG("customerName" ORDER BY "createdAt" DESC))[1] AS "customerName",
         (ARRAY_AGG("customerPhone" ORDER BY "createdAt" DESC))[1] AS "customerPhone",
-        SUM(quantity)::int AS "totalQuantity",
+        SUM(quantity)::numeric AS "totalQuantity",
         COUNT(DISTINCT "orderId")::int AS "ordersCount",
         MAX("createdAt") AS "lastPurchaseAt"
       FROM customer_rows
@@ -296,7 +318,10 @@ export async function getProductCustomersPage({
   const total = rows.length > 0 ? Number(rows[0].totalCount) : 0;
 
   return {
-    items: rows.map(({ totalCount, ...row }) => row),
+    items: rows.map(({ totalCount, totalQuantity, ...row }) => ({
+      ...row,
+      totalQuantity: Number(totalQuantity),
+    })),
     total,
     pageSize: PRODUCT_CUSTOMERS_PAGE_SIZE,
   };
@@ -347,8 +372,8 @@ export async function getProductProfile(id: string) {
 
   return {
     product,
-    movements,
-    orderItems,
-    totalSold: soldTotal._sum.quantity ?? 0,
+    movements: movements.map((movement) => ({ ...movement, quantity: movement.quantity.toNumber() })),
+    orderItems: orderItems.map((item) => ({ ...item, quantity: item.quantity.toNumber() })),
+    totalSold: soldTotal._sum.quantity?.toNumber() ?? 0,
   };
 }

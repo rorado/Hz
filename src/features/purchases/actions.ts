@@ -42,10 +42,28 @@ export async function createPurchaseOrder(
     0,
   );
 
+  // Fetched up front (before the transaction) so the price-sync loop below
+  // can tell an actual price change from a no-op resave of the same value
+  // — only a real change is worth a ProductPriceHistory row.
+  const priceSyncItems = parsed.data.items.filter(
+    (item) => item.updateProductPurchasePrice,
+  );
+  const currentPrices =
+    priceSyncItems.length > 0
+      ? await prisma.product.findMany({
+          where: { id: { in: priceSyncItems.map((item) => item.productId) } },
+          select: { id: true, purchasePrice: true },
+        })
+      : [];
+  const currentPriceById = new Map(
+    currentPrices.map((product) => [product.id, Number(product.purchasePrice)]),
+  );
+  const orderNumber = generatePurchaseOrderNumber();
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.purchaseOrder.create({
       data: {
-        orderNumber: generatePurchaseOrderNumber(),
+        orderNumber,
         supplierId: parsed.data.supplierId,
         language: parsed.data.language,
         total,
@@ -66,6 +84,17 @@ export async function createPurchaseOrder(
           where: { id: item.productId },
           data: { purchasePrice: item.unitCost },
         });
+        if (currentPriceById.get(item.productId) !== item.unitCost) {
+          await tx.productPriceHistory.create({
+            data: {
+              productId: item.productId,
+              purchasePrice: item.unitCost,
+              reason: `تحديث السعر من أمر شراء رقم ${orderNumber}`,
+              reference: orderNumber,
+              createdById: access.adminId,
+            },
+          });
+        }
       }
     }
 
@@ -112,6 +141,20 @@ export async function updatePurchaseOrderItems(
     0,
   );
 
+  const priceSyncItems = parsed.data.items.filter(
+    (item) => item.updateProductPurchasePrice,
+  );
+  const currentPrices =
+    priceSyncItems.length > 0
+      ? await prisma.product.findMany({
+          where: { id: { in: priceSyncItems.map((item) => item.productId) } },
+          select: { id: true, purchasePrice: true },
+        })
+      : [];
+  const currentPriceById = new Map(
+    currentPrices.map((product) => [product.id, Number(product.purchasePrice)]),
+  );
+
   try {
     await prisma.$transaction(async (tx) => {
       await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
@@ -130,6 +173,17 @@ export async function updatePurchaseOrderItems(
             where: { id: item.productId },
             data: { purchasePrice: item.unitCost },
           });
+          if (currentPriceById.get(item.productId) !== item.unitCost) {
+            await tx.productPriceHistory.create({
+              data: {
+                productId: item.productId,
+                purchasePrice: item.unitCost,
+                reason: `تحديث السعر من تعديل أمر شراء رقم ${order.orderNumber}`,
+                reference: order.orderNumber,
+                createdById: access.adminId,
+              },
+            });
+          }
         }
       }
     });
@@ -286,20 +340,27 @@ export async function getPurchaseOrderStockIssue(id: string) {
   });
   if (!order || order.status !== "RECEIVED") return null;
 
+  // item.quantity/item.product.quantity are Prisma.Decimal instances —
+  // their valueOf() returns a string, so a native `+` here would silently
+  // string-concatenate instead of sum across multiple items for the same
+  // product. Converting to a plain number up front (quantities are exact
+  // to 3 decimal places, well within float precision for this comparison)
+  // keeps every accumulation and comparison below genuinely numeric.
   const requestedByProduct = new Map<string, number>();
   for (const item of order.items) {
     requestedByProduct.set(
       item.productId,
-      (requestedByProduct.get(item.productId) ?? 0) + item.quantity,
+      (requestedByProduct.get(item.productId) ?? 0) + item.quantity.toNumber(),
     );
   }
   for (const item of order.items) {
     const requested = requestedByProduct.get(item.productId) ?? 0;
-    if (requested > item.product.quantity) {
+    const available = item.product.quantity.toNumber();
+    if (requested > available) {
       return {
         product: item.product.name,
         requested,
-        available: item.product.quantity,
+        available,
       };
     }
   }
@@ -427,7 +488,7 @@ async function reversePurchaseOrderStockOnDelete(
   order: {
     orderNumber: string;
     status: string;
-    items: { productId: string; quantity: number }[];
+    items: { productId: string; quantity: Prisma.Decimal }[];
   },
 ) {
   if (order.status !== "RECEIVED") return;

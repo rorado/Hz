@@ -53,7 +53,7 @@ export default async function InvoiceEditPage({
     name: product.name,
     sku: product.sku,
     barcode: product.barcode,
-    quantity: product.quantity,
+    quantity: Number(product.quantity),
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
@@ -150,7 +150,7 @@ export default async function InvoiceEditPage({
             items: invoice.items.map((item) => ({
               productId: item.productId,
               name: item.name,
-              quantity: item.quantity,
+              quantity: Number(item.quantity),
               unitPrice: Number(item.unitPrice),
             })),
           }}
@@ -163,7 +163,7 @@ export default async function InvoiceEditPage({
             amount: Number(payment.amount),
           }))}
       />
-      <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{invoice.returns.length === 0 ? <p className="text-sm text-muted-foreground">لا توجد مرتجعات لهذه الفاتورة.</p> : <div className="space-y-2">{invoice.returns.map((r) => <Link key={r.id} href={`/dashboard/sales-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity,0)} قطعة — {formatCurrency(Number(r.refundAmount),locale)}</span></Link>)}</div>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{invoice.returns.length === 0 ? <p className="text-sm text-muted-foreground">لا توجد مرتجعات لهذه الفاتورة.</p> : <div className="space-y-2">{invoice.returns.map((r) => <Link key={r.id} href={`/dashboard/sales-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity.toNumber(),0)} قطعة — {formatCurrency(Number(r.refundAmount),locale)}</span></Link>)}</div>}</CardContent></Card>
     </div>
   );
 }

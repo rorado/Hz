@@ -258,7 +258,8 @@ export function PurchaseOrderItemsForm({
                 <Label className="text-xs">{t.purchases.quantityLabel}</Label>
                 <Input
                   type="number"
-                  min={1}
+                  min={0.001}
+                  step="0.001"
                   className="w-24"
                   {...register(`items.${index}.quantity`)}
                 />

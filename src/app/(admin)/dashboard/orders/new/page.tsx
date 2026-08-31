@@ -22,7 +22,7 @@ export default async function NewOrderPage() {
     name: product.name,
     sku: product.sku,
     barcode: product.barcode,
-    quantity: product.quantity,
+    quantity: Number(product.quantity),
     categoryId: product.categoryId,
     categoryName: product.category.name,
     brandId: product.brandId,

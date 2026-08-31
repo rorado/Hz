@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const quantity = z.number().int().positive();
+const quantity = z.number().positive();
 
 export const salesReturnSchema = z.object({
   invoiceId: z.string().min(1),

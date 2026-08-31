@@ -11,7 +11,7 @@ import {
 } from "@/features/orders/schema";
 import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
-import type { OrderStatus } from "@/generated/prisma/client";
+import type { OrderStatus, Prisma } from "@/generated/prisma/client";
 import { validateAvailableStock } from "@/lib/stock-validation";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
@@ -55,15 +55,37 @@ export async function updateOrderStatus(
 
   const order = await prisma.order.findUnique({
     where: { id },
-    include: { items: { include: { product: true } } },
+    include: {
+      items: { include: { product: true } },
+      invoice: { select: { id: true } },
+    },
   });
   if (!order) return { error: t.orders.notFoundError };
+  if (order.status === status) return { success: true };
+
+  // Once an order has an issued invoice, the invoice's own OUT movements
+  // (not the order's status) are the source of truth for the stock it
+  // sold — createInvoice/getOrCreateInvoiceForOrder never reference the
+  // order when logging those movements. Letting a status change here
+  // independently decrement/restore stock on top of that would double up
+  // (completing again) or wrongly restore stock the invoice still
+  // legitimately holds decremented (uncompleting) — so it's blocked
+  // entirely, matching the item-editing lock already shown in the UI for
+  // an invoiced order.
+  if (order.invoice) {
+    return { error: t.orders.cannotChangeStatusInvoicedError };
+  }
 
   const completingNow = status === "COMPLETED" && order.status !== "COMPLETED";
+  const uncompletingNow = order.status === "COMPLETED" && status !== "COMPLETED";
 
   if (completingNow) {
     if (!options?.allowNegativeStock) {
-      const stockError = await validateAvailableStock(order.items);
+      // order.items' quantity is a live Prisma.Decimal — stock-validation.ts
+      // expects plain numbers.
+      const stockError = await validateAvailableStock(
+        order.items.map((item) => ({ productId: item.productId, quantity: item.quantity.toNumber() })),
+      );
       if (stockError) return { error: stockError };
     }
 
@@ -85,6 +107,32 @@ export async function updateOrderStatus(
             type: "OUT",
             quantity: item.quantity,
             reason: `اكتمال الطلب رقم ${order.orderNumber}`,
+          },
+        }),
+      ),
+    ]);
+  } else if (uncompletingNow) {
+    // Mirrors the completion path in reverse: restores exactly what
+    // completing this order decremented, with a matching IN movement so
+    // the reversal is visible in stock history too.
+    await prisma.$transaction([
+      prisma.order.update({
+        where: { id },
+        data: { status: status as OrderStatus },
+      }),
+      ...order.items.map((item) =>
+        prisma.product.update({
+          where: { id: item.productId },
+          data: { quantity: { increment: item.quantity } },
+        }),
+      ),
+      ...order.items.map((item) =>
+        prisma.inventoryMovement.create({
+          data: {
+            productId: item.productId,
+            type: "IN",
+            quantity: item.quantity,
+            reason: `التراجع عن اكتمال الطلب رقم ${order.orderNumber}`,
           },
         }),
       ),
@@ -111,12 +159,19 @@ export async function getOrderStockIssue(id: string) {
     include: { items: { include: { product: { select: { name: true, quantity: true } } } } },
   });
   if (!order) return null;
+  // item.quantity/item.product.quantity are Prisma.Decimal instances — a
+  // native `+` here would silently string-concatenate instead of sum
+  // across multiple items for the same product (Decimal.valueOf() returns
+  // a string). Converting to a plain number up front keeps this genuinely
+  // numeric; quantities are exact to 3 decimal places, well within float
+  // precision for a stock-availability check.
   const totals = new Map<string, number>();
-  order.items.forEach((item) => totals.set(item.productId, (totals.get(item.productId) ?? 0) + item.quantity));
+  order.items.forEach((item) => totals.set(item.productId, (totals.get(item.productId) ?? 0) + item.quantity.toNumber()));
   for (const item of order.items) {
     const requested = totals.get(item.productId) ?? 0;
-    if (requested > item.product.quantity) {
-      return { product: item.product.name, requested, available: item.product.quantity };
+    const available = item.product.quantity.toNumber();
+    if (requested > available) {
+      return { product: item.product.name, requested, available };
     }
   }
   return null;
@@ -165,7 +220,7 @@ export async function updateOrderItems(
     order.items.reduce((sum, item) => {
       const edited = updatesById.get(item.id);
       const price = edited?.price ?? Number(item.price);
-      const quantity = edited?.quantity ?? item.quantity;
+      const quantity = edited?.quantity ?? item.quantity.toNumber();
       return sum + price * quantity;
     }, 0) +
     newItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -416,18 +471,66 @@ export async function createOrder(
   redirect(`/dashboard/orders/${orderId}`);
 }
 
+/**
+ * Reverses a COMPLETED order's stock effect before it's deleted, so the
+ * order disappearing doesn't leave stock permanently short with nothing
+ * left to explain it — mirrors reversePurchaseOrderStockOnDelete. Skipped
+ * entirely for an invoiced order: the invoice (not the order) owns that
+ * stock decrement via its own OUT movements, and the invoice isn't being
+ * deleted here, so reversing it a second time would double up. A
+ * PENDING/PROCESSING/CANCELLED order never touched stock in the first
+ * place, so there's nothing to undo either.
+ */
+async function reverseOrderStockOnDelete(
+  tx: Prisma.TransactionClient,
+  order: {
+    orderNumber: string;
+    status: string;
+    invoice: { id: string } | null;
+    items: { productId: string; quantity: Prisma.Decimal }[];
+  },
+) {
+  if (order.status !== "COMPLETED" || order.invoice) return;
+  for (const item of order.items) {
+    await tx.product.update({
+      where: { id: item.productId },
+      data: { quantity: { increment: item.quantity } },
+    });
+    await tx.inventoryMovement.create({
+      data: {
+        productId: item.productId,
+        type: "IN",
+        quantity: item.quantity,
+        reference: order.orderNumber,
+        reason: `حذف طلب مكتمل رقم ${order.orderNumber}`,
+      },
+    });
+  }
+}
+
 export async function deleteOrder(id: string): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
 
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: true, invoice: { select: { id: true } } },
+  });
+  if (!order) return { error: t.orders.notFoundError };
+
   try {
-    await prisma.order.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await reverseOrderStockOnDelete(tx, order);
+      await tx.order.delete({ where: { id } });
+    });
   } catch {
     return { error: t.orders.cannotDeleteLinkedError };
   }
 
   revalidatePath("/dashboard/orders");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -441,13 +544,26 @@ export async function deleteOrders(ids: string[]): Promise<ActionResult> {
   let failedCount = 0;
   for (const id of ids) {
     try {
-      await prisma.order.delete({ where: { id } });
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: { items: true, invoice: { select: { id: true } } },
+      });
+      if (!order) {
+        failedCount++;
+        continue;
+      }
+      await prisma.$transaction(async (tx) => {
+        await reverseOrderStockOnDelete(tx, order);
+        await tx.order.delete({ where: { id } });
+      });
     } catch {
       failedCount++;
     }
   }
 
   revalidatePath("/dashboard/orders");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
 
   if (failedCount > 0) {

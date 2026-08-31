@@ -102,12 +102,12 @@ export default async function PurchaseOrderPrintPage({
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const grandTotal = order.items.reduce(
-    (sum, item) => sum + Number(item.unitCost) * item.quantity,
+    (sum, item) => sum + Number(item.unitCost) * Number(item.quantity),
     0,
   );
   const itemsCount = order.items.length;
   const totalWeight = order.items.reduce(
-    (sum, item) => sum + Number(item.product.weight ?? 0) * item.quantity,
+    (sum, item) => sum + Number(item.product.weight ?? 0) * Number(item.quantity),
     0,
   );
 
@@ -199,7 +199,7 @@ export default async function PurchaseOrderPrintPage({
               <tr key={item.id} className="border-b font-semibold text-foreground">
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate max-w-[15ch]">
-                    {item.quantity}
+                    {Number(item.quantity)}
                   </span>
                 </td>
                 <td className="px-3 py-2 border-2 border-gray-400">
@@ -215,7 +215,7 @@ export default async function PurchaseOrderPrintPage({
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate max-w-[15ch]">
                     {formatCurrency(
-                      Number(item.unitCost) * item.quantity,
+                      Number(item.unitCost) * Number(item.quantity),
                       lang,
                       true,
                     )}

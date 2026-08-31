@@ -54,7 +54,9 @@ const REPORT_BUILDERS: Record<
         t.reports.columnSupplier,
         t.products.columnQuantity,
         t.reports.columnMinStock,
+        `${t.products.purchasePriceDisplayLabel} (${currency})`,
         `${t.reports.columnValue} (${currency})`,
+        t.reports.columnPriceBasis,
         t.common.status,
       ],
       rows: items.map((product) => [
@@ -66,7 +68,11 @@ const REPORT_BUILDERS: Record<
         product.supplierName ?? "",
         product.quantity,
         product.minStockLevel,
+        product.purchasePrice,
         product.value,
+        product.priceIsEstimated
+          ? t.reports.estimatedPriceBadge
+          : t.reports.confirmedPriceBadge,
         t.statusLabels.productStatus[product.status],
       ]),
     };
@@ -98,8 +104,8 @@ const REPORT_BUILDERS: Record<
         product.slug,
         product.category.name,
         product.brand?.name ?? "",
-        product.quantity,
-        product.minStockLevel,
+        Number(product.quantity),
+        Number(product.minStockLevel),
         Number(product.price1),
         Number(product.price2),
         Number(product.price3),

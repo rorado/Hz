@@ -56,7 +56,7 @@ export function InventoryReportFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3 ring-1 ring-foreground/10 print:hidden">
-      <div className="space-y-1.5">
+      <div className="flex flex-col gap-1.5">
         <Label className="h-4 gap-1.5 text-xs text-muted-foreground">
           <CalendarClock className="size-3.5" />
           {t.reports.inventoryAsOfDateLabel}
@@ -70,7 +70,7 @@ export function InventoryReportFilters({
           className="w-full sm:w-44"
         />
       </div>
-      <div className="space-y-1.5">
+      <div className="flex flex-col gap-1.5">
         <Label className="h-4 text-xs text-muted-foreground">
           {t.reports.columnSupplier}
         </Label>

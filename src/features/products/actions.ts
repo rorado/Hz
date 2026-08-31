@@ -53,6 +53,20 @@ export async function createProduct(input: unknown): Promise<ActionResult> {
             position: index,
           })),
         },
+        // Anchors this product's price history from the moment it exists —
+        // without this row, any asOfDate between creation and the first
+        // later edit would have no history to look up and would fall back
+        // to *today's* current price instead of the price it actually
+        // launched with. A nested create keeps this atomic with the product
+        // row itself, same guarantee $transaction gives the other write
+        // sites (Prisma nested writes are a single query).
+        priceHistory: {
+          create: {
+            purchasePrice: data.purchasePrice,
+            reason: "السعر الأولي عند إنشاء المنتج",
+            createdById: access.adminId,
+          },
+        },
       },
     });
   } catch (error) {
@@ -80,6 +94,9 @@ export async function updateProduct(
 
   const { images, ...data } = parsed.data;
 
+  const existingProduct = await prisma.product.findUnique({ where: { id } });
+  if (!existingProduct) return { error: t.products.notFoundError };
+
   const existingImages = await prisma.productImage.findMany({
     where: { productId: id },
   });
@@ -94,6 +111,25 @@ export async function updateProduct(
     (image) => !existingPublicIds.has(image.publicId),
   );
   const keptCount = existingImages.length - removedImages.length;
+
+  // Editing a product's quantity field is a real stock change, not metadata
+  // — the same as a manual inventory adjustment, just entered from the
+  // product form instead of the dedicated movement dialog. Without a
+  // matching InventoryMovement here, this edit would silently overwrite
+  // Product.quantity with no audit trail, making historical inventory
+  // reconstruction (which walks movements backward from the live quantity)
+  // wrong for any date before the edit. A no-op edit (quantity unchanged)
+  // creates nothing, matching recordInventoryMovement's own ADJUSTMENT rule.
+  const quantityDelta = data.quantity - existingProduct.quantity.toNumber();
+
+  // Same reasoning for purchasePrice: it feeds "قيمة المخزون" (inventory
+  // value) in the historical inventory report, which needs to know the
+  // price that was actually in effect on a given date, not whatever it is
+  // today. A ProductPriceHistory row is the only way that report can tell
+  // the two apart — without it, editing the price here would silently
+  // rewrite the "as of" value for every past date too.
+  const purchasePriceChanged =
+    data.purchasePrice !== Number(existingProduct.purchasePrice);
 
   try {
     await prisma.$transaction([
@@ -119,6 +155,31 @@ export async function updateProduct(
           },
         }),
       ),
+      ...(quantityDelta !== 0
+        ? [
+            prisma.inventoryMovement.create({
+              data: {
+                productId: id,
+                type: "ADJUSTMENT",
+                quantity: quantityDelta,
+                reason: "تعديل يدوي للكمية من شاشة تعديل المنتج",
+                createdById: access.adminId,
+              },
+            }),
+          ]
+        : []),
+      ...(purchasePriceChanged
+        ? [
+            prisma.productPriceHistory.create({
+              data: {
+                productId: id,
+                purchasePrice: data.purchasePrice,
+                reason: "تعديل يدوي لسعر الشراء من شاشة تعديل المنتج",
+                createdById: access.adminId,
+              },
+            }),
+          ]
+        : []),
     ]);
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -134,6 +195,10 @@ export async function updateProduct(
   revalidatePath("/dashboard/products");
   revalidatePath("/products");
   revalidatePath(`/products/${parsed.data.slug}`);
+  if (quantityDelta !== 0 || purchasePriceChanged) {
+    revalidatePath("/dashboard/inventory");
+    revalidatePath("/dashboard");
+  }
   return { success: true };
 }
 

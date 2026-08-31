@@ -530,6 +530,8 @@ export const en = {
     newOrderStatusNote:
       "The order will be created with this status, and it can be changed later from the order's page.",
     invalidStatusError: "Invalid status",
+    cannotChangeStatusInvoicedError:
+      "This order's status can't be changed because it's linked to an issued invoice — the invoice is now the source of truth for its stock effect",
     notFoundError: "Order not found",
     validationError: "Please check the entered data",
     addedProductNotFoundError: "One of the added products was not found",
@@ -1430,6 +1432,9 @@ export const en = {
     totalProductsLabel: "Products count",
     totalQuantityLabel: "Total quantity",
     totalValueLabel: "Total inventory value",
+    columnPriceBasis: "Price basis",
+    confirmedPriceBadge: "Confirmed historical",
+    estimatedPriceBadge: "Estimated",
     unauthorizedError: "Unauthorized",
     invalidReportTypeError: "Invalid report type",
   },

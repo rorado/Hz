@@ -75,10 +75,17 @@ export async function getBrandProfile(id: string, productPage: number) {
   if (!brand) return null;
 
   return {
-    brand,
+    brand: {
+      ...brand,
+      products: brand.products.map((product) => ({
+        ...product,
+        quantity: product.quantity.toNumber(),
+        minStockLevel: product.minStockLevel.toNumber(),
+      })),
+    },
     productsTotal: brand._count.products,
     productsPageSize: BRAND_PROFILE_PRODUCTS_PAGE_SIZE,
-    totalStock: stock._sum.quantity ?? 0,
+    totalStock: stock._sum.quantity?.toNumber() ?? 0,
     lowStockCount: Number(lowStockRows[0]?.count ?? 0),
   };
 }

@@ -543,6 +543,8 @@ export const fr = {
     newOrderStatusNote:
       "La commande sera créée avec ce statut, qui pourra être modifié plus tard depuis la page de la commande.",
     invalidStatusError: "Statut invalide",
+    cannotChangeStatusInvoicedError:
+      "Impossible de modifier le statut de cette commande car elle est liée à une facture émise — la facture fait désormais foi pour son effet sur le stock",
     notFoundError: "Commande introuvable",
     validationError: "Veuillez vérifier les données saisies",
     addedProductNotFoundError: "Un des produits ajoutés est introuvable",
@@ -1483,6 +1485,9 @@ export const fr = {
     totalProductsLabel: "Nombre de produits",
     totalQuantityLabel: "Quantité totale",
     totalValueLabel: "Valeur totale du stock",
+    columnPriceBasis: "Base du prix",
+    confirmedPriceBadge: "Historique confirmé",
+    estimatedPriceBadge: "Estimé",
     unauthorizedError: "Non autorisé",
     invalidReportTypeError: "Type de rapport invalide",
   },

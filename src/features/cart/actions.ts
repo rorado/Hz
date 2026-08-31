@@ -66,7 +66,7 @@ export async function createOrderFromCart(
     // Check stock for each item
     for (const item of validatedData.items) {
       const product = products.find((p) => p.id === item.productId);
-      if (!product || product.quantity < item.quantity) {
+      if (!product || product.quantity.toNumber() < item.quantity) {
         return {
           success: false,
           error: formatMessage(t.cart.insufficientQuantityErrorTemplate, {

@@ -5,7 +5,6 @@ export const inventoryMovementSchema = z.object({
   type: z.enum(["IN", "OUT", "ADJUSTMENT"]),
   quantity: z.coerce
     .number()
-    .int()
     .min(0, { error: "الكمية يجب أن تكون رقماً موجباً" }),
   reason: z.string().optional(),
 });

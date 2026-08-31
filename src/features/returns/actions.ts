@@ -144,8 +144,12 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
       let subtotal = 0;
       const rows = invoice.items.filter((item) => requested.has(item.id)).map((item) => {
         const request = requested.get(item.id)!;
-        const returned = item.returnItems.reduce((sum, row) => sum + row.quantity, 0);
-        if (request.quantity > item.quantity - returned) throw new Error(formatMessage(t.returns.quantityExceedsTemplate,{product:item.name,requested:request.quantity,sold:item.quantity,returned,available:item.quantity-returned}));
+        // row.quantity is a live Prisma.Decimal (SalesReturnItem.quantity)
+        // — .toNumber() before the `+` avoids string-concatenation across
+        // multiple prior returns of the same invoice item.
+        const returned = item.returnItems.reduce((sum, row) => sum + row.quantity.toNumber(), 0);
+        const itemQuantity = item.quantity.toNumber();
+        if (request.quantity > itemQuantity - returned) throw new Error(formatMessage(t.returns.quantityExceedsTemplate,{product:item.name,requested:request.quantity,sold:itemQuantity,returned,available:itemQuantity-returned}));
         const total = cents(request.quantity * Number(item.unitPrice));
         subtotal += total;
         return { item, request, total };
@@ -180,6 +184,13 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
             ? { damagedQuantity: { increment: request.quantity } }
             : { defectiveQuantity: { increment: request.quantity } };
         await tx.product.update({ where: { id: item.productId }, data: productUpdate });
+        // DAMAGED/DEFECTIVE returns only touch their own counters, not
+        // Product.quantity (they aren't restocked as sellable) — a
+        // SALE_RETURN movement here would be a phantom entry that
+        // corrupts historical inventory reconstruction the next time this
+        // condition is used. Only log a movement for the condition that
+        // actually changes available stock.
+        if (request.condition !== "GOOD") continue;
         await tx.inventoryMovement.create({ data: {
           productId: item.productId, type: "SALE_RETURN", quantity: request.quantity,
           reference: returnNumber,
@@ -231,9 +242,11 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
       let total = 0;
       const rows = purchase.items.filter((item) => requested.has(item.id)).map((item) => {
         const request = requested.get(item.id)!;
-        const returned = item.returnItems.reduce((sum, row) => sum + row.quantity, 0);
-        if (request.quantity > item.quantity - returned) throw new Error(formatMessage(t.returns.quantityExceedsTemplate,{product:item.product.name,requested:request.quantity,sold:item.quantity,returned,available:item.quantity-returned}));
-        if (request.quantity > item.product.quantity) throw new Error(formatMessage(t.returns.stockInsufficientTemplate,{product:item.product.name}));
+        // Same Decimal-vs-`+` risk as the sales-return path above.
+        const returned = item.returnItems.reduce((sum, row) => sum + row.quantity.toNumber(), 0);
+        const itemQuantity = item.quantity.toNumber();
+        if (request.quantity > itemQuantity - returned) throw new Error(formatMessage(t.returns.quantityExceedsTemplate,{product:item.product.name,requested:request.quantity,sold:itemQuantity,returned,available:itemQuantity-returned}));
+        if (request.quantity > item.product.quantity.toNumber()) throw new Error(formatMessage(t.returns.stockInsufficientTemplate,{product:item.product.name}));
         const rowTotal = cents(request.quantity * Number(item.unitCost)); total += rowTotal;
         return { item, request, total: rowTotal };
       });
@@ -315,6 +328,21 @@ async function reverseAndDeleteSalesReturn(
         data: { quantity: { decrement: item.quantity } },
       });
       if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
+      // Only the GOOD-condition branch ever touched Product.quantity (and
+      // got a SALE_RETURN movement) when this return was created — mirror
+      // that exactly here, or a DAMAGED/DEFECTIVE item would get a phantom
+      // reversal movement for a stock effect that never happened.
+      await tx.inventoryMovement.create({
+        data: {
+          productId: item.productId,
+          type: "SALE_RETURN",
+          quantity: -item.quantity,
+          reference: existing.returnNumber,
+          reason: formatMessage(t.returns.deletedReturnReasonTemplate, {
+            number: existing.returnNumber,
+          }),
+        },
+      });
     } else if (item.condition === "DAMAGED") {
       await tx.product.update({
         where: { id: item.productId },
@@ -326,17 +354,6 @@ async function reverseAndDeleteSalesReturn(
         data: { defectiveQuantity: { decrement: item.quantity } },
       });
     }
-    await tx.inventoryMovement.create({
-      data: {
-        productId: item.productId,
-        type: "SALE_RETURN",
-        quantity: -item.quantity,
-        reference: existing.returnNumber,
-        reason: formatMessage(t.returns.deletedReturnReasonTemplate, {
-          number: existing.returnNumber,
-        }),
-      },
-    });
   }
   if (
     existing.refundMethod === "CUSTOMER_CREDIT" &&

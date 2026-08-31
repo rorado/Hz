@@ -269,6 +269,7 @@ export function RecordMovementDialog({
               id="movement-quantity"
               type="number"
               min={0}
+              step="0.001"
               {...register("quantity")}
             />
             {errors.quantity && (

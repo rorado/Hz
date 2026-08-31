@@ -116,7 +116,7 @@ export default async function OrderConfirmationPage({
                     <TableCell className="font-medium">
                       {item.product.name}
                     </TableCell>
-                    <TableCell>{item.quantity.toLocaleString(locale)}</TableCell>
+                    <TableCell>{Number(item.quantity).toLocaleString(locale)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

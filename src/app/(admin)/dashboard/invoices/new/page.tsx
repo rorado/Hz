@@ -26,7 +26,7 @@ export default async function NewInvoicePage() {
     name: product.name,
     sku: product.sku,
     barcode: product.barcode,
-    quantity: product.quantity,
+    quantity: Number(product.quantity),
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),

@@ -301,6 +301,7 @@ export function ProductFormSheet({
               id="product-quantity"
               type="number"
               min={0}
+              step="0.001"
               {...register("quantity")}
             />
             {errors.quantity && (
@@ -315,6 +316,7 @@ export function ProductFormSheet({
               id="product-min-stock"
               type="number"
               min={0}
+              step="0.001"
               {...register("minStockLevel")}
             />
             {errors.minStockLevel && (

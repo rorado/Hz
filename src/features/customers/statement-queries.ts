@@ -43,12 +43,12 @@ export async function getCustomerProductAnalysis(
     {
       key: string;
       name: string;
-      quantity: bigint;
+      quantity: string;
       purchases: bigint;
       totalSpent: string;
       purchasedPrice: string;
       purchasedDate: Date;
-      purchasedQuantity: number;
+      purchasedQuantity: string;
       currentPrice: string | null;
     }[]
   >`
@@ -63,7 +63,9 @@ export async function getCustomerProductAnalysis(
     ),
     agg AS (
       SELECT key, MIN(name) as name, MIN("productId") as "productId",
-        SUM(quantity)::bigint as quantity,
+        -- Not ::bigint — InvoiceItem.quantity carries up to 3 decimal
+        -- places now, and a bigint cast would truncate that.
+        SUM(quantity)::numeric as quantity,
         COUNT(DISTINCT "invoiceId")::bigint as purchases,
         SUM(quantity * "unitPrice")::numeric as "totalSpent"
       FROM in_period

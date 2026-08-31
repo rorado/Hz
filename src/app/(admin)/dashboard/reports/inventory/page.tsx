@@ -63,7 +63,7 @@ export default async function InventoryReportPage({
         title={t.reports.inventoryTitle}
         icon={Boxes}
         description={formatMessage(t.reports.inventoryAsOfDescriptionTemplate, {
-          date: asOfDate.toLocaleDateString(locale),
+          date: asOfDate.toLocaleDateString("fr-FR"),
         })}
         action={
           <BackButton
@@ -121,6 +121,7 @@ export default async function InventoryReportPage({
             <TableHead>{t.reports.columnSupplier}</TableHead>
             <TableHead>{t.products.columnQuantity}</TableHead>
             <TableHead>{t.reports.columnMinStock}</TableHead>
+            <TableHead>{t.products.purchasePriceDisplayLabel}</TableHead>
             <TableHead>{t.reports.columnValue}</TableHead>
             <TableHead>{t.common.status}</TableHead>
           </TableRow>
@@ -147,7 +148,18 @@ export default async function InventoryReportPage({
               <TableCell>
                 {product.minStockLevel.toLocaleString(locale)}
               </TableCell>
-              <TableCell>{formatCurrency(product.value, locale)}</TableCell>
+              <TableCell>
+                {formatCurrency(product.purchasePrice, locale)}
+                {product.priceIsEstimated && (
+                  <span className="text-muted-foreground"> *</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {formatCurrency(product.value, locale)}
+                {product.priceIsEstimated && (
+                  <span className="text-muted-foreground"> *</span>
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={product.status === "ACTIVE" ? "default" : "secondary"}>
                   {t.statusLabels.productStatus[product.status]}

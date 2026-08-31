@@ -44,7 +44,7 @@ export function OrdersFilterBar() {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end lg:flex-nowrap lg:items-center justify-center items-center">
-      <div className="min-w-0 space-y-1.5 sm:w-44 sm:shrink-0">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:w-44 sm:shrink-0">
         <Label className="text-xs text-muted-foreground">{t.common.status}</Label>
         <Select
           value={searchParams.get("status") ?? ALL_STATUSES}
@@ -73,7 +73,7 @@ export function OrdersFilterBar() {
           </SelectContent>
         </Select>
       </div>
-      <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:w-40 sm:shrink-0">
         <Label className="text-xs text-muted-foreground">{t.common.from}</Label>
         <Input
           type="date"
@@ -83,7 +83,7 @@ export function OrdersFilterBar() {
           onChange={(event) => updateParam("from", event.target.value)}
         />
       </div>
-      <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:w-40 sm:shrink-0">
         <Label className="text-xs text-muted-foreground">{t.common.to}</Label>
         <Input
           type="date"
@@ -93,7 +93,7 @@ export function OrdersFilterBar() {
           onChange={(event) => updateParam("to", event.target.value)}
         />
       </div>
-      <div className="min-w-0 space-y-1.5 sm:w-40 sm:shrink-0">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:w-40 sm:shrink-0">
         <Label className="text-xs text-muted-foreground">
           {t.orders.invoiceFilterLabel}
         </Label>

@@ -155,12 +155,12 @@ export default async function InvoicePrintPage({
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const itemsTotal = invoice.items.reduce(
-    (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+    (sum, item) => sum + Number(item.unitPrice) * Number(item.quantity),
     0,
   );
   const itemsCount = invoice.items.length;
   const totalWeight = invoice.items.reduce(
-    (sum, item) => sum + Number(item.product?.weight ?? 0) * item.quantity,
+    (sum, item) => sum + Number(item.product?.weight ?? 0) * Number(item.quantity),
     0,
   );
 
@@ -177,7 +177,7 @@ export default async function InvoicePrintPage({
     items: other.items.map((item) => ({
       id: item.id,
       name: item.name,
-      quantity: item.quantity,
+      quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
     })),
   }));
@@ -280,7 +280,7 @@ export default async function InvoicePrintPage({
                 className="border-b font-semibold text-foreground"
               >
                 <td className="px-3 py-2 border-2 border-gray-400">
-                  <span className="block truncate">{item.quantity}</span>
+                  <span className="block truncate">{Number(item.quantity)}</span>
                 </td>
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate">{item.name}</span>
@@ -293,7 +293,7 @@ export default async function InvoicePrintPage({
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate">
                     {formatCurrency(
-                      Number(item.unitPrice) * item.quantity,
+                      Number(item.unitPrice) * Number(item.quantity),
                       lang,
                       true,
                     )}

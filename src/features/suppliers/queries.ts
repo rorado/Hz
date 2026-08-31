@@ -166,7 +166,7 @@ export async function getSupplierProductsDelivered(
     {
       key: string;
       name: string;
-      quantity: bigint;
+      quantity: string;
       deliveries: bigint;
       totalCost: string;
       latestCost: string;
@@ -182,7 +182,9 @@ export async function getSupplierProductsDelivered(
     ),
     agg AS (
       SELECT key, MIN(name) as name,
-        SUM(quantity)::bigint as quantity,
+        -- Not ::bigint — PurchaseOrderItem.quantity carries up to 3
+        -- decimal places now, and a bigint cast would truncate that.
+        SUM(quantity)::numeric as quantity,
         COUNT(DISTINCT "purchaseOrderId")::bigint as deliveries,
         SUM(quantity * "unitCost")::numeric as "totalCost"
       FROM items

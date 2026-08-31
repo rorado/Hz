@@ -65,7 +65,12 @@ export default async function ProductProfilePage({
   if (!profile) notFound();
 
   const { product, movements, orderItems, totalSold } = profile;
-  const isLowStock = product.quantity <= product.minStockLevel;
+  // product.quantity/minStockLevel are both Prisma.Decimal — a native <=
+  // between two Decimal instances silently does a *string* comparison
+  // (Decimal.valueOf() returns a string), not a numeric one, and
+  // TypeScript doesn't flag same-type object comparisons like this even
+  // though it's wrong at runtime. .lessThanOrEqualTo() compares correctly.
+  const isLowStock = product.quantity.lessThanOrEqualTo(product.minStockLevel);
 
   return (
     <div className="space-y-6">
@@ -102,7 +107,7 @@ export default async function ProductProfilePage({
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           title={t.products.currentStockLabel}
-          value={product.quantity}
+          value={Number(product.quantity)}
           icon={Boxes}
           variant={isLowStock ? "warning" : undefined}
           formatValue={(value) => value.toLocaleString(locale)}
@@ -115,7 +120,7 @@ export default async function ProductProfilePage({
         />
         <StatCard
           title={t.reports.columnMinStock}
-          value={product.minStockLevel}
+          value={Number(product.minStockLevel)}
           icon={AlertTriangle}
           variant={isLowStock ? "warning" : undefined}
           formatValue={(value) => value.toLocaleString(locale)}

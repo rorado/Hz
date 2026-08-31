@@ -360,7 +360,8 @@ export function OrderForm({
                               <Label className="text-xs">{t.purchases.quantityLabel}</Label>
                               <Input
                                 type="number"
-                                min={1}
+                                min={0.001}
+                                step="0.001"
                                 className={`w-20 ${(() => {
                                   const product = productsById.get(items?.[index]?.productId ?? "");
                                   return product && (Number(items?.[index]?.quantity) || 0) > product.quantity

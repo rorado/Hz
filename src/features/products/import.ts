@@ -164,6 +164,7 @@ function uploadBufferToCloudinary(
 
 export async function* importProductsFromBuffer(
   fileBuffer: Buffer,
+  adminId?: string,
 ): AsyncGenerator<ImportEvent> {
   const workbook = new ExcelJS.Workbook();
   try {
@@ -302,13 +303,13 @@ export async function* importProductsFromBuffer(
         brandId = foundBrandId;
       }
 
-      const quantity = Math.max(
-        0,
-        Math.trunc(cellNumber(row, columnMap.get("quantity")) ?? 0),
-      );
+      // Not Math.trunc — quantity/minStockLevel carry up to 3 decimal
+      // places now (e.g. an imported "1.5" kg), and truncating here would
+      // silently import it as a whole number.
+      const quantity = Math.max(0, cellNumber(row, columnMap.get("quantity")) ?? 0);
       const minStockLevel = Math.max(
         0,
-        Math.trunc(cellNumber(row, columnMap.get("minStockLevel")) ?? 0),
+        cellNumber(row, columnMap.get("minStockLevel")) ?? 0,
       );
       const price1 = Math.max(0, cellNumber(row, columnMap.get("price1")) ?? 0);
       const price2 = Math.max(0, cellNumber(row, columnMap.get("price2")) ?? 0);
@@ -370,7 +371,20 @@ export async function* importProductsFromBuffer(
             purchasePrice,
             weight,
             status,
+            createdById: adminId,
             images: { create: images },
+            // Same anchor createProduct writes for a manually-added
+            // product — an imported row is a creation, not an edit, so
+            // without this, any historical date between the import and the
+            // product's first later price edit would have nothing to look
+            // up and would fall back to today's current price.
+            priceHistory: {
+              create: {
+                purchasePrice,
+                reason: "السعر الأولي عند استيراد المنتج",
+                createdById: adminId,
+              },
+            },
           },
         });
         takenSkus.add(sku);

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { requirePermission } from "@/lib/permissions";
 import { inventoryMovementSchema } from "@/features/inventory/schema";
 import { getDictionary } from "@/i18n/server";
@@ -23,17 +24,23 @@ export async function recordInventoryMovement(
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) return { error: t.inventory.notFoundError };
 
-  let newQuantity: number;
+  // product.quantity is a Prisma.Decimal instance, not a plain number —
+  // its valueOf() returns a *string*, which makes JS's native `+` silently
+  // do string concatenation instead of addition (and Decimal-vs-Decimal
+  // `<`/`>` do a string comparison instead of a numeric one). Decimal's own
+  // .plus()/.minus()/.lessThan() avoid that entirely, and also avoid the
+  // float-precision drift a naive Number() round-trip could introduce.
+  let newQuantity: Prisma.Decimal;
   let movementQuantity: number;
 
   if (type === "IN") {
-    newQuantity = product.quantity + quantity;
+    newQuantity = product.quantity.plus(quantity);
     movementQuantity = quantity;
   } else if (type === "OUT") {
-    if (quantity > product.quantity) {
+    if (product.quantity.lessThan(quantity)) {
       return { error: t.inventory.exceedsAvailableError };
     }
-    newQuantity = product.quantity - quantity;
+    newQuantity = product.quantity.minus(quantity);
     movementQuantity = quantity;
   } else {
     // Stored as a signed delta (new - old), not Math.abs of it — an
@@ -41,8 +48,8 @@ export async function recordInventoryMovement(
     // unrecoverable later (e.g. when reconstructing historical stock by
     // walking movements backward from the live quantity), since the same
     // ADJUSTMENT type label covers both increases and decreases.
-    newQuantity = quantity;
-    movementQuantity = quantity - product.quantity;
+    newQuantity = new Prisma.Decimal(quantity);
+    movementQuantity = new Prisma.Decimal(quantity).minus(product.quantity).toNumber();
   }
 
   await prisma.$transaction([
