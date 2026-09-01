@@ -10,6 +10,7 @@ import { getProductPickerOptions } from "@/features/products/queries";
 import { PurchaseOrderStatusSelect } from "@/features/purchases/components/purchase-order-status-select";
 import { DeletePurchaseOrderButton } from "@/features/purchases/components/delete-purchase-order-button";
 import { PurchaseOrderItemsForm } from "@/features/purchases/components/purchase-order-items-form";
+import { PurchaseAttachmentsCard } from "@/features/purchases/components/purchase-attachments-card";
 import { RecordSupplierPaymentDialog } from "@/features/purchases/components/record-supplier-payment-dialog";
 import { SupplierPaymentHistory } from "@/features/purchases/components/supplier-payment-history";
 import { PaymentStatusBadge } from "@/features/invoices/components/payment-status-badge";
@@ -133,6 +134,19 @@ export default async function PurchaseOrderDetailPage({
               />
             </CardContent>
           </Card>
+
+          <PurchaseAttachmentsCard
+            purchaseOrderId={order.id}
+            attachments={order.attachments.map((attachment) => ({
+              id: attachment.id,
+              secureUrl: attachment.secureUrl,
+              fileName: attachment.fileName,
+              fileType: attachment.fileType,
+              fileSize: attachment.fileSize,
+              createdAt: attachment.createdAt,
+              uploadedByName: attachment.uploadedBy?.name ?? null,
+            }))}
+          />
         </div>
 
         <div className="space-y-6">

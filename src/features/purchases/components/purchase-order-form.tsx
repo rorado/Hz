@@ -39,6 +39,7 @@ import { useLocale } from "@/i18n/locale-provider";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
+import { FileAttachmentUploader } from "@/components/shared/file-attachment-uploader";
 import type { InvoiceLanguage } from "@/generated/prisma/client";
 
 type Option = { id: string; name: string };
@@ -184,6 +185,7 @@ export function PurchaseOrderForm({
     defaultValues: {
       supplierId: "",
       language: "AR",
+      attachments: [],
       items: [
         {
           productId: products.some((product) => product.id === defaultProductId)
@@ -280,6 +282,21 @@ export function PurchaseOrderForm({
             )}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>{t.purchases.attachmentsLabel}</Label>
+        <Controller
+          control={control}
+          name="attachments"
+          render={({ field }) => (
+            <FileAttachmentUploader
+              value={field.value ?? []}
+              onChange={field.onChange}
+              signEndpoint="/api/cloudinary/sign-purchase-attachment"
+            />
+          )}
+        />
       </div>
 
       <div className="space-y-3">

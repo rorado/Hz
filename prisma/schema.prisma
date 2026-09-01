@@ -8,28 +8,29 @@ datasource db {
 }
 
 model Admin {
-  id                        String                @id @default(cuid())
-  name                      String
-  email                     String                @unique
-  password                  String
-  isActive                  Boolean               @default(true)
-  roleId                    String
-  role                      Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  createdAt                 DateTime              @default(now())
-  updatedAt                 DateTime              @updatedAt
-  salesReturns              SalesReturn[]
-  purchaseReturns           PurchaseReturn[]
-  createdInvoices           Invoice[]
-  createdOrders             Order[]
-  createdPurchaseOrders     PurchaseOrder[]
-  createdSuppliers          Supplier[]
-  createdCustomers          Customer[]
-  createdInventoryMovements InventoryMovement[]
-  createdProducts           Product[]
-  createdBrands             Brand[]
-  createdCategories         Category[]
-  createdExpenses           Expense[]
-  createdPriceHistory       ProductPriceHistory[]
+  id                          String                @id @default(cuid())
+  name                        String
+  email                       String                @unique
+  password                    String
+  isActive                    Boolean               @default(true)
+  roleId                      String
+  role                        Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  salesReturns                SalesReturn[]
+  purchaseReturns             PurchaseReturn[]
+  createdInvoices             Invoice[]
+  createdOrders               Order[]
+  createdPurchaseOrders       PurchaseOrder[]
+  createdSuppliers            Supplier[]
+  createdCustomers            Customer[]
+  createdInventoryMovements   InventoryMovement[]
+  createdProducts             Product[]
+  createdBrands               Brand[]
+  createdCategories           Category[]
+  createdExpenses             Expense[]
+  createdPriceHistory         ProductPriceHistory[]
+  uploadedPurchaseAttachments PurchaseAttachment[]
 
   @@index([roleId])
 }
@@ -266,14 +267,7 @@ model InventoryMovement {
   @@index([createdById])
 }
 
-/**
- * One row per actual change to Product.purchasePrice, whether triggered by
- * a direct product edit or a purchase order's "update product price"
- * checkbox — the only way to answer "what was this product's purchase
- * price as of a given date" (e.g. for historical inventory valuation)
- * without silently assuming today's price always applied. Mirrors
- * InventoryMovement's role for quantity: an audit trail, not a live value.
- */
+
 model ProductPriceHistory {
   id            String   @id @default(cuid())
   productId     String
@@ -340,26 +334,45 @@ enum PurchaseOrderStatus {
 }
 
 model PurchaseOrder {
-  id            String              @id @default(cuid())
-  orderNumber   String              @unique
+  id            String               @id @default(cuid())
+  orderNumber   String               @unique
   supplierId    String
-  supplier      Supplier            @relation(fields: [supplierId], references: [id])
-  status        PurchaseOrderStatus @default(PENDING)
-  language      InvoiceLanguage     @default(AR)
+  supplier      Supplier             @relation(fields: [supplierId], references: [id])
+  status        PurchaseOrderStatus  @default(PENDING)
+  language      InvoiceLanguage      @default(AR)
   items         PurchaseOrderItem[]
-  total         Decimal             @db.Decimal(10, 2)
-  paymentStatus PaymentStatus       @default(UNPAID)
-  paidAmount    Decimal             @default(0) @db.Decimal(10, 2)
+  total         Decimal              @db.Decimal(10, 2)
+  paymentStatus PaymentStatus        @default(UNPAID)
+  paidAmount    Decimal              @default(0) @db.Decimal(10, 2)
   payments      SupplierPayment[]
   returns       PurchaseReturn[]
+  attachments   PurchaseAttachment[]
   receivedAt    DateTime?
   createdById   String?
-  createdBy     Admin?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdBy     Admin?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@index([supplierId])
   @@index([createdById])
+}
+
+
+model PurchaseAttachment {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  publicId        String
+  secureUrl       String
+  fileName        String
+  fileType        String
+  fileSize        Int
+  resourceType    String        @default("image")
+  uploadedById    String?
+  uploadedBy      Admin?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
 }
 
 model SupplierPayment {

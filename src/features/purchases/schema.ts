@@ -10,9 +10,19 @@ export const purchaseOrderItemSchema = z.object({
     .min(0, { error: "التكلفة يجب أن تكون رقماً موجباً" }),
 });
 
+export const purchaseAttachmentSchema = z.object({
+  publicId: z.string().min(1),
+  secureUrl: z.string().min(1),
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileSize: z.number().int().min(0),
+  resourceType: z.enum(["image", "raw"]),
+});
+
 export const purchaseOrderSchema = z.object({
   supplierId: z.string().min(1, { error: "الرجاء اختيار المورد" }),
   language: z.enum(["AR", "EN", "FR"]).default("AR"),
+  attachments: z.array(purchaseAttachmentSchema).default([]),
   items: z
     .array(
       z.object({

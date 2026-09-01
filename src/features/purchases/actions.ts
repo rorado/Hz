@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, hasPermission } from "@/lib/permissions";
+import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 import { computePaymentStatus } from "@/lib/money";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
@@ -11,6 +12,7 @@ import { formatMessage } from "@/i18n/format";
 import {
   purchaseOrderSchema,
   purchaseOrderItemsSchema,
+  purchaseAttachmentSchema,
 } from "@/features/purchases/schema";
 import type { PaymentMethod, PurchaseOrderStatus, Prisma } from "@/generated/prisma/client";
 
@@ -73,6 +75,17 @@ export async function createPurchaseOrder(
             productId: item.productId,
             quantity: item.quantity,
             unitCost: item.unitCost,
+          })),
+        },
+        attachments: {
+          create: parsed.data.attachments.map((attachment) => ({
+            publicId: attachment.publicId,
+            secureUrl: attachment.secureUrl,
+            fileName: attachment.fileName,
+            fileType: attachment.fileType,
+            fileSize: attachment.fileSize,
+            resourceType: attachment.resourceType,
+            uploadedById: access.adminId,
           })),
         },
       },
@@ -598,5 +611,60 @@ export async function deletePurchaseOrders(
       error: formatMessage(t.purchases.bulkDeleteErrorTemplate, { count: failedCount }),
     };
   }
+  return { success: true };
+}
+
+/** Attaches an already-uploaded (client-side, via FileAttachmentUploader)
+ * file to an existing purchase order — used on the detail page, after the
+ * order already exists. Creating a new order attaches files as a nested
+ * write inside createPurchaseOrder instead; this is the edit-time path. */
+export async function addPurchaseAttachment(
+  purchaseOrderId: string,
+  input: unknown,
+): Promise<ActionResult> {
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  const parsed = purchaseAttachmentSchema.safeParse(input);
+  if (!parsed.success) return { error: t.purchases.fileUploadGenericError };
+
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id: purchaseOrderId },
+    select: { id: true },
+  });
+  if (!order) return { error: t.purchases.notFoundError };
+
+  await prisma.purchaseAttachment.create({
+    data: { purchaseOrderId, ...parsed.data, uploadedById: access.adminId },
+  });
+
+  revalidatePath(`/dashboard/purchases/${purchaseOrderId}`);
+  return { success: true };
+}
+
+/** Removes a purchase attachment's DB row and its underlying Cloudinary
+ * asset. A plain confirm dialog (not a password-confirmed one) is enough
+ * here — unlike a payment or the order itself, deleting an attached
+ * document has no financial/stock effect to guard against. */
+export async function deletePurchaseAttachment(
+  attachmentId: string,
+): Promise<ActionResult> {
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  const attachment = await prisma.purchaseAttachment.findUnique({
+    where: { id: attachmentId },
+  });
+  if (!attachment) return { error: t.purchases.attachmentNotFoundError };
+
+  await prisma.purchaseAttachment.delete({ where: { id: attachmentId } });
+  await destroyCloudinaryAsset(
+    attachment.publicId,
+    attachment.resourceType === "raw" ? "raw" : "image",
+  );
+
+  revalidatePath(`/dashboard/purchases/${attachment.purchaseOrderId}`);
   return { success: true };
 }

@@ -1044,6 +1044,17 @@ export const fr = {
     deleteError: "Impossible de supprimer le bon de commande",
     bulkDeleteErrorTemplate:
       "Impossible de supprimer {count} bon(s) de commande",
+    attachmentsLabel: "Pièces jointes",
+    addAttachmentsButton: "Ajouter des pièces jointes (PDF, images ou documents)",
+    noAttachmentsText: "Aucune pièce jointe pour le moment",
+    maxAttachmentsTemplate: "Maximum {max} pièces jointes par bon de commande",
+    fileTooLargeTemplate: "Fichier trop volumineux, maximum {max} Mo",
+    fileUploadFailedError: "Échec de l'envoi d'un des fichiers",
+    fileUploadGenericError: "Une erreur est survenue lors de l'envoi des fichiers",
+    attachmentNotFoundError: "Pièce jointe introuvable",
+    attachmentDeleteDescriptionTemplate:
+      'Le fichier « {name} » sera définitivement supprimé.',
+    downloadAttachmentLabel: "Télécharger le fichier",
   },
   categories: {
     addButton: "Ajouter une catégorie",

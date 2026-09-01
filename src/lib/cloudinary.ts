@@ -17,8 +17,11 @@ export function createUploadSignature(paramsToSign: Record<string, string | numb
   return { timestamp, signature };
 }
 
-export async function destroyCloudinaryAsset(publicId: string) {
-  await cloudinary.uploader.destroy(publicId);
+export async function destroyCloudinaryAsset(
+  publicId: string,
+  resourceType: "image" | "raw" | "video" = "image",
+) {
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 }
 
 export { cloudinary };
