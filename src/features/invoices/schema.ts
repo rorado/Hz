@@ -28,6 +28,13 @@ export const paymentLineSchema = z.object({
 
 export const invoiceSchema = z.object({
   language: z.enum(["AR", "EN", "FR"]),
+  // Invoice date (YYYY-MM-DD) — editable from the invoice screen; blank
+  // means "leave unchanged". Only applied when editing an existing invoice.
+  issueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { error: "التاريخ غير صحيح" })
+    .optional()
+    .or(z.literal("")),
   customerId: z.string().min(1, { error: "الرجاء اختيار عميل" }),
   customerName: z
     .string()

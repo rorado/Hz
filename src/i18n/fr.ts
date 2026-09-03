@@ -760,6 +760,7 @@ export const fr = {
     columnTotal: "Total",
     columnLanguage: "Langue",
     columnDate: "Date",
+    issueDateLabel: "Date de la facture",
     deleteConfirmMessage:
       'La facture "{number}" sera définitivement supprimée.',
     deletePasswordLabel: "Mot de passe de suppression",
@@ -981,6 +982,7 @@ export const fr = {
     printButton: "Imprimer le bon de commande",
     printCardTitle: "Impression",
     languageUpdatedToast: "Langue d'impression mise à jour",
+    dateUpdatedToast: "Date du bon de commande mise à jour",
     itemsCardTitle: "Articles",
     receivedNotice:
       "Cette commande a déjà été reçue et ses quantités ont été ajoutées au stock. Ses articles ne peuvent plus être modifiés — remettez d'abord son statut à « en attente » (le stock ajouté sera alors retiré automatiquement).",

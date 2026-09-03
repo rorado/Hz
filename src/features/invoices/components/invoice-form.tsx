@@ -409,9 +409,19 @@ function CategoryQuickAddPanel({
   );
 }
 
+/** A Date -> "YYYY-MM-DD" for <input type="date">, using local calendar
+ * parts so the value shown matches how it's read back on save (noon local). */
+function toDateInputValue(date: Date): string {
+  const d = new Date(date);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 type InvoiceRecord = {
   id: string;
   language: string;
+  createdAt: Date;
   customerId: string | null;
   customerName: string;
   customerPhone: string;
@@ -464,6 +474,7 @@ export function InvoiceForm({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       language: (invoice?.language as InvoiceOutput["language"]) ?? "AR",
+      issueDate: invoice?.createdAt ? toDateInputValue(invoice.createdAt) : "",
       customerId: invoice?.customerId ?? "",
       customerName: invoice?.customerName ?? "",
       customerPhone: invoice?.customerPhone ?? "",
@@ -822,6 +833,24 @@ export function InvoiceForm({
                   )}
                 />
               </div>
+              {invoice && (
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-issue-date">
+                    {t.invoices.issueDateLabel}
+                  </Label>
+                  <Input
+                    id="invoice-issue-date"
+                    type="date"
+                    className="w-full"
+                    {...register("issueDate")}
+                  />
+                  {errors.issueDate && (
+                    <p className="text-sm text-destructive">
+                      {errors.issueDate.message}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {!invoice && (

@@ -743,6 +743,7 @@ export const en = {
     columnTotal: "Total",
     columnLanguage: "Language",
     columnDate: "Date",
+    issueDateLabel: "Invoice date",
     deleteConfirmMessage: 'Invoice "{number}" will be permanently deleted.',
     deletePasswordLabel: "Delete password",
     deletePasswordPlaceholder: "Enter the password to continue",
@@ -953,6 +954,7 @@ export const en = {
     printButton: "Print purchase order",
     printCardTitle: "Print",
     languageUpdatedToast: "Print language updated",
+    dateUpdatedToast: "Purchase order date updated",
     itemsCardTitle: "Items",
     receivedNotice:
       "This order has already been received and its quantities were added to inventory. Its items can no longer be edited — set its status back to pending first (this will remove what it added from inventory).",

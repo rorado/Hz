@@ -141,6 +141,7 @@ export default async function InvoiceEditPage({
           invoice={{
             id: invoice.id,
             language: invoice.language,
+            createdAt: invoice.createdAt,
             customerId: invoice.customerId,
             customerName: invoice.customerName,
             customerPhone: invoice.customerPhone,

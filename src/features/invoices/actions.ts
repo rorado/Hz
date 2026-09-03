@@ -279,6 +279,18 @@ export async function updateInvoice(
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: t.invoices.validationError };
 
+  // Optional backdating: an empty/absent issueDate leaves createdAt as-is.
+  // Noon local time avoids the date landing on the previous day once the
+  // browser's timezone offset is applied.
+  let issuedAt: Date | undefined;
+  if (parsed.data.issueDate) {
+    const candidate = new Date(`${parsed.data.issueDate}T12:00:00`);
+    if (Number.isNaN(candidate.getTime())) {
+      return { error: t.invoices.validationError };
+    }
+    issuedAt = candidate;
+  }
+
   const existing = await prisma.invoice.findUnique({
     where: { id },
     include: {
@@ -412,6 +424,7 @@ export async function updateInvoice(
         where: { id },
         data: {
           language: parsed.data.language,
+          ...(issuedAt ? { createdAt: issuedAt } : {}),
           customerId: newCustomerId,
           customerName: parsed.data.customerName,
           customerPhone: parsed.data.customerPhone,

@@ -153,7 +153,7 @@ export default async function ProductProfilePage({
             </p>
             <p>
               <span className="text-muted-foreground">{t.products.purchasePriceDisplayLabel}: </span>
-              {formatCurrency(Number(product.purchasePrice), locale)}
+              {formatCurrency(Number(product.purchasePrice), locale, false, 4)}
             </p>
             {product.weight != null && (
               <p>
@@ -187,15 +187,15 @@ export default async function ProductProfilePage({
           <CardContent className="space-y-2 text-sm">
             <p>
               <span className="text-muted-foreground">{t.reports.columnPrice1}: </span>
-              {formatCurrency(Number(product.price1), locale)}
+              {formatCurrency(Number(product.price1), locale, false, 4)}
             </p>
             <p>
               <span className="text-muted-foreground">{t.reports.columnPrice2}: </span>
-              {formatCurrency(Number(product.price2), locale)}
+              {formatCurrency(Number(product.price2), locale, false, 4)}
             </p>
             <p>
               <span className="text-muted-foreground">{t.reports.columnPrice3}: </span>
-              {formatCurrency(Number(product.price3), locale)}
+              {formatCurrency(Number(product.price3), locale, false, 4)}
             </p>
           </CardContent>
         </Card>

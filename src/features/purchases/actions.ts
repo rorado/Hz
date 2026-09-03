@@ -525,6 +525,43 @@ export async function updatePurchaseOrderLanguage(
 }
 
 /**
+ * Sets a purchase order's date. This is `createdAt` — the value shown as
+ * the order date everywhere (list, detail, print/PDF) and used for report
+ * period filtering — so backdating moves the order to the right period.
+ * `date` is `YYYY-MM-DD`; parsed at noon local time so the calendar day
+ * doesn't shift under the browser's timezone offset. Touches nothing else.
+ */
+export async function updatePurchaseOrderDate(
+  id: string,
+  date: string,
+): Promise<ActionResult> {
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { error: t.purchases.validationError };
+  }
+  const createdAt = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(createdAt.getTime())) {
+    return { error: t.purchases.validationError };
+  }
+
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!order) return { error: t.purchases.notFoundError };
+
+  await prisma.purchaseOrder.update({ where: { id }, data: { createdAt } });
+
+  revalidatePath("/dashboard/purchases");
+  revalidatePath(`/dashboard/purchases/${id}`);
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/**
  * Reverses a RECEIVED purchase order's stock effect before it's deleted, so
  * deleting the record doesn't leave phantom stock behind with no order left
  * to justify it. A PENDING or CANCELLED order never added stock, so there's

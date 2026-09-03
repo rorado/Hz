@@ -10,10 +10,24 @@ export const CURRENCY_LABEL = companyConfig.currency;
 const LRI = "⁦";
 const PDI = "⁩";
 
-/** Groups the integer part of a number with a space every 3 digits, e.g. 456583.77 -> "456 583.77". */
-function groupThousands(value: number, decimals: number): string {
+/** Groups the integer part of a number with a space every 3 digits, e.g.
+ * 456583.77 -> "456 583.77". Always shows at least `minDecimals`; shows up
+ * to `maxDecimals`, trimming trailing zeros in between (so a 4-decimal
+ * price of 3.3 renders "3.30", 3.3333 renders "3.3333"). */
+function groupThousands(
+  value: number,
+  minDecimals: number,
+  maxDecimals: number,
+): string {
   const isNegative = value < 0;
-  const [intPart, decPart] = Math.abs(value).toFixed(decimals).split(".");
+  let fixed = Math.abs(value).toFixed(maxDecimals);
+  if (maxDecimals > minDecimals) {
+    fixed = fixed.replace(
+      new RegExp(`(\\.\\d{${minDecimals}}\\d*?)0+$`),
+      "$1",
+    );
+  }
+  const [intPart, decPart] = fixed.split(".");
   const groupedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   const result = decPart !== undefined ? `${groupedInt}.${decPart}` : groupedInt;
   return isNegative ? `-${result}` : result;
@@ -23,9 +37,10 @@ export function formatCurrency(
   amount: number | string,
   lang: keyof typeof CURRENCY_LABEL = "ar",
   withoutCurrency = false,
+  maxDecimals = 2,
 ): string {
   const value = typeof amount === "string" ? Number(amount) : amount;
   const currencyLabel = CURRENCY_LABEL[lang];
-  const formatted = `${LRI}${groupThousands(value, 2)}${PDI}`;
+  const formatted = `${LRI}${groupThousands(value, 2, maxDecimals)}${PDI}`;
   return withoutCurrency ? formatted : `${formatted} ${currencyLabel}`;
 }

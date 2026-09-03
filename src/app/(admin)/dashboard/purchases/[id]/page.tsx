@@ -10,6 +10,7 @@ import { getPurchaseOrderById } from "@/features/purchases/queries";
 import { getProductPickerOptions } from "@/features/products/queries";
 import { PurchaseOrderStatusSelect } from "@/features/purchases/components/purchase-order-status-select";
 import { PurchaseOrderLanguageSelect } from "@/features/purchases/components/purchase-order-language-select";
+import { PurchaseOrderDateField } from "@/features/purchases/components/purchase-order-date-field";
 import { DeletePurchaseOrderButton } from "@/features/purchases/components/delete-purchase-order-button";
 import { PurchaseOrderItemsForm } from "@/features/purchases/components/purchase-order-items-form";
 import { PurchaseAttachmentsCard } from "@/features/purchases/components/purchase-attachments-card";
@@ -149,10 +150,10 @@ export default async function PurchaseOrderDetailPage({
                   <span dir="ltr">{order.supplier.phone}</span>
                 </p>
               )}
-              <p>
-                <span className="text-muted-foreground">{t.reports.columnDate}: </span>
-                {new Date(order.createdAt).toLocaleDateString("fr-FR")}
-              </p>
+              <PurchaseOrderDateField
+                purchaseOrderId={order.id}
+                date={order.createdAt}
+              />
             </CardContent>
           </Card>
 

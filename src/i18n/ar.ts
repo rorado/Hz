@@ -728,6 +728,7 @@ export const ar = {
     columnTotal: "الإجمالي",
     columnLanguage: "اللغة",
     columnDate: "التاريخ",
+    issueDateLabel: "تاريخ الفاتورة",
     deleteConfirmMessage: 'سيتم حذف الفاتورة "{number}" نهائياً.',
     deletePasswordLabel: "كلمة مرور الحذف",
     deletePasswordPlaceholder: "أدخل كلمة المرور للمتابعة",
@@ -934,6 +935,7 @@ export const ar = {
     printButton: "طباعة أمر الشراء",
     printCardTitle: "الطباعة",
     languageUpdatedToast: "تم تحديث لغة الطباعة",
+    dateUpdatedToast: "تم تحديث تاريخ أمر الشراء",
     itemsCardTitle: "العناصر",
     receivedNotice:
       "تم استلام هذا الأمر بالفعل وأُضيفت كمياته إلى المخزون. لا يمكن تعديل عناصره الآن — لتصحيحه أعد حالته إلى قيد الانتظار أولاً (سيُطرح ما أُضيف من المخزون تلقائياً).",

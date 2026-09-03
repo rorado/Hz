@@ -335,7 +335,7 @@ export function ProductFormSheet({
             id="product-purchase-price"
             type="number"
             min={0}
-            step="0.01"
+            step="0.0001"
             {...register("purchasePrice")}
           />
           {errors.purchasePrice && (
@@ -366,7 +366,7 @@ export function ProductFormSheet({
               id="product-price1"
               type="number"
               min={0}
-              step="0.01"
+              step="0.0001"
               {...register("price1")}
             />
             {errors.price1 && (
@@ -381,7 +381,7 @@ export function ProductFormSheet({
               id="product-price2"
               type="number"
               min={0}
-              step="0.01"
+              step="0.0001"
               {...register("price2")}
             />
             {errors.price2 && (
@@ -396,7 +396,7 @@ export function ProductFormSheet({
               id="product-price3"
               type="number"
               min={0}
-              step="0.01"
+              step="0.0001"
               {...register("price3")}
             />
             {errors.price3 && (

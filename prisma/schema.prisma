@@ -147,10 +147,10 @@ model Product {
   brand               Brand?                @relation(fields: [brandId], references: [id])
   quantity            Decimal               @default(0) @db.Decimal(12, 3)
   minStockLevel       Decimal               @default(0) @db.Decimal(12, 3)
-  price1              Decimal               @default(0) @db.Decimal(10, 2)
-  price2              Decimal               @default(0) @db.Decimal(10, 2)
-  price3              Decimal               @default(0) @db.Decimal(10, 2)
-  purchasePrice       Decimal               @default(0) @db.Decimal(10, 2)
+  price1              Decimal               @default(0) @db.Decimal(12, 4)
+  price2              Decimal               @default(0) @db.Decimal(12, 4)
+  price3              Decimal               @default(0) @db.Decimal(12, 4)
+  purchasePrice       Decimal               @default(0) @db.Decimal(12, 4)
   weight              Decimal?              @default(0) @db.Decimal(10, 3)
   status              ProductStatus         @default(ACTIVE)
   images              ProductImage[]
@@ -278,7 +278,7 @@ model ProductPriceHistory {
   id            String   @id @default(cuid())
   productId     String
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  purchasePrice Decimal  @db.Decimal(10, 2)
+  purchasePrice Decimal  @db.Decimal(12, 4)
   reason        String?
   reference     String?
   createdById   String?
