@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PermissionMatrix } from "@/features/roles/components/permission-matrix";
+import { DASHBOARD_TAB_PERMISSIONS } from "@/lib/permission-modules";
 import { roleSchema, type RoleInput } from "@/features/roles/schema";
 import { createRole, updateRole } from "@/features/roles/actions";
 import { useLocale } from "@/i18n/locale-provider";
@@ -56,6 +57,12 @@ export function RoleFormSheet({
   const isFullAccess = watch("isFullAccess");
   const isSystem = role?.isSystem ?? false;
 
+  const [dashboardOpen, setDashboardOpen] = useState(() =>
+    (role?.permissions ?? []).some((p) =>
+      DASHBOARD_TAB_PERMISSIONS.includes(p.permission),
+    ),
+  );
+
   function close() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("new");
@@ -65,6 +72,14 @@ export function RoleFormSheet({
   }
 
   function onSubmit(values: RoleInput) {
+    if (
+      !values.isFullAccess &&
+      dashboardOpen &&
+      !values.permissions.some((p) => DASHBOARD_TAB_PERMISSIONS.includes(p))
+    ) {
+      toast.error(t.roles.dashboardNeedsOneError);
+      return;
+    }
     startTransition(async () => {
       const result = role
         ? await updateRole(role.id, values)
@@ -118,7 +133,9 @@ export function RoleFormSheet({
                 <PermissionMatrix
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={isFullAccess}
+                  fullAccess={isFullAccess}
+                  dashboardOpen={dashboardOpen}
+                  onDashboardOpenChange={setDashboardOpen}
                 />
               )}
             />

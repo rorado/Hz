@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,18 @@ export function InvoicePdfButton({
   targetId,
   fileName,
   label,
+  autoOpen = false,
 }: {
   targetId: string;
   fileName: string;
   label: string;
+  /** When true, generate the PDF once shortly after mount — used when the
+   * page is opened with `?auto=pdf` (from the La Caisse success dialog). */
+  autoOpen?: boolean;
 }) {
   const t = useT();
   const [isGenerating, setIsGenerating] = useState(false);
+  const autoFired = useRef(false);
 
   async function handleClick() {
     const target = document.getElementById(targetId);
@@ -70,6 +75,16 @@ export function InvoicePdfButton({
       setIsGenerating(false);
     }
   }
+
+  useEffect(() => {
+    if (!autoOpen || autoFired.current) return;
+    autoFired.current = true;
+    const id = setTimeout(() => {
+      void handleClick();
+    }, 600);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   return (
     <Button

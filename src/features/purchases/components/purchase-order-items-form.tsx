@@ -52,6 +52,7 @@ type ProductOption = {
   price1: number;
   price2: number;
   price3: number;
+  purchasePrice: number;
 };
 
 function productLabel(product: ProductOption, none: string) {
@@ -79,6 +80,7 @@ function ProductPickerField({
     price1: 0,
     price2: 0,
     price3: 0,
+    purchasePrice: 0,
   };
   const items = [noneProduct, ...products];
   const selected = items.find((item) => item.id === value) ?? noneProduct;
@@ -219,7 +221,7 @@ export function PurchaseOrderItemsForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
         <Label>{t.purchases.itemsLabel}</Label>
-        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: 0, updateProductPurchasePrice: true }))} />
+        <QuickProductAddPanel products={products} onAddProducts={(selected) => selected.forEach((product) => append({ productId: product.id, quantity: 1, unitCost: product.purchasePrice, updateProductPurchasePrice: true }))} />
         <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-foreground">
           {t.purchases.updateProductPurchasePriceHelp}
         </p>
@@ -247,7 +249,10 @@ export function PurchaseOrderItemsForm({
                       products={products}
                       onChange={(product) => {
                         productField.onChange(product?.id ?? "");
-                        setValue(`items.${index}.unitCost`, 0);
+                        setValue(
+                          `items.${index}.unitCost`,
+                          product?.purchasePrice ?? 0,
+                        );
                       }}
                       t={t}
                     />

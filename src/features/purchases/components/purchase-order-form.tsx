@@ -55,6 +55,7 @@ type ProductOption = {
   price1: number;
   price2: number;
   price3: number;
+  purchasePrice: number;
 };
 
 function productLabel(product: ProductOption, none: string) {
@@ -126,6 +127,7 @@ function ProductPickerField({
     price1: 0,
     price2: 0,
     price3: 0,
+    purchasePrice: 0,
   };
   const items = [noneProduct, ...products];
   const selected = items.find((item) => item.id === value) ?? noneProduct;
@@ -173,6 +175,10 @@ export function PurchaseOrderForm({
   const [isPending, startTransition] = useTransition();
   const { t, locale } = useLocale();
 
+  const defaultProduct = products.find(
+    (product) => product.id === defaultProductId,
+  );
+
   const {
     register,
     control,
@@ -188,11 +194,9 @@ export function PurchaseOrderForm({
       attachments: [],
       items: [
         {
-          productId: products.some((product) => product.id === defaultProductId)
-            ? (defaultProductId ?? "")
-            : "",
+          productId: defaultProduct?.id ?? "",
           quantity: 1,
-          unitCost: 0,
+          unitCost: defaultProduct?.purchasePrice ?? 0,
           updateProductPurchasePrice: true,
         },
       ],
@@ -221,7 +225,7 @@ export function PurchaseOrderForm({
       append({
         productId: product.id,
         quantity: 1,
-        unitCost: 0,
+        unitCost: product.purchasePrice,
         updateProductPurchasePrice: true,
       }),
     );
@@ -331,7 +335,10 @@ export function PurchaseOrderForm({
                       products={products}
                       onChange={(product) => {
                         productField.onChange(product?.id ?? "");
-                        setValue(`items.${index}.unitCost`, 0);
+                        setValue(
+                          `items.${index}.unitCost`,
+                          product?.purchasePrice ?? 0,
+                        );
                       }}
                       t={t}
                     />

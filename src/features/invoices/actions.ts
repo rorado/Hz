@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, hasPermission } from "@/lib/permissions";
+import {
+  requirePermission,
+  hasPermission,
+  type PermissionKey,
+} from "@/lib/permissions";
 import { invoiceSchema } from "@/features/invoices/schema";
 import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
@@ -85,11 +89,33 @@ export async function createInvoice(
      * recordPaymentAcrossInvoices under the same batch). */
     batchId?: string;
     allowNegativeStock?: boolean;
+    /** When false, return `{ success, invoiceId }` instead of redirecting to
+     * the invoice detail page — used by callers that own their own
+     * post-create UI (La Caisse shows a success dialog and stays put). */
+    redirect?: boolean;
+    /** Permission to enforce instead of INVOICES_MANAGE — La Caisse cashiers
+     * hold POS_MANAGE, not INVOICES_MANAGE, but are still allowed to ring up
+     * a standalone sale. */
+    permission?: PermissionKey;
+    /** POS idempotency token (Invoice.posSaleToken). A repeated/retried call
+     * with the same token resolves to the existing invoice instead of
+     * creating a second one. */
+    posSaleToken?: string;
   },
-): Promise<ActionResult> {
-  const access = await requirePermission("INVOICES_MANAGE");
+): Promise<ActionResult & { invoiceId?: string }> {
+  const access = await requirePermission(options?.permission ?? "INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
+
+  // Idempotency: a POS sale that's already been committed under this token
+  // must never create a second invoice (double-click, retried request).
+  if (options?.posSaleToken) {
+    const existing = await prisma.invoice.findUnique({
+      where: { posSaleToken: options.posSaleToken },
+      select: { id: true },
+    });
+    if (existing) return { success: true, invoiceId: existing.id };
+  }
 
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: t.invoices.validationError };
@@ -173,6 +199,7 @@ export async function createInvoice(
           paymentStatus,
           paidAmount,
           balanceEffectApplied: balanceEffect,
+          posSaleToken: options?.posSaleToken ?? null,
           createdById: access.adminId,
           items: {
             create: parsed.data.items.map((item, index) => ({
@@ -256,6 +283,22 @@ export async function createInvoice(
     if (error instanceof Error && error.message === "ORDER_ALREADY_INVOICED") {
       return { error: t.orders.invoiceAlreadyIssuedMessage };
     }
+    // Two POS submits raced past the pre-check above and both tried to
+    // insert the same posSaleToken — the unique index rejected the loser.
+    // Resolve to the invoice the winner created.
+    if (
+      options?.posSaleToken &&
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      const winner = await prisma.invoice.findUnique({
+        where: { posSaleToken: options.posSaleToken },
+        select: { id: true },
+      });
+      if (winner) return { success: true, invoiceId: winner.id };
+    }
     return { error: t.invoices.createError };
   }
 
@@ -264,6 +307,11 @@ export async function createInvoice(
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/customers/${customerId}`);
+
+  if (options?.redirect === false) {
+    revalidatePath("/caisse");
+    return { success: true, invoiceId };
+  }
   redirect(`/dashboard/invoices/${invoiceId}`);
 }
 
@@ -662,6 +710,55 @@ export async function deleteInvoice(
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
+  return { success: true };
+}
+
+/**
+ * Cancels a just-completed La Caisse sale: deletes the standalone invoice and
+ * fully reverses its effects — stock booked OUT comes back IN, any رصيد draw
+ * (من الرصيد) or credited overpayment is undone, payment/item rows cascade.
+ * Gated on POS_MANAGE (not INVOICES_MANAGE) and only ever touches an
+ * untouched POS invoice, so a cashier can undo their own mistake without the
+ * dashboard delete password.
+ */
+export async function deletePosSale(invoiceId: string): Promise<ActionResult> {
+  const access = await requirePermission("POS_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  const existing = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { _count: { select: { returns: true } } },
+  });
+  if (!existing || !existing.posSaleToken) {
+    return { error: t.invoices.notFoundError };
+  }
+  if (existing._count.returns > 0) {
+    return { error: t.invoices.cannotDeleteReturnedError };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Invoice" WHERE "id" = ${invoiceId} FOR UPDATE
+      `;
+      if (!locked[0]) return;
+
+      await reverseInvoiceOnDelete(tx, existing, true);
+      await tx.invoice.delete({ where: { id: invoiceId } });
+    });
+  } catch {
+    return { error: t.invoices.deleteError };
+  }
+
+  revalidatePath("/caisse");
+  revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  if (existing.customerId) {
+    revalidatePath(`/dashboard/customers/${existing.customerId}`);
+  }
   return { success: true };
 }
 

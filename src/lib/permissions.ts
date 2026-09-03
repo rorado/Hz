@@ -51,6 +51,43 @@ export async function hasPermission(permission: PermissionKey): Promise<boolean>
   return effective === "full" || effective.has(permission);
 }
 
+/** Like hasPermission, but satisfied when the admin holds *any one* of the
+ * listed permissions — for pages reachable from more than one module (e.g.
+ * an invoice a POS cashier opens from the sale-success dialog: INVOICES_VIEW
+ * or POS_VIEW). */
+export async function hasAnyPermission(
+  permissions: PermissionKey[],
+): Promise<boolean> {
+  const session = await auth();
+  if (!session?.user) return false;
+  const effective = await getEffectivePermissions(session.user.id);
+  if (effective === "full") return true;
+  return permissions.some((permission) => effective.has(permission));
+}
+
+/** Every permission that unlocks at least one page under /dashboard. A role
+ * holding none of these has no reason to land on the dashboard (it should
+ * go straight to La Caisse instead). */
+export const DASHBOARD_ACCESS_PERMISSIONS: PermissionKey[] = [
+  "DASHBOARD_VIEW",
+  "PRODUCTS_VIEW",
+  "ORDERS_VIEW",
+  "CUSTOMERS_VIEW",
+  "INVENTORY_VIEW",
+  "PURCHASES_VIEW",
+  "INVOICES_VIEW",
+  "SUPPLIERS_VIEW",
+  "EXPENSES_VIEW",
+  "REPORTS_VIEW",
+  "RETURNS_VIEW",
+  "USERS_MANAGE",
+  "SETTINGS_MANAGE",
+];
+
+export function canAccessDashboard(): Promise<boolean> {
+  return hasAnyPermission(DASHBOARD_ACCESS_PERMISSIONS);
+}
+
 /** Gate for a whole Server Component page — call as the first line before
  * any data fetching. Sends an authenticated-but-forbidden user to a
  * dedicated page with a clear "you don't have access" message instead of

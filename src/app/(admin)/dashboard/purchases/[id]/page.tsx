@@ -52,6 +52,7 @@ export default async function PurchaseOrderDetailPage({
     price1: Number(product.price1),
     price2: Number(product.price2),
     price3: Number(product.price3),
+    purchasePrice: Number(product.purchasePrice),
   }));
 
   const orderTotal = Number(order.total);
@@ -120,6 +121,42 @@ export default async function PurchaseOrderDetailPage({
               uploadedByName: attachment.uploadedBy?.name ?? null,
             }))}
           />
+
+          <SupplierPaymentHistory
+            payments={order.payments.map((payment) => ({
+              ...payment,
+              amount: Number(payment.amount),
+            }))}
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>سجل المرتجعات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.returns.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  لا توجد مرتجعات.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {order.returns.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={`/dashboard/purchase-returns/${r.id}`}
+                      className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"
+                    >
+                      <span className="font-medium">{r.returnNumber}</span>
+                      <span>
+                        {r.items.reduce((s, i) => s + i.quantity.toNumber(), 0)}{" "}
+                        قطعة
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -226,14 +263,6 @@ export default async function PurchaseOrderDetailPage({
               )}
             </CardContent>
           </Card>
-
-          <SupplierPaymentHistory
-            payments={order.payments.map((payment) => ({
-              ...payment,
-              amount: Number(payment.amount),
-            }))}
-          />
-          <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{order.returns.length===0?<p className="text-sm text-muted-foreground">لا توجد مرتجعات.</p>:<div className="space-y-2">{order.returns.map(r=><Link key={r.id} href={`/dashboard/purchase-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity.toNumber(),0)} قطعة</span></Link>)}</div>}</CardContent></Card>
         </div>
       </div>
     </div>

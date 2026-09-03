@@ -32,3 +32,17 @@ export function moduleViewPermission(module: PermissionModuleKey): PermissionKey
 export function moduleManagePermission(module: PermissionModuleKey): PermissionKey {
   return `${module}_MANAGE` as PermissionKey;
 }
+
+/** Every permission that lives on the "Dashboard" tab of the role editor —
+ * the statistics page (DASHBOARD_VIEW), the per-module VIEW/MANAGE pairs, and
+ * the standalone USERS_MANAGE / SETTINGS_MANAGE. Used to gate the tab behind
+ * the "Can access the Dashboard" toggle and to enforce "pick at least one". */
+export const DASHBOARD_TAB_PERMISSIONS: PermissionKey[] = [
+  "DASHBOARD_VIEW",
+  ...PERMISSION_MODULE_KEYS.flatMap((moduleKey) => [
+    moduleViewPermission(moduleKey),
+    moduleManagePermission(moduleKey),
+  ]),
+  "USERS_MANAGE",
+  "SETTINGS_MANAGE",
+];

@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, LogOut, Calculator } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -124,6 +124,7 @@ export function AppSidebar({
   const { locale } = useLocale();
   const direction = useDirection();
   const adminNavGroups = getAdminNavGroups(t, permissions);
+  const canPos = permissions === "full" || permissions.includes("POS_VIEW");
   const [collapsedGroups, setGroupCollapsed] = useCollapsedGroups();
   const badgeValues: Record<string, number> = {
     pendingOrders,
@@ -277,9 +278,6 @@ export function AppSidebar({
                       <span className="truncate text-sm font-medium text-sidebar-foreground">
                         {adminName}
                       </span>
-                      <span className="truncate text-xs text-sidebar-foreground/60">
-                        {t.sidebar.adminRole}
-                      </span>
                     </div>
                     <ChevronsUpDown className="size-4 shrink-0 text-sidebar-foreground/50 transition-transform duration-150 group-data-popup-open/menu-button:rotate-180" />
                   </SidebarMenuButton>
@@ -292,6 +290,22 @@ export function AppSidebar({
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                {canPos && (
+                  <>
+                    <DropdownMenuItem
+                      render={
+                        <Link
+                          href="/caisse"
+                          onClick={() => setOpenMobile(false)}
+                        />
+                      }
+                    >
+                      <Calculator />
+                      {t.admin.caisse}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <form action={logout}>
                   <DropdownMenuItem
                     variant="destructive"

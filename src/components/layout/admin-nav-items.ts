@@ -208,5 +208,10 @@ export function getFirstAccessibleHref(
   permissions: PermissionKey[] | "full",
 ): string | null {
   const groups = getAdminNavGroups(t, permissions);
-  return groups[0]?.items[0]?.href ?? null;
+  const firstDashboardHref = groups[0]?.items[0]?.href;
+  if (firstDashboardHref) return firstDashboardHref;
+  // La Caisse is intentionally absent from the sidebar, but a POS-only role
+  // still needs somewhere to land instead of the access-denied dead end.
+  if (canSee(permissions, "POS_VIEW")) return "/caisse";
+  return null;
 }

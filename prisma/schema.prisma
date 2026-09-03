@@ -59,6 +59,8 @@ enum PermissionKey {
   USERS_MANAGE
   SETTINGS_MANAGE
   DASHBOARD_VIEW
+  POS_VIEW
+  POS_MANAGE
 }
 
 model Role {
@@ -85,10 +87,6 @@ model SystemSettings {
   id           String   @id @default(cuid())
   appName      String?
   appShortName String?
-  // Custom company logo — only a reference is stored (Cloudinary secure
-  // URL + public id), never the file itself. Both null => fall back to the
-  // default brand mark. The two typed Json color columns can't hold this
-  // without breaking their ColorTokens contract, hence dedicated columns.
   logoUrl      String?
   logoPublicId String?
   colorsLight  Json?
@@ -462,6 +460,7 @@ model Invoice {
   notes                String?
   orderId              String?         @unique
   order                Order?          @relation(fields: [orderId], references: [id])
+  posSaleToken         String?         @unique
   items                InvoiceItem[]
   total                Decimal         @default(0) @db.Decimal(10, 2)
   paymentMethod        PaymentMethod   @default(CASH)
