@@ -220,8 +220,10 @@ export function DeletePasswordStep({
 
 export function InvoiceDeleteDialog({
   invoice,
+  trigger,
 }: {
   invoice: InvoiceDeleteInfo;
+  trigger?: React.ReactElement;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -277,9 +279,11 @@ export function InvoiceDeleteDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger
         render={
-          <Button variant="ghost" size="icon-sm">
-            <Trash2 className="size-4" />
-          </Button>
+          trigger ?? (
+            <Button variant="ghost" size="icon-sm">
+              <Trash2 className="size-4" />
+            </Button>
+          )
         }
       />
       <AlertDialogContent>

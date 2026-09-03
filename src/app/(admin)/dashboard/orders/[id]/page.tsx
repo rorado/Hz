@@ -12,6 +12,7 @@ import { OrderItemsPriceForm } from "@/features/orders/components/order-items-pr
 import { GenerateInvoiceDialog } from "@/features/orders/components/generate-invoice-dialog";
 import { OrderCustomerCard } from "@/features/orders/components/order-customer-card";
 import { InvoiceLockedNotice } from "@/features/orders/components/invoice-locked-notice";
+import { OrderDeleteActions } from "@/features/orders/components/order-delete-actions";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
@@ -160,6 +161,26 @@ export default async function OrderDetailPage({
                 <Phone className="size-4" />
                 {t.orders.callCustomer}
               </Button>
+              <OrderDeleteActions
+                orderId={order.id}
+                orderNumber={order.orderNumber}
+                invoice={
+                  order.invoice
+                    ? {
+                        id: order.invoice.id,
+                        invoiceNumber: order.invoice.invoiceNumber,
+                        customerName: order.customerName,
+                        customerPhone: order.customerPhone,
+                        total: Number(order.invoice.total),
+                        paymentStatus: order.invoice.paymentStatus,
+                        createdAt: order.invoice.createdAt,
+                        balanceEffectApplied: Number(
+                          order.invoice.balanceEffectApplied,
+                        ),
+                      }
+                    : null
+                }
+              />
             </CardContent>
           </Card>
         </div>
@@ -197,7 +218,16 @@ export default async function OrderDetailPage({
               <CardTitle>{t.orders.statusCardTitle}</CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderStatusSelect orderId={order.id} status={order.status} />
+              <OrderStatusSelect
+                orderId={order.id}
+                status={order.status}
+                hasInvoice={Boolean(order.invoice)}
+                orderTotal={Number(order.total)}
+                customerBalance={
+                  order.customer ? Number(order.customer.balance) : 0
+                }
+                hasCustomer={Boolean(order.customer)}
+              />
             </CardContent>
           </Card>
         </div>

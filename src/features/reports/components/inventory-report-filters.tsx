@@ -82,7 +82,10 @@ export function InventoryReportFilters({
           <SelectTrigger className="w-full sm:w-52">
             <SelectValue>{supplierLabel}</SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            alignItemWithTrigger={false}
+            className="max-h-72 overflow-y-auto"
+          >
             <SelectItem value="all">{t.reports.allSuppliersOption}</SelectItem>
             {supplierOptions.map((supplier) => (
               <SelectItem key={supplier.id} value={supplier.id}>

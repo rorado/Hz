@@ -13,6 +13,15 @@ export async function getInvoicesPage({
   paymentStatus?: PaymentStatus;
   page: number;
 }) {
+  // A digits-only query (e.g. "42" or the displayed "042") also matches the
+  // invoice's serial number exactly. Bounded to a 32-bit int so an
+  // oversized value can't error the query.
+  const trimmedQuery = query?.trim();
+  const sequenceNumberQuery =
+    trimmedQuery && /^\d+$/.test(trimmedQuery)
+      ? Number.parseInt(trimmedQuery, 10)
+      : undefined;
+
   const where: Prisma.InvoiceWhereInput = {
     ...(query
       ? {
@@ -20,6 +29,10 @@ export async function getInvoicesPage({
             { invoiceNumber: { contains: query, mode: "insensitive" } },
             { customerName: { contains: query, mode: "insensitive" } },
             { customerPhone: { contains: query, mode: "insensitive" } },
+            ...(sequenceNumberQuery !== undefined &&
+            sequenceNumberQuery <= 2_147_483_647
+              ? [{ sequenceNumber: sequenceNumberQuery }]
+              : []),
           ],
         }
       : {}),

@@ -6,7 +6,8 @@ import { BackButton } from "@/components/shared/back-button";
 import { InvoicePrintButton } from "@/features/invoices/components/invoice-print-button";
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
 import { getCustomerStatement } from "@/features/customers/queries";
-import { companyConfig } from "@/config/company";
+import { getSystemSettings } from "@/features/settings/queries";
+import { DocumentLogo } from "@/components/shared/document-logo";
 import { formatCurrency } from "@/lib/currency";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary, getLocale } from "@/i18n/server";
@@ -37,10 +38,11 @@ export default async function CustomerStatementPage({
   const requested = await searchParams;
   const from = validDate(requested.from);
   const to = validDate(requested.to);
-  const [statement, t, locale] = await Promise.all([
+  const [statement, t, locale, settings] = await Promise.all([
     getCustomerStatement(id, from, to),
     getDictionary(),
     getLocale(),
+    getSystemSettings(),
   ]);
   if (!statement) notFound();
 
@@ -103,7 +105,12 @@ export default async function CustomerStatementPage({
               <ReceiptText className="size-6 text-primary print:hidden" />
               <h1 className="text-2xl font-bold">{t.customers.statementTitle}</h1>
             </div>
-            <p className="font-semibold">{companyConfig.name}</p>
+            <DocumentLogo
+              logoUrl={settings.logoUrl}
+              name={settings.appName}
+              nameClassName="font-semibold"
+              imgClassName="h-10 w-auto max-w-[180px] object-contain"
+            />
           </div>
           <div className="space-y-1 text-sm sm:text-end">
             <p>

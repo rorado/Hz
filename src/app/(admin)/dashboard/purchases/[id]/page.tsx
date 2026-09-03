@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ClipboardList, Printer, UserCircle, Undo2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
 import { getPurchaseOrderById } from "@/features/purchases/queries";
 import { getProductPickerOptions } from "@/features/products/queries";
 import { PurchaseOrderStatusSelect } from "@/features/purchases/components/purchase-order-status-select";
+import { PurchaseOrderLanguageSelect } from "@/features/purchases/components/purchase-order-language-select";
 import { DeletePurchaseOrderButton } from "@/features/purchases/components/delete-purchase-order-button";
 import { PurchaseOrderItemsForm } from "@/features/purchases/components/purchase-order-items-form";
 import { PurchaseAttachmentsCard } from "@/features/purchases/components/purchase-attachments-card";
@@ -63,36 +65,6 @@ export default async function PurchaseOrderDetailPage({
         action={
           <div className="flex flex-wrap gap-2">
             {order.status === "RECEIVED" && <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-returns/new?purchaseId=${order.id}`} />}><Undo2 className="size-4" />إنشاء مرتجع</Button>}
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={
-                <Link href={`/dashboard/purchases/${order.id}/print?lang=ar`} />
-              }
-            >
-              <Printer className="size-4" />
-              {t.purchases.printArabicButton}
-            </Button>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={
-                <Link href={`/dashboard/purchases/${order.id}/print?lang=fr`} />
-              }
-            >
-              <Printer className="size-4" />
-              {t.purchases.printFrenchButton}
-            </Button>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={
-                <Link href={`/dashboard/purchases/${order.id}/print?lang=en`} />
-              }
-            >
-              <Printer className="size-4" />
-              {t.purchases.printEnglishButton}
-            </Button>
             <DeletePurchaseOrderButton
               purchaseOrderId={order.id}
               orderNumber={order.orderNumber}
@@ -199,6 +171,32 @@ export default async function PurchaseOrderDetailPage({
                   {new Date(order.receivedAt).toLocaleDateString("fr-FR")}
                 </p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.purchases.printCardTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>{t.purchases.purchaseInvoiceLanguageLabel}</Label>
+                <PurchaseOrderLanguageSelect
+                  purchaseOrderId={order.id}
+                  language={order.language}
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                nativeButton={false}
+                render={
+                  <Link href={`/dashboard/purchases/${order.id}/print`} />
+                }
+              >
+                <Printer className="size-4" />
+                {t.purchases.printButton}
+              </Button>
             </CardContent>
           </Card>
 

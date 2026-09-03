@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,7 @@ import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
 import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { formatDocumentNumber } from "@/lib/document-number";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import { getAvailableStockIssue, validateAvailableStock } from "@/lib/stock-validation";
@@ -16,6 +18,7 @@ import type {
   InvoiceLanguage,
   PaymentMethod,
   BalanceChangeReason,
+  OrderStatus,
   Prisma,
 } from "@/generated/prisma/client";
 
@@ -37,17 +40,22 @@ export async function checkInvoiceStockAvailability(
   return getAvailableStockIssue(items, existingItems);
 }
 
-function generateInvoiceNumber() {
-  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `INV-${random}`;
-}
-
 function computeTotal(items: { quantity: number; unitPrice: number }[]) {
   return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 }
 
 function balanceEffectReason(delta: number): BalanceChangeReason {
   return delta < 0 ? "BALANCE_USED" : "OVERPAYMENT_CREDIT";
+}
+
+/**
+ * Placeholder invoiceNumber used only between `create` and the immediate
+ * `update` that stamps the real INV-…-#####-XX number from the row's
+ * DB-assigned `sequenceNumber` (same transaction, never observed elsewhere).
+ * A UUID keeps the required UNIQUE column satisfied at insert time.
+ */
+function temporaryInvoiceNumber(): string {
+  return `TMP-${randomUUID()}`;
 }
 
 /** Client-callable wrapper — invoice creation forms need this to offer
@@ -86,7 +94,22 @@ export async function createInvoice(
   const parsed = invoiceSchema.safeParse(input);
   if (!parsed.success) return { error: t.invoices.validationError };
 
-  if (!options?.allowNegativeStock) {
+  const linkedOrderId = parsed.data.orderId || null;
+
+  // An invoice tied to an already-COMPLETED order must not re-deduct that
+  // order's stock — it was booked OUT when the order completed. Skip the
+  // availability pre-check for that case; the locked re-check inside the
+  // transaction below is the authoritative guard.
+  const linkedOrderAlreadyCompleted =
+    linkedOrderId !== null &&
+    (
+      await prisma.order.findUnique({
+        where: { id: linkedOrderId },
+        select: { status: true },
+      })
+    )?.status === "COMPLETED";
+
+  if (!options?.allowNegativeStock && !linkedOrderAlreadyCompleted) {
     const stockError = await validateAvailableStock(parsed.data.items);
     if (stockError) return { error: stockError };
   }
@@ -111,16 +134,40 @@ export async function createInvoice(
   let invoiceId: string;
   try {
     invoiceId = await prisma.$transaction(async (tx) => {
+      // A linked order governs its own stock: lock it for the life of this
+      // transaction so a concurrent invoice/completion of the same order
+      // serializes here, then read its authoritative state under the lock.
+      let skipOrderStock = false;
+      if (linkedOrderId) {
+        const lockedRows = await tx.$queryRaw<{ status: OrderStatus }[]>`
+          SELECT "status" FROM "Order" WHERE "id" = ${linkedOrderId} FOR UPDATE
+        `;
+        if (!lockedRows[0]) throw new Error("ORDER_NOT_FOUND");
+
+        // Whoever committed first already issued this order's invoice — stop
+        // here so a second one is never created and stock is never doubled.
+        const existingForOrder = await tx.invoice.findUnique({
+          where: { orderId: linkedOrderId },
+          select: { id: true },
+        });
+        if (existingForOrder) throw new Error("ORDER_ALREADY_INVOICED");
+
+        // COMPLETED ⇒ the order already created its stock OUT (via
+        // updateOrderStatus or a prior invoice) ⇒ this invoice must not
+        // deduct the same sale again.
+        skipOrderStock = lockedRows[0].status === "COMPLETED";
+      }
+
       const created = await tx.invoice.create({
         data: {
-          invoiceNumber: generateInvoiceNumber(),
+          invoiceNumber: temporaryInvoiceNumber(),
           language: parsed.data.language,
           customerId,
           customerName: parsed.data.customerName,
           customerPhone: parsed.data.customerPhone,
           customerEmail: parsed.data.customerEmail || null,
           notes: parsed.data.notes || null,
-          orderId: parsed.data.orderId || null,
+          orderId: linkedOrderId,
           total,
           paymentMethod: primaryMethod,
           paymentStatus,
@@ -139,6 +186,19 @@ export async function createInvoice(
         },
       });
 
+      // Stamp the real number from the DB-assigned serial so the #####
+      // segment of INV-YYYY-MMDD-#####-XX always equals the الرقم التسلسلي
+      // shown in the UI.
+      const invoiceNumber = formatDocumentNumber(
+        "INVOICE",
+        created.sequenceNumber,
+        created.createdAt,
+      );
+      await tx.invoice.update({
+        where: { id: created.id },
+        data: { invoiceNumber },
+      });
+
       if (payments.length > 0) {
         await tx.payment.createMany({
           data: payments.map((line) => ({
@@ -150,7 +210,9 @@ export async function createInvoice(
         });
       }
 
-      const stockItems = parsed.data.items.filter((item) => item.productId);
+      const stockItems = skipOrderStock
+        ? []
+        : parsed.data.items.filter((item) => item.productId);
       for (const item of stockItems) {
         if (options?.allowNegativeStock) {
           await tx.product.update({
@@ -169,7 +231,7 @@ export async function createInvoice(
             productId: item.productId!,
             type: "OUT",
             quantity: item.quantity,
-            reason: `فاتورة رقم ${created.invoiceNumber}`,
+            reason: `فاتورة رقم ${invoiceNumber}`,
             reference: created.id,
           },
         });
@@ -178,7 +240,7 @@ export async function createInvoice(
       await adjustCustomerBalance(tx, customerId, balanceEffect, {
         reason: balanceEffectReason(balanceEffect),
         invoiceId: created.id,
-        invoiceNumber: created.invoiceNumber,
+        invoiceNumber,
       });
 
       return created.id;
@@ -187,6 +249,12 @@ export async function createInvoice(
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
       const stockError = await validateAvailableStock(parsed.data.items);
       return { error: stockError ?? t.invoices.insufficientStockFallbackError };
+    }
+    if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
+      return { error: t.invoices.orderNotFoundError };
+    }
+    if (error instanceof Error && error.message === "ORDER_ALREADY_INVOICED") {
+      return { error: t.orders.invoiceAlreadyIssuedMessage };
     }
     return { error: t.invoices.createError };
   }
@@ -442,21 +510,20 @@ async function reverseInvoiceBalanceOnDelete(
 }
 
 /**
- * Reverses the net stock effect an invoice's own movements had, before the
+ * Reverses the net stock effect an invoice's OWN movements had, before the
  * invoice is deleted — mirrors reversePurchaseOrderStockOnDelete. Computed
- * from the invoice's own InventoryMovement rows (reference = invoice id)
- * rather than its current item list: an invoice generated for an order that
- * was already COMPLETED never decremented stock itself in the first place
- * (getOrCreateInvoiceForOrder skips that case, since the order's own
- * completion already did), and an edited invoice's item list no longer
- * reflects what was actually reserved at each point in time. Netting its
- * own movements is correct in both cases, and naturally reverses nothing
- * for an invoice that never touched stock to begin with.
+ * from the invoice's own InventoryMovement rows (reference = invoice id),
+ * never inferred from the linked order's status: an invoice generated for an
+ * order that was already COMPLETED never decremented stock itself (the
+ * order's completion did), and an edited invoice's item list no longer
+ * reflects what it actually moved. Netting its own movements is correct in
+ * every case and naturally reverses nothing for an invoice that never
+ * touched stock to begin with.
  */
 async function reverseInvoiceStockOnDelete(
   tx: Prisma.TransactionClient,
   invoice: { id: string; invoiceNumber: string },
-) {
+): Promise<void> {
   const movements = await tx.inventoryMovement.findMany({
     where: { reference: invoice.id, productId: { not: null } },
     select: { productId: true, type: true, quantity: true },
@@ -477,21 +544,13 @@ async function reverseInvoiceStockOnDelete(
 
   for (const [productId, net] of netByProduct) {
     if (net === 0) continue;
-    if (net > 0) {
-      // The invoice's own movements added stock on net — reversing that
-      // removes it again, guarded the same way every other stock-removing
-      // reversal in this codebase is (e.g. reversePurchaseOrderStockOnDelete).
-      const updated = await tx.product.updateMany({
-        where: { id: productId, quantity: { gte: net } },
-        data: { quantity: { decrement: net } },
-      });
-      if (updated.count !== 1) throw new Error("INSUFFICIENT_STOCK");
-    } else {
-      await tx.product.update({
-        where: { id: productId },
-        data: { quantity: { increment: -net } },
-      });
-    }
+    // Negative stock is allowed — undo the invoice's own net effect with a
+    // plain write (net > 0 removes stock it added, net < 0 adds back stock
+    // it took) and no availability guard.
+    await tx.product.update({
+      where: { id: productId },
+      data: { quantity: { decrement: net } },
+    });
     await tx.inventoryMovement.create({
       data: {
         productId,
@@ -500,6 +559,48 @@ async function reverseInvoiceStockOnDelete(
         reference: invoice.id,
         reason: `حذف فاتورة رقم ${invoice.invoiceNumber}`,
       },
+    });
+  }
+}
+
+/**
+ * The stock + order half of deleting one invoice, run inside a transaction
+ * that already holds a FOR UPDATE lock on the invoice row.
+ *
+ * Reverses only the stock the invoice's OWN movements booked (see
+ * reverseInvoiceStockOnDelete — stock ownership is read from movements, not
+ * from Order.status). When the invoice is linked to an order, deleting it
+ * voids that sale: the order moves to CANCELLED. A standalone invoice
+ * (orderId null) has no order to touch.
+ */
+async function reverseInvoiceOnDelete(
+  tx: Prisma.TransactionClient,
+  invoice: {
+    id: string;
+    invoiceNumber: string;
+    orderId: string | null;
+    customerId: string | null;
+    balanceEffectApplied: unknown;
+  },
+  applyBalanceChange?: boolean,
+): Promise<void> {
+  let orderStillExists = false;
+  if (invoice.orderId) {
+    // Lock the linked order too, so this reversal serializes against any
+    // concurrent completion / re-invoicing of the same order.
+    const lockedOrder = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Order" WHERE "id" = ${invoice.orderId} FOR UPDATE
+    `;
+    orderStillExists = lockedOrder.length > 0;
+  }
+
+  await reverseInvoiceStockOnDelete(tx, invoice);
+  await reverseInvoiceBalanceOnDelete(tx, invoice, applyBalanceChange);
+
+  if (invoice.orderId && orderStillExists) {
+    await tx.order.update({
+      where: { id: invoice.orderId },
+      data: { status: "CANCELLED" },
     });
   }
 }
@@ -526,18 +627,24 @@ export async function deleteInvoice(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await reverseInvoiceStockOnDelete(tx, existing);
-      await reverseInvoiceBalanceOnDelete(tx, existing, options?.applyBalanceChange);
+      // Lock the invoice row: a concurrent deleteInvoice for the same id
+      // blocks here, then finds it gone and no-ops — the stock reversal runs
+      // exactly once.
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Invoice" WHERE "id" = ${id} FOR UPDATE
+      `;
+      if (!locked[0]) return;
+
+      await reverseInvoiceOnDelete(tx, existing, options?.applyBalanceChange);
       await tx.invoice.delete({ where: { id } });
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-      return { error: t.invoices.insufficientStockFallbackError };
-    }
+  } catch {
     return { error: t.invoices.deleteError };
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/orders");
+  if (existing.orderId) revalidatePath(`/dashboard/orders/${existing.orderId}`);
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
@@ -568,23 +675,26 @@ export async function deleteInvoices(
   if (deletable.length > 0) {
     try {
       await prisma.$transaction(async (tx) => {
-        for (const invoice of deletable) {
-          await reverseInvoiceStockOnDelete(tx, invoice);
-          await reverseInvoiceBalanceOnDelete(tx, invoice, decisionById.get(invoice.id));
+        // Deterministic lock order (by id) so two overlapping bulk deletes
+        // can't deadlock on each other.
+        const ordered = [...deletable].sort((a, b) => a.id.localeCompare(b.id));
+        for (const invoice of ordered) {
+          const locked = await tx.$queryRaw<{ id: string }[]>`
+            SELECT "id" FROM "Invoice" WHERE "id" = ${invoice.id} FOR UPDATE
+          `;
+          if (!locked[0]) continue;
+
+          await reverseInvoiceOnDelete(tx, invoice, decisionById.get(invoice.id));
+          await tx.invoice.delete({ where: { id: invoice.id } });
         }
-        await tx.invoice.deleteMany({
-          where: { id: { in: deletable.map((invoice) => invoice.id) } },
-        });
       });
-    } catch (error) {
-      if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-        return { error: t.invoices.insufficientStockFallbackError };
-      }
+    } catch {
       return { error: t.invoices.bulkDeleteError };
     }
   }
 
   revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
@@ -642,9 +752,33 @@ export async function getOrCreateInvoiceForOrder(
   let invoiceId: string;
   try {
     invoiceId = await prisma.$transaction(async (tx) => {
+      // Lock the order row for the life of the transaction. A concurrent
+      // request invoicing or completing this same order (a second
+      // getOrCreateInvoiceForOrder, or updateOrderStatus) blocks here until
+      // we commit, then reads the fresh invoice/status below — so stock is
+      // never decremented twice for one order.
+      const lockedRows = await tx.$queryRaw<{ status: OrderStatus }[]>`
+        SELECT "status" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE
+      `;
+      if (!lockedRows[0]) throw new Error("ORDER_NOT_FOUND");
+
+      // Whoever committed first already created the invoice for this order —
+      // hand back its id so both requests land on the same invoice without
+      // creating a second one or touching stock again.
+      const alreadyInvoiced = await tx.invoice.findUnique({
+        where: { orderId },
+        select: { id: true },
+      });
+      if (alreadyInvoiced) return alreadyInvoiced.id;
+
+      // Did the order already move stock? It reaches COMPLETED only via a
+      // stock OUT (updateOrderStatus, or a just-committed invoice), so a
+      // COMPLETED status here means the decrement already happened.
+      const orderAlreadyAffectedStock = lockedRows[0].status === "COMPLETED";
+
       const created = await tx.invoice.create({
         data: {
-          invoiceNumber: generateInvoiceNumber(),
+          invoiceNumber: temporaryInvoiceNumber(),
           language: options.language,
           customerId: order.customerId,
           customerName: order.customerName,
@@ -669,6 +803,18 @@ export async function getOrCreateInvoiceForOrder(
         },
       });
 
+      // Stamp the real number from the DB-assigned serial so the #####
+      // segment of INV-YYYY-MMDD-#####-XX always equals the الرقم التسلسلي.
+      const invoiceNumber = formatDocumentNumber(
+        "INVOICE",
+        created.sequenceNumber,
+        created.createdAt,
+      );
+      await tx.invoice.update({
+        where: { id: created.id },
+        data: { invoiceNumber },
+      });
+
       if (payments.length > 0) {
         await tx.payment.createMany({
           data: payments.map((line) => ({
@@ -679,7 +825,7 @@ export async function getOrCreateInvoiceForOrder(
         });
       }
 
-      if (order.status !== "COMPLETED") {
+      if (!orderAlreadyAffectedStock) {
         for (const item of order.items) {
           // Stock is no longer a hard gate here — an order can be invoiced
           // even if it oversold, same as this dialog already allows a
@@ -693,7 +839,7 @@ export async function getOrCreateInvoiceForOrder(
               productId: item.productId,
               type: "OUT",
               quantity: item.quantity,
-              reason: `فاتورة رقم ${created.invoiceNumber}`,
+              reason: `فاتورة رقم ${invoiceNumber}`,
               reference: created.id,
             },
           });
@@ -708,13 +854,16 @@ export async function getOrCreateInvoiceForOrder(
         await adjustCustomerBalance(tx, order.customerId, balanceEffect, {
           reason: balanceEffectReason(balanceEffect),
           invoiceId: created.id,
-          invoiceNumber: created.invoiceNumber,
+          invoiceNumber,
         });
       }
 
       return created.id;
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
+      return { error: t.invoices.orderNotFoundError };
+    }
     return { error: t.invoices.createError };
   }
 

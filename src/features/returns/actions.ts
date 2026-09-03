@@ -11,6 +11,7 @@ import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { withDocumentNumber } from "@/lib/document-number";
 import { adjustCustomerBalance } from "@/features/customers/balance";
 
 type Result = { success?: boolean; id?: string; error?: string };
@@ -63,32 +64,6 @@ export async function searchReturnSources(
   }));
 }
 
-async function nextReturnNumber(
-  tx: Prisma.TransactionClient,
-  kind: "sales" | "purchase",
-) {
-  // Serialize number allocation inside the current transaction. This keeps
-  // SR/PR numbers sequential and unique without relying on database objects
-  // that Prisma db push cannot create (such as custom SQL sequences).
-  if (kind === "sales") {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(735001)::text AS locked`;
-    const latest = await tx.salesReturn.findFirst({
-      orderBy: { returnNumber: "desc" },
-      select: { returnNumber: true },
-    });
-    const next = (Number(latest?.returnNumber.slice(3)) || 0) + 1;
-    return `SR-${String(next).padStart(6, "0")}`;
-  }
-
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(735002)::text AS locked`;
-  const latest = await tx.purchaseReturn.findFirst({
-    orderBy: { returnNumber: "desc" },
-    select: { returnNumber: true },
-  });
-  const next = (Number(latest?.returnNumber.slice(3)) || 0) + 1;
-  return `PR-${String(next).padStart(6, "0")}`;
-}
-
 function returnActionError(error: unknown, fallback: string, safeMessages: string[]) {
   if (!(error instanceof Error)) return fallback;
   return safeMessages.includes(error.message) ? error.message : fallback;
@@ -133,7 +108,8 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
 
   try {
     const createdById = session.user.id;
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withDocumentNumber("SALES_RETURN", (returnNumber) =>
+      prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({
         where: { id: parsed.data.invoiceId },
         include: { items: { include: { returnItems: { where: { salesReturn: { status: "CONFIRMED" } } } } } },
@@ -158,7 +134,6 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
       subtotal = cents(subtotal);
       if (parsed.data.refundAmount > subtotal + 0.005) throw new Error(t.returns.refundExceedsValue);
 
-      const returnNumber = await nextReturnNumber(tx, "sales");
       const noRefund = parsed.data.refundMethod === "NO_IMMEDIATE_REFUND";
       const credited = parsed.data.refundMethod === "CUSTOMER_CREDIT";
       const created = await tx.salesReturn.create({
@@ -209,7 +184,8 @@ export async function createSalesReturn(input: unknown): Promise<Result> {
         } });
       }
       return created;
-    });
+      }),
+    );
     revalidatePath("/dashboard/sales-returns");
     revalidatePath(`/dashboard/invoices/${parsed.data.invoiceId}`);
     revalidatePath("/dashboard/inventory");
@@ -231,7 +207,8 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
   if (!parsed.success) return { error: describeReturnValidationError(t, parsed.error) };
   try {
     const createdById = session.user.id;
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withDocumentNumber("PURCHASE_RETURN", (returnNumber) =>
+      prisma.$transaction(async (tx) => {
       const purchase = await tx.purchaseOrder.findUnique({
         where: { id: parsed.data.purchaseId },
         include: { items: { include: { returnItems: { where: { purchaseReturn: { status: "CONFIRMED" } } }, product: true } } },
@@ -253,7 +230,6 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
       if (rows.length !== requested.size) throw new Error(t.returns.invalidPurchaseItem);
       total = cents(total);
       if (parsed.data.refundAmount > total + 0.005) throw new Error(t.returns.refundExceedsValue);
-      const returnNumber = await nextReturnNumber(tx, "purchase");
       const noRefund = parsed.data.refundMethod === "NO_IMMEDIATE_REFUND";
       const credited = parsed.data.refundMethod === "SUPPLIER_CREDIT";
       const created = await tx.purchaseReturn.create({ data: {
@@ -287,7 +263,8 @@ export async function createPurchaseReturn(input: unknown): Promise<Result> {
         } });
       }
       return created;
-    });
+      }),
+    );
     revalidatePath("/dashboard/purchase-returns");
     revalidatePath(`/dashboard/purchases/${parsed.data.purchaseId}`);
     revalidatePath("/dashboard/inventory");

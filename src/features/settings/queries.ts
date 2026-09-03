@@ -7,6 +7,8 @@ import type { ColorTokens } from "./schema";
 export type SystemSettingsData = {
   appName: string;
   appShortName: string;
+  /** Custom logo delivery URL, or the company.ts default (which may be null). */
+  logoUrl: string | null;
   colorsLight: ColorTokens;
   colorsDark: ColorTokens;
 };
@@ -24,6 +26,7 @@ export const getSystemSettings = cache(async (): Promise<SystemSettingsData> => 
   return {
     appName: row?.appName || companyConfig.name,
     appShortName: row?.appShortName || companyConfig.shortName,
+    logoUrl: row?.logoUrl || companyConfig.logo,
     colorsLight: mergeColors(companyConfig.colors.light, row?.colorsLight),
     colorsDark: mergeColors(companyConfig.colors.dark, row?.colorsDark),
   };

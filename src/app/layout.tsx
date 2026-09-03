@@ -27,7 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: settings.appShortName,
     description: t.common.siteDescription,
-    icons: { icon: companyConfig.favicon },
+    // A custom logo doubles as the browser-tab icon; otherwise the
+    // configured favicon file.
+    icons: { icon: settings.logoUrl || companyConfig.favicon },
   };
 }
 

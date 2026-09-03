@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getOrderStockIssue, updateOrderStatus } from "@/features/orders/actions";
-import { StockAlertDialog, type StockIssue } from "@/components/shared/stock-alert-dialog";
+import { updateOrderStatus } from "@/features/orders/actions";
+import { GenerateInvoiceDialog } from "@/features/orders/components/generate-invoice-dialog";
 import { useLocale } from "@/i18n/locale-provider";
 import type { OrderStatus } from "@/generated/prisma/client";
 
@@ -24,45 +24,57 @@ const ORDER_STATUSES: OrderStatus[] = [
 export function OrderStatusSelect({
   orderId,
   status,
+  hasInvoice,
+  orderTotal,
+  customerBalance = 0,
+  hasCustomer = false,
 }: {
   orderId: string;
   status: string;
+  hasInvoice: boolean;
+  orderTotal: number;
+  customerBalance?: number;
+  hasCustomer?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [stockIssue, setStockIssue] = useState<StockIssue | null>(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const { t } = useLocale();
 
-  function applyStatus(value: string, allowNegativeStock = false) {
-    startTransition(async () => {
-      const result = await updateOrderStatus(orderId, value as OrderStatus, { allowNegativeStock });
-      if (result?.error) { toast.error(result.error); return; }
-      toast.success(t.orders.statusUpdatedToast);
-    });
-  }
-
   function handleChange(value: string | null) {
-    if (!value) return;
-    startTransition(async () => {
-      if (value === "COMPLETED") {
-        const issue = await getOrderStockIssue(orderId);
-        if (issue) {
-          setStockIssue(issue);
-          return;
-        }
+    if (!value || value === status) return;
+
+    // Completing an order means issuing its invoice — open the Generate
+    // Invoice dialog instead of flipping the status directly. Confirming it
+    // creates the invoice, books the stock OUT and marks the order COMPLETED.
+    if (value === "COMPLETED") {
+      if (hasInvoice) {
+        toast.error(t.orders.cannotChangeStatusInvoicedError);
+        return;
       }
-      applyStatus(value);
+      setInvoiceDialogOpen(true);
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await updateOrderStatus(orderId, value as OrderStatus);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(t.orders.statusUpdatedToast);
     });
   }
 
   return (
     <>
-      <StockAlertDialog
-        issue={stockIssue}
-        onClose={() => setStockIssue(null)}
-        onConfirm={() => {
-          setStockIssue(null);
-          applyStatus("COMPLETED", true);
-        }}
+      <GenerateInvoiceDialog
+        orderId={orderId}
+        orderTotal={orderTotal}
+        customerBalance={customerBalance}
+        hasCustomer={hasCustomer}
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        hideTrigger
       />
       <Select value={status} onValueChange={handleChange} disabled={isPending}>
         <SelectTrigger className="w-full sm:w-48">

@@ -9,7 +9,7 @@ import {
 } from "@/components/shared/social-icons";
 import { getDictionary } from "@/i18n/server";
 
-export async function PublicFooter() {
+export async function PublicFooter({ logoUrl }: { logoUrl?: string | null }) {
   const t = await getDictionary();
   const { phone, email, address, website } = companyConfig.contact;
   const { facebook, twitter, instagram } = companyConfig.social;
@@ -29,7 +29,7 @@ export async function PublicFooter() {
         <div className="grid gap-10 sm:grid-cols-3">
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2 font-semibold">
-              <BrandMark size="sm" />
+              <BrandMark size="sm" logoUrl={logoUrl} />
               {companyConfig.name}
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">

@@ -17,6 +17,25 @@ export function createUploadSignature(paramsToSign: Record<string, string | numb
   return { timestamp, signature };
 }
 
+/**
+ * Server-side upload of an already-validated asset (a data URI or remote
+ * URL). Used where the file must be checked on the server first — e.g. the
+ * company logo — instead of the signed browser-direct upload flow. Always
+ * uploaded as an image resource.
+ */
+export async function uploadCloudinaryAsset(
+  data: string,
+  options: { folder: string; publicId?: string },
+): Promise<{ publicId: string; secureUrl: string }> {
+  const result = await cloudinary.uploader.upload(data, {
+    folder: options.folder,
+    public_id: options.publicId,
+    overwrite: true,
+    resource_type: "image",
+  });
+  return { publicId: result.public_id, secureUrl: result.secure_url };
+}
+
 export async function destroyCloudinaryAsset(
   publicId: string,
   resourceType: "image" | "raw" | "video" = "image",

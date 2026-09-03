@@ -36,6 +36,7 @@ export default async function DashboardLayout({
       <AppSidebar
         adminName={session?.user?.name ?? ""}
         appName={settings.appName}
+        logoUrl={settings.logoUrl}
         permissions={permissions}
         pendingOrders={stats.pendingOrders}
         lowStock={stats.lowStockCount}

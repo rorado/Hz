@@ -104,6 +104,7 @@ function useCollapsedGroups() {
 export function AppSidebar({
   adminName,
   appName,
+  logoUrl,
   permissions,
   pendingOrders,
   lowStock,
@@ -111,6 +112,7 @@ export function AppSidebar({
 }: {
   adminName: string;
   appName: string;
+  logoUrl: string | null;
   permissions: PermissionKey[] | "full";
   pendingOrders: number;
   lowStock: number;
@@ -161,7 +163,7 @@ export function AppSidebar({
               {t.sidebar.subtitle}
             </span>
           </div>
-          <BrandMark size="lg" />
+          <BrandMark size="lg" logoUrl={logoUrl} />
         </Link>
       </SidebarHeader>
       <SidebarContent className="gap-1">

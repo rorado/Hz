@@ -38,6 +38,10 @@ export function findStockIssue(
   });
   for (const product of products) {
     const requested = totals.get(product.id) ?? 0;
+    // Only products actually being ordered can be "insufficient" — a product
+    // that isn't on the order (requested 0) must never trip this, even when
+    // its own stock is already negative.
+    if (requested <= 0) continue;
     const available = product.quantity + (existingTotals.get(product.id) ?? 0);
     if (requested > available) {
       return { product: product.name, requested, available };

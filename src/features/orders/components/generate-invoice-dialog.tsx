@@ -52,13 +52,24 @@ export function GenerateInvoiceDialog({
   orderTotal,
   customerBalance = 0,
   hasCustomer = false,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   orderId: string;
   orderTotal: number;
   customerBalance?: number;
   hasCustomer?: boolean;
+  /** Controlled mode — pass both to drive the dialog from elsewhere (e.g. the
+   * status dropdown picking "COMPLETED"). Omit both for the standalone
+   * trigger-button dialog. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   const [language, setLanguage] = useState<InvoiceLanguage>("AR");
   const [lines, setLines] = useState<PaymentLine[]>([
     { method: "CASH", amount: orderTotal },
@@ -179,14 +190,16 @@ export function GenerateInvoiceDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button className="w-full cursor-pointer">
-            <FileText className="size-4" />
-            {t.orders.generateInvoiceButton}
-          </Button>
-        }
-      />
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            <Button className="w-full cursor-pointer">
+              <FileText className="size-4" />
+              {t.orders.generateInvoiceButton}
+            </Button>
+          }
+        />
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t.orders.generateInvoiceDialogTitle}</DialogTitle>

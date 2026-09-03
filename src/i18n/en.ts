@@ -220,7 +220,7 @@ export const en = {
     language: "Language",
   },
   auth: {
-    loginTitle: "Admin login",
+    loginTitle: "Sign in",
     loginDescription: "Please enter your credentials to access the dashboard",
     email: "Email",
     password: "Password",
@@ -480,6 +480,8 @@ export const en = {
     columnTotal: "Total",
     columnDate: "Date",
     deleteDescription: 'Order "{number}" will be permanently deleted.',
+    deleteOrderButton: "Delete order",
+    deleteInvoiceButton: "Delete invoice",
     detailTitle: "Order {number}",
     itemsCardTitle: "Order items",
     actionsCardTitle: "Actions",
@@ -531,7 +533,9 @@ export const en = {
       "The order will be created with this status, and it can be changed later from the order's page.",
     invalidStatusError: "Invalid status",
     cannotChangeStatusInvoicedError:
-      "This order's status can't be changed because it's linked to an issued invoice — the invoice is now the source of truth for its stock effect",
+      "This order's status can't be changed because it's linked to an issued invoice — the invoice is now the source of truth for its stock effect. Delete the invoice first to change the status.",
+    completeViaInvoiceError:
+      "To complete this order, generate its invoice — that issues the invoice and marks the order completed in one step.",
     notFoundError: "Order not found",
     validationError: "Please check the entered data",
     addedProductNotFoundError: "One of the added products was not found",
@@ -725,7 +729,8 @@ export const en = {
   invoices: {
     pageDescription: "Create and edit customer invoices",
     addButton: "Create invoice",
-    searchPlaceholder: "Search by invoice number, customer name, or phone...",
+    searchPlaceholder:
+      "Search by invoice number, serial number, customer name, or phone...",
     emptyTitle: "No invoices",
     emptyDescription: "Start by creating the first invoice for a customer",
     statusFilterLabel: "Payment status",
@@ -945,9 +950,9 @@ export const en = {
     columnDate: "Date",
     deleteDescription: 'Purchase order "{number}" will be permanently deleted.',
     detailTitle: "Purchase order {number}",
-    printArabicButton: "Invoice in Arabic",
-    printFrenchButton: "Facture en Français",
-    printEnglishButton: "Invoice in English",
+    printButton: "Print purchase order",
+    printCardTitle: "Print",
+    languageUpdatedToast: "Print language updated",
     itemsCardTitle: "Items",
     receivedNotice:
       "This order has already been received and its quantities were added to inventory. Its items can no longer be edited — set its status back to pending first (this will remove what it added from inventory).",
@@ -1219,6 +1224,26 @@ export const en = {
   },
   settings: {
     validationError: "Please check the entered data",
+    brandingTitle: "Company / Branding",
+    logo: {
+      title: "Company logo",
+      description:
+        "Shown in the sidebar, on the login page, and on invoices, purchase orders, returns and printed documents.",
+      uploadButton: "Upload logo",
+      replaceButton: "Replace logo",
+      removeButton: "Remove",
+      previewLabel: "Logo preview",
+      noLogoLabel: "No logo",
+      hint: "PNG, JPG, WebP or SVG. Maximum {max} MB.",
+      toastUpdated: "Logo updated successfully",
+      toastRemoved: "Logo removed",
+      errorNoFile: "Please choose an image file",
+      errorTooLarge: "The file is too large (maximum {max} MB)",
+      errorType: "Unsupported file type. Use PNG, JPG, WebP or SVG",
+      errorUnsafeSvg:
+        "This SVG contains scripts or active content and was rejected. Export a plain SVG and try again",
+      errorUpload: "Could not upload the logo. Please try again",
+    },
     appearanceTitle: "System name & colors",
     appNameLabel: "System name",
     appShortNameLabel: "Short name (browser tab title)",

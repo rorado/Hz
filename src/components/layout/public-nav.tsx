@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
-export function PublicNav() {
+export function PublicNav({ logoUrl }: { logoUrl?: string | null }) {
   const pathname = usePathname();
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -33,7 +33,7 @@ export function PublicNav() {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <Link href="/" className="flex items-center gap-2.5 font-semibold">
-          <BrandMark size="md" className="shadow-primary/30" />
+          <BrandMark size="md" className="shadow-primary/30" logoUrl={logoUrl} />
           <span className="tracking-tight">{companyConfig.name}</span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
@@ -83,7 +83,7 @@ export function PublicNav() {
         <SheetContent side="left" className="w-72">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2.5">
-              <BrandMark size="sm" />
+              <BrandMark size="sm" logoUrl={logoUrl} />
               {companyConfig.name}
             </SheetTitle>
           </SheetHeader>

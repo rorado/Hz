@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { normalizeArabicName, isFullName } from "@/lib/arabic-name";
+import { withDocumentNumber } from "@/lib/document-number";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -30,12 +31,6 @@ function buildSchema(t: Dictionary) {
       .min(1, t.cart.minOneItemError),
     notes: z.string().optional(),
   });
-}
-
-function generateOrderNumber(): string {
-  const timestamp = Date.now().toString().slice(-6);
-  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-  return `ORD-${timestamp}-${random}`;
 }
 
 export async function createOrderFromCart(
@@ -126,28 +121,30 @@ export async function createOrderFromCart(
     }
 
     // Create order
-    const order = await prisma.order.create({
-      data: {
-        orderNumber: generateOrderNumber(),
-        customerId: customer.id,
-        customerName: validatedData.customerName,
-        customerPhone: validatedData.customerPhone,
-        customerEmail: validatedData.customerEmail || null,
-        status: "PENDING",
-        total: total.toString(),
-        items: {
-          create: orderItems,
-        },
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
+    const order = await withDocumentNumber("ORDER", (orderNumber) =>
+      prisma.order.create({
+        data: {
+          orderNumber,
+          customerId: customer.id,
+          customerName: validatedData.customerName,
+          customerPhone: validatedData.customerPhone,
+          customerEmail: validatedData.customerEmail || null,
+          status: "PENDING",
+          total: total.toString(),
+          items: {
+            create: orderItems,
           },
         },
-        customer: true,
-      },
-    });
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          customer: true,
+        },
+      }),
+    );
 
     return {
       success: true,

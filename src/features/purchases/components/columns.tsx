@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Eye, Printer } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,17 @@ export function getPurchaseOrderColumns(
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title={t.purchases.printButton}
+            nativeButton={false}
+            render={
+              <Link href={`/dashboard/purchases/${row.original.id}/print`} />
+            }
+          >
+            <Printer className="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

@@ -7,7 +7,8 @@ import { InvoicePrintButton } from "@/features/invoices/components/invoice-print
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
 import { InvoicePrintTotals } from "@/features/invoices/components/invoice-print-totals";
 import { BackButton } from "@/components/shared/back-button";
-import { companyConfig } from "@/config/company";
+import { DocumentLogo } from "@/components/shared/document-logo";
+import { getSystemSettings } from "@/features/settings/queries";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
@@ -142,9 +143,10 @@ export default async function InvoicePrintPage({
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
-  const [invoice, uiT] = await Promise.all([
+  const [invoice, uiT, settings] = await Promise.all([
     getInvoiceById(id),
     getDictionary(),
+    getSystemSettings(),
   ]);
   if (!invoice) notFound();
 
@@ -160,7 +162,8 @@ export default async function InvoicePrintPage({
   );
   const itemsCount = invoice.items.length;
   const totalWeight = invoice.items.reduce(
-    (sum, item) => sum + Number(item.product?.weight ?? 0) * Number(item.quantity),
+    (sum, item) =>
+      sum + Number(item.product?.weight ?? 0) * Number(item.quantity),
     0,
   );
 
@@ -221,9 +224,10 @@ export default async function InvoicePrintPage({
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold print:text-lg">
-                      {companyConfig.name}
-                    </h1>
+                    <DocumentLogo
+                      logoUrl={settings.logoUrl}
+                      name={settings.appName}
+                    />
                   </div>
                   <div className="text-end">
                     <h2 className="text-xl font-bold print:text-base">
@@ -234,8 +238,7 @@ export default async function InvoicePrintPage({
                       <span dir="ltr">{invoice.invoiceNumber}</span>
                     </p>
                     <p className="text-sm font-semibold text-foreground print:text-xs">
-                      {t.date}:{" "}
-                      {formatDateTime(invoice.createdAt)}
+                      {t.date}: {formatDateTime(invoice.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -280,7 +283,9 @@ export default async function InvoicePrintPage({
                 className="border-b font-semibold text-foreground"
               >
                 <td className="px-3 py-2 border-2 border-gray-400">
-                  <span className="block truncate">{Number(item.quantity)}</span>
+                  <span className="block truncate">
+                    {Number(item.quantity)}
+                  </span>
                 </td>
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate">{item.name}</span>

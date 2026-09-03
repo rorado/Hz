@@ -13,6 +13,7 @@ import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import type { OrderStatus, Prisma } from "@/generated/prisma/client";
 import { validateAvailableStock } from "@/lib/stock-validation";
+import { withDocumentNumber } from "@/lib/document-number";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 
@@ -27,12 +28,6 @@ export type ConflictCustomer = {
   notes: string | null;
 };
 
-function generateOrderNumber(): string {
-  const timestamp = Date.now().toString().slice(-6);
-  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-  return `ORD-${timestamp}-${random}`;
-}
-
 const VALID_STATUSES: OrderStatus[] = [
   "PENDING",
   "PROCESSING",
@@ -43,7 +38,6 @@ const VALID_STATUSES: OrderStatus[] = [
 export async function updateOrderStatus(
   id: string,
   status: string,
-  options?: { allowNegativeStock?: boolean },
 ): Promise<ActionResult> {
   const access = await requirePermission("ORDERS_MANAGE");
   if (!access.ok) return { error: access.error };
@@ -80,37 +74,12 @@ export async function updateOrderStatus(
   const uncompletingNow = order.status === "COMPLETED" && status !== "COMPLETED";
 
   if (completingNow) {
-    if (!options?.allowNegativeStock) {
-      // order.items' quantity is a live Prisma.Decimal — stock-validation.ts
-      // expects plain numbers.
-      const stockError = await validateAvailableStock(
-        order.items.map((item) => ({ productId: item.productId, quantity: item.quantity.toNumber() })),
-      );
-      if (stockError) return { error: stockError };
-    }
-
-    await prisma.$transaction([
-      prisma.order.update({
-        where: { id },
-        data: { status: status as OrderStatus },
-      }),
-      ...order.items.map((item) =>
-        prisma.product.update({
-          where: { id: item.productId },
-          data: { quantity: { decrement: item.quantity } },
-        }),
-      ),
-      ...order.items.map((item) =>
-        prisma.inventoryMovement.create({
-          data: {
-            productId: item.productId,
-            type: "OUT",
-            quantity: item.quantity,
-            reason: `اكتمال الطلب رقم ${order.orderNumber}`,
-          },
-        }),
-      ),
-    ]);
+    // An order is completed by generating its invoice, not from this
+    // dropdown — getOrCreateInvoiceForOrder issues the invoice, books the
+    // stock OUT and sets the status COMPLETED in one step. The UI opens that
+    // dialog instead of calling this; this guard is the safety net for a
+    // direct call.
+    return { error: t.orders.completeViaInvoiceError };
   } else if (uncompletingNow) {
     // Mirrors the completion path in reverse: restores exactly what
     // completing this order decremented, with a matching IN movement so
@@ -146,6 +115,7 @@ export async function updateOrderStatus(
 
   revalidatePath("/dashboard/orders");
   revalidatePath(`/dashboard/orders/${id}`);
+  revalidatePath("/dashboard/invoices");
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
@@ -205,6 +175,13 @@ export async function updateOrderItems(
     (item) => item.id && existingIds.has(item.id),
   );
   const newItems = parsed.data.items.filter((item) => !item.id);
+  // Lines the form dropped (Trash button) come back simply absent from the
+  // payload — delete those rows, otherwise the product stays on the order in
+  // the DB and keeps tripping the stock check / inflating the total.
+  const keptIds = new Set(
+    parsed.data.items.filter((item) => item.id).map((item) => item.id!),
+  );
+  const removedIds = [...existingIds].filter((id) => !keptIds.has(id));
 
   if (newItems.length > 0) {
     const products = await prisma.product.findMany({
@@ -217,15 +194,20 @@ export async function updateOrderItems(
 
   const updatesById = new Map(updates.map((item) => [item.id, item]));
   const total =
-    order.items.reduce((sum, item) => {
-      const edited = updatesById.get(item.id);
-      const price = edited?.price ?? Number(item.price);
-      const quantity = edited?.quantity ?? item.quantity.toNumber();
-      return sum + price * quantity;
-    }, 0) +
+    order.items
+      .filter((item) => keptIds.has(item.id))
+      .reduce((sum, item) => {
+        const edited = updatesById.get(item.id);
+        const price = edited?.price ?? Number(item.price);
+        const quantity = edited?.quantity ?? item.quantity.toNumber();
+        return sum + price * quantity;
+      }, 0) +
     newItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   await prisma.$transaction([
+    ...(removedIds.length > 0
+      ? [prisma.orderItem.deleteMany({ where: { id: { in: removedIds } } })]
+      : []),
     ...updates.map((item) =>
       prisma.orderItem.update({
         where: { id: item.id! },
@@ -442,25 +424,27 @@ export async function createOrder(
 
   let orderId: string;
   try {
-    const order = await prisma.order.create({
-      data: {
-        orderNumber: generateOrderNumber(),
-        customerId: customer.id,
-        customerName: customer.name,
-        customerPhone: customer.phone,
-        customerEmail: customer.email,
-        notes: parsed.data.notes || null,
-        total,
-        createdById: access.adminId,
-        items: {
-          create: parsed.data.items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+    const order = await withDocumentNumber("ORDER", (orderNumber) =>
+      prisma.order.create({
+        data: {
+          orderNumber,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.phone,
+          customerEmail: customer.email,
+          notes: parsed.data.notes || null,
+          total,
+          createdById: access.adminId,
+          items: {
+            create: parsed.data.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+          },
         },
-      },
-    });
+      }),
+    );
     orderId = order.id;
   } catch {
     return { error: t.orders.createError };
@@ -518,6 +502,10 @@ export async function deleteOrder(id: string): Promise<ActionResult> {
     include: { items: true, invoice: { select: { id: true } } },
   });
   if (!order) return { error: t.orders.notFoundError };
+  // An invoiced order can't be deleted directly — deleting it would orphan
+  // the invoice (FK sets orderId null). Delete the invoice first (that
+  // cancels the order), then delete the order.
+  if (order.invoice) return { error: t.orders.cannotDeleteLinkedError };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -548,7 +536,7 @@ export async function deleteOrders(ids: string[]): Promise<ActionResult> {
         where: { id },
         include: { items: true, invoice: { select: { id: true } } },
       });
-      if (!order) {
+      if (!order || order.invoice) {
         failedCount++;
         continue;
       }

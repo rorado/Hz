@@ -213,7 +213,7 @@ export const ar = {
     language: "اللغة",
   },
   auth: {
-    loginTitle: "تسجيل دخول المدير",
+    loginTitle: "تسجيل دخول",
     loginDescription: "الرجاء إدخال بيانات الدخول للوصول إلى لوحة التحكم",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
@@ -471,6 +471,8 @@ export const ar = {
     columnTotal: "الإجمالي",
     columnDate: "التاريخ",
     deleteDescription: 'سيتم حذف الطلب "{number}" نهائياً.',
+    deleteOrderButton: "حذف الطلب",
+    deleteInvoiceButton: "حذف الفاتورة",
     detailTitle: "الطلب {number}",
     itemsCardTitle: "عناصر الطلب",
     actionsCardTitle: "الإجراءات",
@@ -521,7 +523,9 @@ export const ar = {
       "سيتم إنشاء الطلب بهذه الحالة، ويمكن تغييرها لاحقاً من صفحة الطلب.",
     invalidStatusError: "حالة غير صحيحة",
     cannotChangeStatusInvoicedError:
-      "لا يمكن تغيير حالة هذا الطلب لأنه مرتبط بفاتورة صادرة — الفاتورة هي المرجع الفعلي لحركة المخزون الآن",
+      "لا يمكن تغيير حالة هذا الطلب لأنه مرتبط بفاتورة صادرة — الفاتورة هي المرجع الفعلي لحركة المخزون الآن. احذف الفاتورة أولاً لتغيير الحالة.",
+    completeViaInvoiceError:
+      "لإكمال هذا الطلب، قم بتوليد فاتورته — هذا يصدر الفاتورة ويحدد الطلب كمكتمل في خطوة واحدة.",
     notFoundError: "الطلب غير موجود",
     validationError: "الرجاء التحقق من البيانات المدخلة",
     addedProductNotFoundError: "أحد المنتجات المضافة غير موجود",
@@ -711,7 +715,7 @@ export const ar = {
   invoices: {
     pageDescription: "إنشاء وتعديل فواتير العملاء",
     addButton: "إنشاء فاتورة",
-    searchPlaceholder: "ابحث برقم الفاتورة أو اسم العميل أو الهاتف...",
+    searchPlaceholder: "ابحث برقم الفاتورة أو الرقم التسلسلي أو اسم العميل أو الهاتف...",
     emptyTitle: "لا توجد فواتير",
     emptyDescription: "ابدأ بإنشاء أول فاتورة لأحد العملاء",
     statusFilterLabel: "حالة الدفع",
@@ -927,9 +931,9 @@ export const ar = {
     columnDate: "التاريخ",
     deleteDescription: 'سيتم حذف أمر الشراء "{number}" نهائياً.',
     detailTitle: "أمر الشراء {number}",
-    printArabicButton: "فاتورة بالعربية",
-    printFrenchButton: "Facture en Français",
-    printEnglishButton: "Invoice in English",
+    printButton: "طباعة أمر الشراء",
+    printCardTitle: "الطباعة",
+    languageUpdatedToast: "تم تحديث لغة الطباعة",
     itemsCardTitle: "العناصر",
     receivedNotice:
       "تم استلام هذا الأمر بالفعل وأُضيفت كمياته إلى المخزون. لا يمكن تعديل عناصره الآن — لتصحيحه أعد حالته إلى قيد الانتظار أولاً (سيُطرح ما أُضيف من المخزون تلقائياً).",
@@ -1192,6 +1196,26 @@ export const ar = {
   },
   settings: {
     validationError: "الرجاء التحقق من البيانات المدخلة",
+    brandingTitle: "الشركة / الهوية البصرية",
+    logo: {
+      title: "شعار الشركة",
+      description:
+        "يظهر في القائمة الجانبية، وصفحة تسجيل الدخول، وعلى الفواتير وأوامر الشراء والمرتجعات والمستندات المطبوعة.",
+      uploadButton: "رفع الشعار",
+      replaceButton: "استبدال الشعار",
+      removeButton: "إزالة",
+      previewLabel: "معاينة الشعار",
+      noLogoLabel: "لا يوجد شعار",
+      hint: "PNG أو JPG أو WebP أو SVG. الحد الأقصى {max} ميغابايت.",
+      toastUpdated: "تم تحديث الشعار بنجاح",
+      toastRemoved: "تمت إزالة الشعار",
+      errorNoFile: "الرجاء اختيار ملف صورة",
+      errorTooLarge: "حجم الملف كبير جدًا (الحد الأقصى {max} ميغابايت)",
+      errorType: "نوع ملف غير مدعوم. استخدم PNG أو JPG أو WebP أو SVG",
+      errorUnsafeSvg:
+        "ملف SVG يحتوي على أكواد أو محتوى نشط وتم رفضه. صدّر ملف SVG بسيطًا وحاول مجددًا",
+      errorUpload: "تعذّر رفع الشعار. الرجاء المحاولة مرة أخرى",
+    },
     appearanceTitle: "اسم النظام والألوان",
     appNameLabel: "اسم النظام",
     appShortNameLabel: "الاسم المختصر (لعنوان المتصفح)",

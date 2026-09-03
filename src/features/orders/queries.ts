@@ -87,6 +87,8 @@ export async function getOrderById(id: string) {
           total: true,
           paidAmount: true,
           paymentStatus: true,
+          createdAt: true,
+          balanceEffectApplied: true,
         },
       },
       customer: true,

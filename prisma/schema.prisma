@@ -85,6 +85,12 @@ model SystemSettings {
   id           String   @id @default(cuid())
   appName      String?
   appShortName String?
+  // Custom company logo — only a reference is stored (Cloudinary secure
+  // URL + public id), never the file itself. Both null => fall back to the
+  // default brand mark. The two typed Json color columns can't hold this
+  // without breaking their ColorTokens contract, hence dedicated columns.
+  logoUrl      String?
+  logoPublicId String?
   colorsLight  Json?
   colorsDark   Json?
   updatedAt    DateTime @updatedAt

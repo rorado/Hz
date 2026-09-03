@@ -3,7 +3,8 @@ import { getPurchaseOrderById } from "@/features/purchases/queries";
 import { InvoicePrintButton } from "@/features/invoices/components/invoice-print-button";
 import { InvoicePdfButton } from "@/features/invoices/components/invoice-pdf-button";
 import { BackButton } from "@/components/shared/back-button";
-import { companyConfig } from "@/config/company";
+import { DocumentLogo } from "@/components/shared/document-logo";
+import { getSystemSettings } from "@/features/settings/queries";
 import { requirePageAccess } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
 import { CURRENCY_LABEL, formatCurrency } from "@/lib/currency";
@@ -89,9 +90,10 @@ export default async function PurchaseOrderPrintPage({
   const { id } = await params;
   const { lang: langParam } = await searchParams;
 
-  const [order, uiT] = await Promise.all([
+  const [order, uiT, settings] = await Promise.all([
     getPurchaseOrderById(id),
     getDictionary(),
+    getSystemSettings(),
   ]);
   if (!order) notFound();
 
@@ -139,9 +141,10 @@ export default async function PurchaseOrderPrintPage({
               <th colSpan={4} className="border-none p-0 pb-6 text-start font-normal print:pb-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold print:text-lg">
-                      {companyConfig.name}
-                    </h1>
+                    <DocumentLogo
+                      logoUrl={settings.logoUrl}
+                      name={settings.appName}
+                    />
                   </div>
                   <div className="text-end">
                     <h2 className="text-xl font-bold print:text-base">

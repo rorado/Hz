@@ -7,6 +7,7 @@ import { requirePermission, hasPermission } from "@/lib/permissions";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 import { computePaymentStatus } from "@/lib/money";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import { withDocumentNumber } from "@/lib/document-number";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
 import {
@@ -14,7 +15,12 @@ import {
   purchaseOrderItemsSchema,
   purchaseAttachmentSchema,
 } from "@/features/purchases/schema";
-import type { PaymentMethod, PurchaseOrderStatus, Prisma } from "@/generated/prisma/client";
+import type {
+  PaymentMethod,
+  PurchaseOrderStatus,
+  InvoiceLanguage,
+  Prisma,
+} from "@/generated/prisma/client";
 
 type ActionResult = { error?: string; success?: boolean };
 
@@ -24,10 +30,7 @@ const PURCHASE_ORDER_STATUSES: PurchaseOrderStatus[] = [
   "CANCELLED",
 ];
 
-function generatePurchaseOrderNumber() {
-  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `PO-${random}`;
-}
+const INVOICE_LANGUAGES: InvoiceLanguage[] = ["AR", "EN", "FR"];
 
 export async function createPurchaseOrder(
   input: unknown,
@@ -60,9 +63,9 @@ export async function createPurchaseOrder(
   const currentPriceById = new Map(
     currentPrices.map((product) => [product.id, Number(product.purchasePrice)]),
   );
-  const orderNumber = generatePurchaseOrderNumber();
 
-  const order = await prisma.$transaction(async (tx) => {
+  const order = await withDocumentNumber("PURCHASE_ORDER", (orderNumber) =>
+    prisma.$transaction(async (tx) => {
     const created = await tx.purchaseOrder.create({
       data: {
         orderNumber,
@@ -112,7 +115,8 @@ export async function createPurchaseOrder(
     }
 
     return created;
-  });
+    }),
+  );
 
   revalidatePath("/dashboard/purchases");
   revalidatePath("/dashboard/products");
@@ -487,6 +491,36 @@ export async function updatePurchaseOrderStatus(
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/**
+ * Sets the language a purchase order prints in. Editable straight from the
+ * order's detail page — the print/PDF view uses this saved value unless a
+ * `?lang=` override is passed. Touches nothing but the `language` column.
+ */
+export async function updatePurchaseOrderLanguage(
+  id: string,
+  language: InvoiceLanguage,
+): Promise<ActionResult> {
+  const access = await requirePermission("PURCHASES_MANAGE");
+  if (!access.ok) return { error: access.error };
+  const t = await getDictionary();
+
+  if (!INVOICE_LANGUAGES.includes(language)) {
+    return { error: t.purchases.validationError };
+  }
+
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!order) return { error: t.purchases.notFoundError };
+
+  await prisma.purchaseOrder.update({ where: { id }, data: { language } });
+
+  revalidatePath("/dashboard/purchases");
+  revalidatePath(`/dashboard/purchases/${id}`);
   return { success: true };
 }
 

@@ -226,7 +226,7 @@ export const fr = {
     language: "Langue",
   },
   auth: {
-    loginTitle: "Connexion administrateur",
+    loginTitle: "Connexion",
     loginDescription:
       "Veuillez saisir vos identifiants pour accéder au tableau de bord",
     email: "E-mail",
@@ -492,6 +492,8 @@ export const fr = {
     columnTotal: "Total",
     columnDate: "Date",
     deleteDescription: 'La commande "{number}" sera définitivement supprimée.',
+    deleteOrderButton: "Supprimer la commande",
+    deleteInvoiceButton: "Supprimer la facture",
     detailTitle: "Commande {number}",
     itemsCardTitle: "Articles de la commande",
     actionsCardTitle: "Actions",
@@ -544,7 +546,9 @@ export const fr = {
       "La commande sera créée avec ce statut, qui pourra être modifié plus tard depuis la page de la commande.",
     invalidStatusError: "Statut invalide",
     cannotChangeStatusInvoicedError:
-      "Impossible de modifier le statut de cette commande car elle est liée à une facture émise — la facture fait désormais foi pour son effet sur le stock",
+      "Impossible de modifier le statut de cette commande car elle est liée à une facture émise — la facture fait désormais foi pour son effet sur le stock. Supprimez d'abord la facture pour changer le statut.",
+    completeViaInvoiceError:
+      "Pour finaliser cette commande, générez sa facture — cela émet la facture et marque la commande comme terminée en une seule étape.",
     notFoundError: "Commande introuvable",
     validationError: "Veuillez vérifier les données saisies",
     addedProductNotFoundError: "Un des produits ajoutés est introuvable",
@@ -743,7 +747,7 @@ export const fr = {
     pageDescription: "Créer et modifier les factures des clients",
     addButton: "Créer une facture",
     searchPlaceholder:
-      "Rechercher par numéro de facture, client ou téléphone...",
+      "Rechercher par numéro de facture, numéro de série, client ou téléphone...",
     emptyTitle: "Aucune facture",
     emptyDescription: "Commencez par créer la première facture d'un client",
     statusFilterLabel: "Statut du paiement",
@@ -974,9 +978,9 @@ export const fr = {
     deleteDescription:
       'Le bon de commande "{number}" sera définitivement supprimé.',
     detailTitle: "Bon de commande {number}",
-    printArabicButton: "Facture en arabe",
-    printFrenchButton: "Facture en Français",
-    printEnglishButton: "Invoice in English",
+    printButton: "Imprimer le bon de commande",
+    printCardTitle: "Impression",
+    languageUpdatedToast: "Langue d'impression mise à jour",
     itemsCardTitle: "Articles",
     receivedNotice:
       "Cette commande a déjà été reçue et ses quantités ont été ajoutées au stock. Ses articles ne peuvent plus être modifiés — remettez d'abord son statut à « en attente » (le stock ajouté sera alors retiré automatiquement).",
@@ -1262,6 +1266,26 @@ export const fr = {
   },
   settings: {
     validationError: "Veuillez vérifier les données saisies",
+    brandingTitle: "Entreprise / Identité visuelle",
+    logo: {
+      title: "Logo de l'entreprise",
+      description:
+        "Affiché dans la barre latérale, sur la page de connexion, ainsi que sur les factures, bons de commande, retours et documents imprimés.",
+      uploadButton: "Téléverser le logo",
+      replaceButton: "Remplacer le logo",
+      removeButton: "Supprimer",
+      previewLabel: "Aperçu du logo",
+      noLogoLabel: "Aucun logo",
+      hint: "PNG, JPG, WebP ou SVG. Maximum {max} Mo.",
+      toastUpdated: "Logo mis à jour avec succès",
+      toastRemoved: "Logo supprimé",
+      errorNoFile: "Veuillez choisir un fichier image",
+      errorTooLarge: "Le fichier est trop volumineux (maximum {max} Mo)",
+      errorType: "Type de fichier non pris en charge. Utilisez PNG, JPG, WebP ou SVG",
+      errorUnsafeSvg:
+        "Ce SVG contient des scripts ou du contenu actif et a été rejeté. Exportez un SVG simple et réessayez",
+      errorUpload: "Impossible de téléverser le logo. Veuillez réessayer",
+    },
     appearanceTitle: "Nom du système et couleurs",
     appNameLabel: "Nom du système",
     appShortNameLabel: "Nom court (titre de l'onglet du navigateur)",
