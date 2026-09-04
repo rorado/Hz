@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Pencil, UserCircle, Star } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
+import { CustomerAvatar } from "@/components/shared/customer-avatar";
 import { PasswordConfirmDeleteDialog } from "@/components/shared/password-confirm-delete-dialog";
 import { deleteCustomer, toggleCustomerFavorite } from "@/features/customers/actions";
 import { formatCurrency } from "@/lib/currency";
@@ -20,6 +21,7 @@ export type CustomerRow = {
   phone: string;
   email: string | null;
   isFavorite: boolean;
+  imageUrl: string | null;
   _count: { orders: number };
   totalPurchased: number;
   totalPaid: number;
@@ -87,7 +89,21 @@ export function getCustomerColumns(
         />
       ),
     },
-    { accessorKey: "name", header: t.customers.columnName },
+    {
+      accessorKey: "name",
+      header: t.customers.columnName,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2.5">
+          <CustomerAvatar
+            name={row.original.name}
+            imageUrl={row.original.imageUrl}
+            seed={row.original.id}
+            className="size-8 text-xs"
+          />
+          <span className="font-medium">{row.original.name}</span>
+        </div>
+      ),
+    },
     {
       accessorKey: "phone",
       header: t.customers.columnPhone,

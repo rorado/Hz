@@ -56,7 +56,7 @@ export function ReturnForm({ kind, sourceId, rows }: { kind: "sales" | "purchase
         <td className="p-3">{row.original}</td><td className="p-3">{row.returned}</td><td className="p-3 font-medium">{available}</td>
         <td className="p-3"><Input type="number" min={0.001} step="0.001" max={available} className="w-20" disabled={!selected[row.id]} value={qty || ""} onChange={(e) => setQuantities((q) => ({ ...q, [row.id]: Number(e.target.value) }))} /></td>
         <td className="p-3">{kind === "sales" ? <Select value={conditions[row.id] || "GOOD"} disabled={!selected[row.id]} onValueChange={(v) => v && setConditions((c) => ({ ...c, [row.id]: v as typeof c[string] }))}><SelectTrigger className="w-32"><SelectValue>{(value: string) => ({GOOD:t.returns.good,DAMAGED:t.returns.damaged,DEFECTIVE:t.returns.defective})[value]}</SelectValue></SelectTrigger><SelectContent><SelectItem value="GOOD">{t.returns.good}</SelectItem><SelectItem value="DAMAGED">{t.returns.damaged}</SelectItem><SelectItem value="DEFECTIVE">{t.returns.defective}</SelectItem></SelectContent></Select> : row.stock}</td>
-        <td className="p-3">{formatCurrency(row.unitAmount, locale)}</td><td className="p-3 font-medium">{qty > 0 ? formatCurrency(qty * row.unitAmount, locale) : "—"}</td>
+        <td className="p-3">{formatCurrency(row.unitAmount, locale, false, 4)}</td><td className="p-3 font-medium">{qty > 0 ? formatCurrency(qty * row.unitAmount, locale) : "—"}</td>
       </tr>; })}</tbody></table>
     </div>
     <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">

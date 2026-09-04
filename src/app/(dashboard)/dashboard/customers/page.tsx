@@ -122,6 +122,8 @@ export default async function CustomersPage({
                 address: editingCustomer.address,
                 notes: editingCustomer.notes,
                 isFavorite: editingCustomer.isFavorite,
+                imageUrl: editingCustomer.imageUrl,
+                imagePublicId: editingCustomer.imagePublicId,
               }
             : null
         }

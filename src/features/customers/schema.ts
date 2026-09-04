@@ -15,6 +15,13 @@ export const customerSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   isFavorite: z.boolean(),
+  // Undefined = leave the existing photo untouched (callers that don't
+  // manage a photo, e.g. the order-flow customer edit, never send this
+  // field); null = explicitly remove it; an object = set/replace it.
+  image: z
+    .object({ publicId: z.string(), secureUrl: z.string() })
+    .nullable()
+    .optional(),
 });
 
 export type CustomerInput = z.infer<typeof customerSchema>;

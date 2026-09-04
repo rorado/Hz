@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { normalizeArabicName } from "@/lib/arabic-name";
 
 export const POS_PRODUCTS_PAGE_SIZE = 24;
-export const POS_CUSTOMERS_PAGE_SIZE = 10;
+export const POS_CUSTOMERS_PAGE_SIZE = 60;
 export const POS_CATEGORIES_PAGE_SIZE = 20;
 
 export type PosCategory = {
@@ -33,6 +33,7 @@ export type PosCustomer = {
   phone: string;
   email: string | null;
   balance: number;
+  imageUrl: string | null;
 };
 
 function mapProduct(row: {
@@ -222,11 +223,22 @@ export async function searchPosCustomers({
 
   let rows: PosCustomer[];
   if (!trimmed) {
+    // `id` is a secondary tiebreaker: several customers can share the exact
+    // same createdAt (bulk imports/seeds), and skip/take paging over a
+    // non-unique sort order isn't guaranteed stable across requests — rows
+    // can shift between pages and come back duplicated (or dropped).
     const found = await prisma.customer.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: offset,
       take: limit,
-      select: { id: true, name: true, phone: true, email: true, balance: true },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        balance: true,
+        imageUrl: true,
+      },
     });
     rows = found.map((c) => ({ ...c, balance: Number(c.balance) }));
   } else {
@@ -238,12 +250,13 @@ export async function searchPosCustomers({
         phone: string;
         email: string | null;
         balance: Prisma.Decimal;
+        imageUrl: string | null;
       }[]
     >`
-      SELECT id, name, phone, email, balance
+      SELECT id, name, phone, email, balance, "imageUrl"
       FROM public."Customer"
       WHERE (phone ILIKE ${"%" + trimmed + "%"} OR similarity("nameNormalized", ${normalized}) > 0.2)
-      ORDER BY similarity("nameNormalized", ${normalized}) DESC, "createdAt" DESC
+      ORDER BY similarity("nameNormalized", ${normalized}) DESC, "createdAt" DESC, id DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
     rows = raw.map((c) => ({ ...c, balance: Number(c.balance) }));
@@ -256,7 +269,14 @@ export async function searchPosCustomers({
 export async function getPosCustomerById(id: string): Promise<PosCustomer | null> {
   const row = await prisma.customer.findUnique({
     where: { id },
-    select: { id: true, name: true, phone: true, email: true, balance: true },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      balance: true,
+      imageUrl: true,
+    },
   });
   return row ? { ...row, balance: Number(row.balance) } : null;
 }

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Minus, Plus, X, Trash2, ImageOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CustomerAvatar } from "@/components/shared/customer-avatar";
 import {
   Select,
   SelectContent,
@@ -72,9 +73,7 @@ export function CartPanel({
     <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-card xl:w-96">
       {/* Customer */}
       <div className="flex items-start gap-2 border-b p-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-          {customer.name.charAt(0)}
-        </div>
+        <CustomerAvatar name={customer.name} imageUrl={customer.imageUrl} seed={customer.id} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{customer.name}</p>
           <p dir="ltr" className="truncate text-start text-xs text-muted-foreground">

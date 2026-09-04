@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CustomerAvatar } from "@/components/shared/customer-avatar";
 import { PageHeader } from "@/components/shared/page-header";
 import { BackButton } from "@/components/shared/back-button";
 import { StatCard } from "@/components/shared/stat-card";
@@ -146,6 +147,12 @@ export default async function CustomerProfilePage({
             <CardTitle>{t.customers.personalInfo}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+          <CustomerAvatar
+            name={customer.name}
+            imageUrl={customer.imageUrl}
+            seed={customer.id}
+            className="mb-2 size-16 text-xl"
+          />
           <p>
             <span className="text-muted-foreground">{t.customers.columnName}: </span>
             {customer.name}

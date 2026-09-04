@@ -553,6 +553,8 @@ export function OrderForm({
             address: selectedCustomer.address ?? null,
             notes: selectedCustomer.notes ?? null,
             isFavorite: selectedCustomer.isFavorite ?? false,
+            imageUrl: selectedCustomer.imageUrl ?? null,
+            imagePublicId: selectedCustomer.imagePublicId ?? null,
           }}
           onOpenChange={(open) => {
             setEditCustomerOpen(open);

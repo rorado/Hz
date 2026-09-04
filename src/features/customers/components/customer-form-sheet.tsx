@@ -20,6 +20,7 @@ import {
   updateCustomer,
   findCustomerByPhoneAction,
 } from "@/features/customers/actions";
+import { CustomerImageUploader } from "@/features/customers/components/customer-image-uploader";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/i18n/locale-provider";
 
@@ -38,6 +39,8 @@ type CustomerRecord = {
   address: string | null;
   notes: string | null;
   isFavorite: boolean;
+  imageUrl: string | null;
+  imagePublicId: string | null;
 } | null;
 
 export function CustomerFormSheet({
@@ -71,10 +74,15 @@ export function CustomerFormSheet({
       address: customer?.address ?? "",
       notes: customer?.notes ?? "",
       isFavorite: customer?.isFavorite ?? false,
+      image:
+        customer?.imageUrl && customer?.imagePublicId
+          ? { publicId: customer.imagePublicId, secureUrl: customer.imageUrl }
+          : null,
     },
   });
 
   const phoneValue = watch("phone");
+  const nameValue = watch("name");
   const [matchingCustomers, setMatchingCustomers] = useState<MatchingCustomer[]>(
     [],
   );
@@ -128,6 +136,18 @@ export function CustomerFormSheet({
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <fieldset disabled={isPending} className="contents space-y-4">
+        <Controller
+          control={control}
+          name="image"
+          render={({ field }) => (
+            <CustomerImageUploader
+              value={field.value ?? null}
+              onChange={field.onChange}
+              name={nameValue}
+              disabled={isPending}
+            />
+          )}
+        />
         <div className="space-y-2">
           <Label htmlFor="customer-name">{t.customers.fullNameLabel}</Label>
           <Input

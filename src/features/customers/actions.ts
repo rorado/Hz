@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, hasPermission } from "@/lib/permissions";
+import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
 import { findCustomerByPhone } from "@/features/customers/queries";
@@ -41,6 +42,8 @@ export async function createCustomer(
       address: parsed.data.address || null,
       notes: parsed.data.notes || null,
       isFavorite: parsed.data.isFavorite,
+      imageUrl: parsed.data.image?.secureUrl ?? null,
+      imagePublicId: parsed.data.image?.publicId ?? null,
       createdById: access.adminId,
     },
   });
@@ -68,6 +71,18 @@ export async function updateCustomer(
     return { error: t.customers.phoneTakenError };
   }
 
+  // `image` is only present when the caller actually manages a photo (the
+  // main customer form) — other, lighter edit paths (e.g. the order-flow
+  // customer sheet) never send it, and must leave any existing photo alone
+  // rather than wiping it out.
+  const changesImage = parsed.data.image !== undefined;
+  const previous = changesImage
+    ? await prisma.customer.findUnique({
+        where: { id },
+        select: { imagePublicId: true },
+      })
+    : null;
+
   // Invoices and orders each keep their own snapshot of the customer's
   // name/phone/email (so historical documents don't shift if the customer
   // record changes) — but admins expect a plain name correction to show up
@@ -81,6 +96,12 @@ export async function updateCustomer(
     address: parsed.data.address || null,
     notes: parsed.data.notes || null,
     isFavorite: parsed.data.isFavorite,
+    ...(changesImage
+      ? {
+          imageUrl: parsed.data.image?.secureUrl ?? null,
+          imagePublicId: parsed.data.image?.publicId ?? null,
+        }
+      : {}),
   };
   const snapshotData = {
     customerName: parsed.data.name,
@@ -93,6 +114,15 @@ export async function updateCustomer(
     prisma.invoice.updateMany({ where: { customerId: id }, data: snapshotData }),
     prisma.order.updateMany({ where: { customerId: id }, data: snapshotData }),
   ]);
+
+  const newPublicId = parsed.data.image?.publicId ?? null;
+  if (previous?.imagePublicId && previous.imagePublicId !== newPublicId) {
+    try {
+      await destroyCloudinaryAsset(previous.imagePublicId);
+    } catch {
+      // Best effort — the customer row already points at the new/no image.
+    }
+  }
 
   revalidatePath("/dashboard/customers");
   revalidatePath(`/dashboard/customers/${id}`);
@@ -146,10 +176,23 @@ export async function deleteCustomer(
   if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
   const t = await getDictionary();
 
+  const existing = await prisma.customer.findUnique({
+    where: { id },
+    select: { imagePublicId: true },
+  });
+
   try {
     await prisma.customer.delete({ where: { id } });
   } catch {
     return { error: t.customers.cannotDeleteLinkedError };
+  }
+
+  if (existing?.imagePublicId) {
+    try {
+      await destroyCloudinaryAsset(existing.imagePublicId);
+    } catch {
+      // Best effort — the customer row is already gone.
+    }
   }
 
   revalidatePath("/dashboard/customers");
@@ -166,10 +209,26 @@ export async function deleteCustomers(
   if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
   const t = await getDictionary();
 
+  const existing = await prisma.customer.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, imagePublicId: true },
+  });
+  const imagePublicIdById = new Map(
+    existing.map((row) => [row.id, row.imagePublicId]),
+  );
+
   let failedCount = 0;
   for (const id of ids) {
     try {
       await prisma.customer.delete({ where: { id } });
+      const publicId = imagePublicIdById.get(id);
+      if (publicId) {
+        try {
+          await destroyCloudinaryAsset(publicId);
+        } catch {
+          // Best effort — the customer row is already gone.
+        }
+      }
     } catch {
       failedCount++;
     }

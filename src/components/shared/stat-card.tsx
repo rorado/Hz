@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,7 @@ export function StatCard({
   variant = "default",
   formatValue,
   locale = "ar",
+  href,
 }: {
   title: string;
   value: number;
@@ -16,13 +18,20 @@ export function StatCard({
   variant?: "default" | "warning" | "balance";
   formatValue?: (value: number) => string;
   locale?: string;
+  /** When set, the whole card becomes a link to this path. */
+  href?: string;
 }) {
   const isWarning = variant === "warning" && value > 0;
   const isNegativeBalance = variant === "balance" && value < 0;
   const isPositiveBalance = variant === "balance" && value > 0;
 
-  return (
-    <Card className="gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md">
+  const card = (
+    <Card
+      className={cn(
+        "h-full gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md",
+        href && "hover:ring-primary/40",
+      )}
+    >
       <CardContent className="flex items-center justify-between gap-3">
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -51,4 +60,14 @@ export function StatCard({
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {card}
+      </Link>
+    );
+  }
+
+  return card;
 }

@@ -67,6 +67,7 @@ export async function getCustomersPage({
       phone: string;
       email: string | null;
       isFavorite: boolean;
+      imageUrl: string | null;
       ordersCount: bigint;
       totalPurchased: string;
       totalPaid: string;
@@ -76,7 +77,7 @@ export async function getCustomersPage({
     }[]
   >`
     SELECT
-      c.id, c.name, c.phone, c.email, c."isFavorite",
+      c.id, c.name, c.phone, c.email, c."isFavorite", c."imageUrl",
       COALESCE(ord.orders_count, 0)::bigint AS "ordersCount",
       COALESCE(inv.total_purchased, 0)::numeric AS "totalPurchased",
       COALESCE(inv.total_paid, 0)::numeric AS "totalPaid",
@@ -120,6 +121,7 @@ export async function getCustomersPage({
       phone: row.phone,
       email: row.email,
       isFavorite: row.isFavorite,
+      imageUrl: row.imageUrl,
       _count: { orders: Number(row.ordersCount) },
       totalPurchased: Number(row.totalPurchased),
       totalPaid: Number(row.totalPaid),
@@ -180,6 +182,8 @@ export async function getCustomerOptions() {
       notes: true,
       balance: true,
       isFavorite: true,
+      imageUrl: true,
+      imagePublicId: true,
     },
   });
 

@@ -35,6 +35,8 @@ export type CustomerOption = {
   notes?: string | null;
   balance?: number;
   isFavorite?: boolean;
+  imageUrl?: string | null;
+  imagePublicId?: string | null;
 };
 
 function customerLabel(customer: CustomerOption) {

@@ -188,7 +188,9 @@ export function PurchaseOrderItemsForm({
                     {item.productName ?? item.productId}
                   </TableCell>
                   <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{formatCurrency(item.unitCost, locale)}</TableCell>
+                  <TableCell>
+                    {formatCurrency(item.unitCost, locale, false, 4)}
+                  </TableCell>
                   <TableCell>
                     {formatCurrency(item.quantity * item.unitCost, locale)}
                   </TableCell>
@@ -275,7 +277,7 @@ export function PurchaseOrderItemsForm({
                   <Input
                     type="number"
                     min={0}
-                    step="0.01"
+                    step="0.0001"
                     inputMode="decimal"
                     {...register(`items.${index}.unitCost`)}
                   />

@@ -255,6 +255,119 @@ export async function getLowStockProductsPage({ page }: { page: number }) {
   };
 }
 
+export type LowStockProduct = {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  categoryName: string;
+  brandName: string | null;
+  status: "ACTIVE" | "INACTIVE";
+  quantity: number;
+  minStockLevel: number;
+  /** How far below the minimum this product sits (minStock − quantity),
+   * never negative — the amount to reorder to get back to the threshold. */
+  shortage: number;
+  purchasePrice: number;
+};
+
+const lowStockWhere = (): Prisma.ProductWhereInput => ({
+  quantity: { lte: prisma.product.fields.minStockLevel },
+});
+
+const LOW_STOCK_SELECT = {
+  id: true,
+  name: true,
+  sku: true,
+  barcode: true,
+  status: true,
+  quantity: true,
+  minStockLevel: true,
+  purchasePrice: true,
+  category: { select: { name: true } },
+  brand: { select: { name: true } },
+} satisfies Prisma.ProductSelect;
+
+const LOW_STOCK_ORDER: Prisma.ProductOrderByWithRelationInput[] = [
+  { quantity: "asc" },
+  { name: "asc" },
+];
+
+type LowStockRow = Prisma.ProductGetPayload<{ select: typeof LOW_STOCK_SELECT }>;
+
+function mapLowStockRow(product: LowStockRow): LowStockProduct {
+  const quantity = Number(product.quantity);
+  const minStockLevel = Number(product.minStockLevel);
+  return {
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    barcode: product.barcode,
+    categoryName: product.category.name,
+    brandName: product.brand?.name ?? null,
+    status: product.status,
+    quantity,
+    minStockLevel,
+    shortage: Math.max(0, minStockLevel - quantity),
+    purchasePrice: Number(product.purchasePrice),
+  };
+}
+
+/** Every product at or below its minimum stock level, worst shortage first —
+ * the full list, used by the PDF / Excel export. */
+export async function getLowStockProducts(): Promise<LowStockProduct[]> {
+  const products = await prisma.product.findMany({
+    where: lowStockWhere(),
+    select: LOW_STOCK_SELECT,
+    orderBy: LOW_STOCK_ORDER,
+  });
+  return products.map(mapLowStockRow);
+}
+
+export const LOW_STOCK_FEED_SIZE = 80;
+
+export type LowStockFeed = {
+  items: LowStockProduct[];
+  total: number;
+  /** Offset to request next, or null when the list is exhausted. */
+  nextOffset: number | null;
+};
+
+/** One page of the low-stock list for the infinite-scroll table. */
+export async function getLowStockProductsFeed({
+  offset = 0,
+  take = LOW_STOCK_FEED_SIZE,
+}: { offset?: number; take?: number } = {}): Promise<LowStockFeed> {
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where: lowStockWhere(),
+      select: LOW_STOCK_SELECT,
+      orderBy: LOW_STOCK_ORDER,
+      skip: Math.max(0, offset),
+      take: take + 1,
+    }),
+    prisma.product.count({ where: lowStockWhere() }),
+  ]);
+
+  const hasMore = products.length > take;
+  return {
+    items: (hasMore ? products.slice(0, take) : products).map(mapLowStockRow),
+    total,
+    nextOffset: hasMore ? offset + take : null,
+  };
+}
+
+/** Just the ids of every low-stock product, in the same order — lets the
+ * table's "select all" cover rows not yet scrolled into view. */
+export async function getLowStockProductIds(): Promise<string[]> {
+  const rows = await prisma.product.findMany({
+    where: lowStockWhere(),
+    select: { id: true },
+    orderBy: LOW_STOCK_ORDER,
+  });
+  return rows.map((row) => row.id);
+}
+
 export const PRODUCT_CUSTOMERS_PAGE_SIZE = 10;
 
 export async function getProductCustomersPage({

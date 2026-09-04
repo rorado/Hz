@@ -212,7 +212,7 @@ export default async function PurchaseOrderPrintPage({
                 </td>
                 <td className="px-3 py-2 border-2 border-gray-400">
                   <span className="block truncate max-w-[15ch]">
-                    {formatCurrency(Number(item.unitCost), lang, true)}
+                    {formatCurrency(Number(item.unitCost), lang, true, 4)}
                   </span>
                 </td>
                 <td className="px-3 py-2 border-2 border-gray-400">

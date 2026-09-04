@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { getDictionary } from "@/i18n/server";
-import { normalizeArabicName } from "@/lib/arabic-name";
-import { customerSchema } from "@/features/customers/schema";
 import { createInvoice } from "@/features/invoices/actions";
 import type { InvoiceLanguage } from "@/generated/prisma/enums";
 import { posSaleSchema } from "@/features/pos/schema";
@@ -27,39 +25,6 @@ export async function findPosProductByBarcodeAction(barcode: string) {
   const access = await requirePermission("POS_VIEW");
   if (!access.ok) return null;
   return getPosProductByBarcode(barcode);
-}
-
-export async function createPosCustomerAction(
-  input: unknown,
-): Promise<ActionError | { customerId: string }> {
-  const access = await requirePermission("POS_MANAGE");
-  if (!access.ok) return { error: access.error };
-  const t = await getDictionary();
-
-  const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) return { error: t.customers.validationError };
-
-  const existing = await prisma.customer.findFirst({
-    where: { phone: parsed.data.phone },
-    select: { id: true },
-  });
-  if (existing) return { error: t.customers.phoneTakenError };
-
-  const customer = await prisma.customer.create({
-    data: {
-      name: parsed.data.name,
-      nameNormalized: normalizeArabicName(parsed.data.name),
-      phone: parsed.data.phone,
-      email: parsed.data.email || null,
-      address: parsed.data.address || null,
-      isFavorite: false,
-      createdById: access.adminId,
-    },
-    select: { id: true },
-  });
-
-  revalidatePath("/dashboard/customers");
-  return { customerId: customer.id };
 }
 
 export async function createPosSale(input: unknown): Promise<

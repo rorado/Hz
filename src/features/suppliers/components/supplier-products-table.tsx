@@ -110,10 +110,10 @@ export function SupplierProductsTable({
                         {formatCurrency(product.totalCost, locale)}
                       </TableCell>
                       <TableCell className="font-mono tabular-nums">
-                        {formatCurrency(product.avgCost, locale)}
+                        {formatCurrency(product.avgCost, locale, false, 4)}
                       </TableCell>
                       <TableCell className="font-mono tabular-nums">
-                        {formatCurrency(product.latestCost, locale)}
+                        {formatCurrency(product.latestCost, locale, false, 4)}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Boxes, Eye } from "lucide-react";
+import { AlertTriangle, Boxes, Eye, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,15 +55,38 @@ export default async function InventoryPage({
       <PageHeader
         title={t.admin.inventory}
         icon={Boxes}
-        action={<RecordMovementDialog products={productOptions} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/dashboard/inventory/low-stock" />}
+            >
+              <AlertTriangle className="size-4 text-destructive" />
+              {t.inventory.lowStockPageTitle}
+            </Button>
+            <RecordMovementDialog products={productOptions} />
+          </div>
+        }
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" />
             {t.inventory.lowStockTitle}
           </CardTitle>
+          {lowStockTotal > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/dashboard/inventory/low-stock" />}
+            >
+              <FileDown className="size-4" />
+              {t.reports.exportPdf} / {t.reports.exportExcel}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {lowStockProducts.length === 0 ? (

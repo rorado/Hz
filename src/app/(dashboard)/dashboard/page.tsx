@@ -119,6 +119,7 @@ export default async function DashboardPage({
           icon={AlertTriangle}
           variant="warning"
           locale={locale}
+          href="/dashboard/inventory/low-stock"
         />
         <StatCard
           title={t.dashboardCards.totalOwedByCustomers}
