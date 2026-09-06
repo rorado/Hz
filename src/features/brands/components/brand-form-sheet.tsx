@@ -14,6 +14,7 @@ import { CloudinaryUploader } from "@/components/shared/cloudinary-uploader";
 import { brandSchema, type BrandInput } from "@/features/brands/schema";
 import { createBrand, updateBrand } from "@/features/brands/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type BrandRecord = {
   id: string;
@@ -40,7 +41,7 @@ export function BrandFormSheet({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<BrandInput>({
     resolver: zodResolver(brandSchema),
     defaultValues: {
@@ -52,6 +53,8 @@ export function BrandFormSheet({
           : null,
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());

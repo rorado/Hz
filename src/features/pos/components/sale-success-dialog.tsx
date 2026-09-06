@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Printer, Plus, Trash2, Loader2 } from "lucide-react";
+import { CheckCircle2, Printer, Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,15 +37,22 @@ const LANG_LABEL: Record<SaleResult["language"], string> = {
 export function SaleSuccessDialog({
   sale,
   onNewSale,
+  onEdit,
 }: {
   sale: SaleResult | null;
   onNewSale: () => void;
+  /** Reverse the just-created invoice and drop back into the cart with the
+   * same customer + lines still loaded, so the cashier can change anything
+   * and pay again as a fresh sale. */
+  onEdit: () => void;
 }) {
   const { locale, t } = useLocale();
   const [lang, setLang] = useState<SaleResult["language"]>(sale?.language ?? "AR");
   const [, startTransition] = useTransition();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [isDeleting, startDelete] = useTransition();
+  const [isReopening, startReopen] = useTransition();
+  const busy = isDeleting || isReopening;
 
   if (!sale) return null;
 
@@ -71,9 +78,21 @@ export function SaleSuccessDialog({
     });
   }
 
+  function editSale() {
+    startReopen(async () => {
+      const result = await deletePosSale(sale!.invoiceId);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(t.pos.saleReopenedToast);
+      onEdit();
+    });
+  }
+
   return (
     <>
-    <Dialog open onOpenChange={(open) => !open && !isDeleting && onNewSale()}>
+    <Dialog open onOpenChange={(open) => !open && !busy && onNewSale()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-emerald-600">
@@ -130,32 +149,49 @@ export function SaleSuccessDialog({
           <Button
             type="button"
             variant="outline"
+            disabled={busy}
             onClick={() => window.open(printHref, "_blank")}
           >
             <Printer className="size-4" />
             {t.pos.printInvoice}
           </Button>
-          <Button type="button" onClick={onNewSale}>
+          <Button type="button" disabled={busy} onClick={onNewSale}>
             <Plus className="size-4" />
             {t.pos.newSale}
           </Button>
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={() => setConfirmCancel(true)}
-        >
-          <Trash2 className="size-4" />
-          {t.pos.cancelSale}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={editSale}
+          >
+            {isReopening ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Pencil className="size-4" />
+            )}
+            {t.pos.editSale}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setConfirmCancel(true)}
+          >
+            <Trash2 className="size-4" />
+            {t.pos.cancelSale}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
 
       <AlertDialog
         open={confirmCancel}
-        onOpenChange={(open) => !open && !isDeleting && setConfirmCancel(false)}
+        onOpenChange={(open) => !open && !busy && setConfirmCancel(false)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { UnsavedChangesProvider } from "@/components/shared/unsaved-changes";
 import { auth } from "@/lib/auth";
 import { getDashboardStats } from "@/features/dashboard/queries";
 import { getSystemSettings } from "@/features/settings/queries";
@@ -49,7 +50,7 @@ export default async function DashboardLayout({
         </header>
         <main className="flex min-w-0 flex-1 flex-col gap-4 p-4 print:p-0">
           <div className="w-full min-w-0 lg:mx-auto lg:max-w-350">
-            {children}
+            <UnsavedChangesProvider>{children}</UnsavedChangesProvider>
           </div>
         </main>
       </SidebarInset>

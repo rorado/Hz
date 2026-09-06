@@ -16,6 +16,7 @@ import { DASHBOARD_TAB_PERMISSIONS } from "@/lib/permission-modules";
 import { roleSchema, type RoleInput } from "@/features/roles/schema";
 import { createRole, updateRole } from "@/features/roles/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 import type { PermissionKey } from "@/lib/permission-modules";
 
 type RoleRecord = {
@@ -44,7 +45,7 @@ export function RoleFormSheet({
     control,
     handleSubmit,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<RoleInput>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
@@ -53,6 +54,8 @@ export function RoleFormSheet({
       permissions: role?.permissions.map((p) => p.permission) ?? [],
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   const isFullAccess = watch("isFullAccess");
   const isSystem = role?.isSystem ?? false;

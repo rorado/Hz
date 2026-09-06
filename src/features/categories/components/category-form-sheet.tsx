@@ -24,6 +24,7 @@ import {
 } from "@/features/categories/schema";
 import { createCategory, updateCategory } from "@/features/categories/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type CategoryOption = { id: string; name: string };
 type CategoryRecord = {
@@ -56,7 +57,7 @@ export function CategoryFormSheet({
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CategoryInput>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
@@ -72,6 +73,8 @@ export function CategoryFormSheet({
           : null,
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());

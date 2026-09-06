@@ -16,6 +16,7 @@ import {
 } from "@/features/suppliers/schema";
 import { createSupplier, updateSupplier } from "@/features/suppliers/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type SupplierRecord = {
   id: string;
@@ -41,7 +42,7 @@ export function SupplierFormSheet({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<SupplierInput>({
     resolver: zodResolver(supplierSchema),
     defaultValues: {
@@ -51,6 +52,8 @@ export function SupplierFormSheet({
       address: supplier?.address ?? "",
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());

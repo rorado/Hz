@@ -21,6 +21,7 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { SortableItem } from "@/components/shared/sortable-item";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -469,7 +470,9 @@ export function InvoiceForm({
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    reset,
+    getValues,
+    formState: { errors, isDirty },
   } = useForm<InvoiceInput, unknown, InvoiceOutput>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
@@ -512,6 +515,7 @@ export function InvoiceForm({
     control,
     name: "items",
   });
+  useUnsavedChanges(isDirty);
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
@@ -590,7 +594,12 @@ export function InvoiceForm({
 
       allowNegativeStockRef.current = false;
 
-      if (invoice) toast.success(t.invoices.updateToast);
+      if (invoice) {
+        // Editing stays on the page — re-baseline so it's no longer "dirty".
+        reset(getValues());
+        toast.success(t.invoices.updateToast);
+      }
+      // Creating redirects away, so nothing to reset there.
     });
   }
 

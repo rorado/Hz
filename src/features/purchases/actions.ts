@@ -74,10 +74,11 @@ export async function createPurchaseOrder(
         total,
         createdById: access.adminId,
         items: {
-          create: parsed.data.items.map((item) => ({
+          create: parsed.data.items.map((item, index) => ({
             productId: item.productId,
             quantity: item.quantity,
             unitCost: item.unitCost,
+            position: index + 1,
           })),
         },
         attachments: {
@@ -176,11 +177,12 @@ export async function updatePurchaseOrderItems(
     await prisma.$transaction(async (tx) => {
       await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
       await tx.purchaseOrderItem.createMany({
-        data: parsed.data.items.map((item) => ({
+        data: parsed.data.items.map((item, index) => ({
           purchaseOrderId: id,
           productId: item.productId,
           quantity: item.quantity,
           unitCost: item.unitCost,
+          position: index + 1,
         })),
       });
       await tx.purchaseOrder.update({ where: { id }, data: { total } });

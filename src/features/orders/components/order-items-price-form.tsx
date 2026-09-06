@@ -67,6 +67,7 @@ import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 import type { Locale } from "@/i18n/config";
 import { StockAlertDialog, findStockIssue, type StockIssue } from "@/components/shared/stock-alert-dialog";
 import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type ProductOption = {
   id: string;
@@ -278,7 +279,9 @@ export function OrderItemsPriceForm({
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    reset,
+    getValues,
+    formState: { errors, isDirty },
   } = useForm<OrderItemsInput, unknown, OrderItemsOutput>({
     resolver: zodResolver(orderItemsSchema),
     defaultValues: {
@@ -322,10 +325,13 @@ export function OrderItemsPriceForm({
     return sum + price * quantity;
   }, 0);
 
+  useUnsavedChanges(isDirty);
+
   function submitItems(values: OrderItemsOutput, allowNegativeStock = false) {
     startTransition(async () => {
       const result = await updateOrderItems(orderId, values, { allowNegativeStock });
       if (result?.error) { toast.error(result.error); return; }
+      reset(getValues());
       toast.success(t.orders.itemsUpdatedToast);
     });
   }

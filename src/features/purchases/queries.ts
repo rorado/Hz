@@ -40,6 +40,7 @@ export async function getPurchaseOrderById(id: string) {
     include: {
       supplier: true,
       items: {
+        orderBy: { position: "asc" },
         include: {
           product: { select: { name: true, sku: true, weight: true } },
         },

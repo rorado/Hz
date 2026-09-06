@@ -5,6 +5,21 @@ import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { SortableItem } from "@/components/shared/sortable-item";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +55,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
 import { FileAttachmentUploader } from "@/components/shared/file-attachment-uploader";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 import type { InvoiceLanguage } from "@/generated/prisma/client";
 
 type Option = { id: string; name: string };
@@ -185,7 +201,8 @@ export function PurchaseOrderForm({
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    getValues,
+    formState: { errors, isDirty },
   } = useForm<PurchaseOrderInput, unknown, PurchaseOrderOutput>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
@@ -203,7 +220,24 @@ export function PurchaseOrderForm({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const { fields, append, remove, move } = useFieldArray({
+    control,
+    name: "items",
+  });
+  useUnsavedChanges(isDirty);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((field) => field.id === active.id);
+    const newIndex = fields.findIndex((field) => field.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) move(oldIndex, newIndex);
+  }
   const items = watch("items");
   const total = items.reduce(
     (sum, item) =>
@@ -221,6 +255,7 @@ export function PurchaseOrderForm({
   }
 
   function handleQuickAdd(selected: ProductOption[]) {
+    if (selected.length === 0) return;
     selected.forEach((product) =>
       append({
         productId: product.id,
@@ -229,6 +264,13 @@ export function PurchaseOrderForm({
         updateProductPurchasePrice: true,
       }),
     );
+    // Drop the leftover placeholder rows (no product picked) now that real
+    // lines have been added, so the quick-add doesn't leave an empty "اختر
+    // منتجاً" row hanging above the added products.
+    const emptyIndexes = getValues("items")
+      .map((item, index) => (item.productId ? -1 : index))
+      .filter((index) => index !== -1);
+    if (emptyIndexes.length) remove(emptyIndexes);
   }
 
   return (
@@ -312,87 +354,118 @@ export function PurchaseOrderForm({
           {t.purchases.updateProductPurchasePriceHelp}
         </p>
 
-        <div
-          className={
-            fields.length > 5
-              ? "max-h-120 space-y-3 overflow-y-auto pe-1"
-              : "space-y-3"
-          }
+        <DndContext
+          id="purchase-items-dnd"
+          sensors={dragSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          {fields.map((field, index) => (
+          <SortableContext
+            items={fields.map((field) => field.id)}
+            strategy={verticalListSortingStrategy}
+          >
             <div
-              key={field.id}
-              className="grid grid-cols-1 items-end gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_auto_auto_auto]"
+              className={
+                fields.length > 5
+                  ? "max-h-120 space-y-3 overflow-y-auto pe-1"
+                  : "space-y-3"
+              }
             >
-              <div className="space-y-1">
-                <Label className="text-xs">{t.purchases.productLabel}</Label>
-                <Controller
-                  control={control}
-                  name={`items.${index}.productId`}
-                  render={({ field: productField }) => (
-                    <ProductPickerField
-                      value={productField.value ?? ""}
-                      products={products}
-                      onChange={(product) => {
-                        productField.onChange(product?.id ?? "");
-                        setValue(
-                          `items.${index}.unitCost`,
-                          product?.purchasePrice ?? 0,
-                        );
-                      }}
-                      t={t}
-                    />
+              {fields.map((field, index) => (
+                <SortableItem
+                  key={field.id}
+                  id={field.id}
+                  className="grid grid-cols-1 items-start gap-2 rounded-lg border p-3 sm:grid-cols-[auto_1fr_auto_auto_auto]"
+                >
+                  {(dragHandle) => (
+                    <>
+                      <div className="flex items-center justify-center pt-1 sm:pt-6">
+                        {dragHandle}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t.purchases.productLabel}
+                        </Label>
+                        <Controller
+                          control={control}
+                          name={`items.${index}.productId`}
+                          render={({ field: productField }) => (
+                            <ProductPickerField
+                              value={productField.value ?? ""}
+                              products={products}
+                              onChange={(product) => {
+                                productField.onChange(product?.id ?? "");
+                                setValue(
+                                  `items.${index}.unitCost`,
+                                  product?.purchasePrice ?? 0,
+                                );
+                              }}
+                              t={t}
+                            />
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t.purchases.quantityLabel}
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0.001}
+                          step="0.001"
+                          className="w-24"
+                          {...register(`items.${index}.quantity`)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t.purchases.unitCostLabel}
+                        </Label>
+                        <div className="w-32">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.0001"
+                            inputMode="decimal"
+                            {...register(`items.${index}.unitCost`)}
+                          />
+                        </div>
+                        <Controller
+                          control={control}
+                          name={`items.${index}.updateProductPurchasePrice`}
+                          render={({ field }) => (
+                            <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
+                              <Checkbox
+                                checked={field.value ?? false}
+                                onCheckedChange={(checked) =>
+                                  field.onChange(checked === true)
+                                }
+                              />
+                              <span>
+                                {t.purchases.updateProductPurchasePriceLabel}
+                              </span>
+                            </label>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="hidden text-xs sm:block">&nbsp;</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </>
                   )}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t.purchases.quantityLabel}</Label>
-                <Input
-                  type="number"
-                  min={0.001}
-                  step="0.001"
-                  className="w-24"
-                  {...register(`items.${index}.quantity`)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t.purchases.unitCostLabel}</Label>
-                <div className="w-32">
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.0001"
-                    inputMode="decimal"
-                    {...register(`items.${index}.unitCost`)}
-                  />
-                </div>
-                <Controller
-                  control={control}
-                  name={`items.${index}.updateProductPurchasePrice`}
-                  render={({ field }) => (
-                    <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
-                      <Checkbox
-                        checked={field.value ?? false}
-                        onCheckedChange={(checked) =>
-                          field.onChange(checked === true)
-                        }
-                      />
-                      <span>{t.purchases.updateProductPurchasePriceLabel}</span>
-                    </label>
-                  )}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+                </SortableItem>
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
         {errors.items?.message && (
           <p className="text-sm text-destructive">{errors.items.message}</p>
         )}

@@ -68,6 +68,9 @@ export const ar = {
     createdByLabel: "الموظف",
     unknownEmployee: "غير معروف",
     deletePasswordError: "كلمة المرور غير صحيحة",
+    unsavedChanges: "تغييرات غير محفوظة",
+    unsavedChangesLeaveConfirm:
+      "لديك تغييرات غير محفوظة. إذا غادرت هذه الصفحة فقد تفقد تعديلاتك. هل تريد المتابعة؟",
   },
   publicNav: {
     home: "الصفحة الرئيسية",
@@ -1575,6 +1578,8 @@ export const ar = {
       "سيتم حذف الفاتورة وإرجاع المنتجات إلى المخزون وإلغاء أي تأثير على رصيد العميل. لا يمكن التراجع عن هذا الإجراء.",
     confirmCancelSale: "حذف البيع",
     saleCancelledToast: "تم إلغاء البيع وإرجاع المخزون",
+    editSale: "تعديل البيع",
+    saleReopenedToast: "تم إلغاء الفاتورة، يمكنك الآن تعديل البيع وإتمامه من جديد",
     noCustomerError: "الرجاء اختيار عميل",
     emptyCartError: "السلة فارغة",
     productUnavailableError: "أحد المنتجات لم يعد متاحاً، الرجاء تحديث السلة",

@@ -71,6 +71,9 @@ export const en = {
     createdByLabel: "Employee",
     unknownEmployee: "Unknown",
     deletePasswordError: "Incorrect password",
+    unsavedChanges: "Unsaved changes",
+    unsavedChangesLeaveConfirm:
+      "You have unsaved changes. If you leave this page, your edits may be lost. Continue?",
   },
   publicNav: {
     home: "Home",
@@ -1607,6 +1610,8 @@ export const en = {
       "The invoice will be deleted, the products returned to stock, and any effect on the customer's balance undone. This cannot be undone.",
     confirmCancelSale: "Delete sale",
     saleCancelledToast: "Sale cancelled, stock restored",
+    editSale: "Edit sale",
+    saleReopenedToast: "Invoice reversed — you can now edit the sale and complete it again",
     noCustomerError: "Please select a customer",
     emptyCartError: "Cart is empty",
     productUnavailableError: "A product is no longer available, please review the cart",

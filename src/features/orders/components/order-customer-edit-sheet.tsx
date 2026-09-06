@@ -20,6 +20,7 @@ import {
 } from "@/features/orders/actions";
 import { PhoneConflictDialog } from "@/features/orders/components/phone-conflict-dialog";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type CustomerRecord = {
   id: string;
@@ -56,7 +57,8 @@ export function OrderCustomerEditSheet({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -68,6 +70,8 @@ export function OrderCustomerEditSheet({
       isFavorite: false,
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function submit(
     values: CustomerInput,
@@ -94,6 +98,7 @@ export function OrderCustomerEditSheet({
       }
 
       toast.success(customer ? t.customers.toastUpdated : t.customers.toastCreated);
+      reset(values);
       onOpenChange(false);
     });
   }
@@ -117,7 +122,13 @@ export function OrderCustomerEditSheet({
     <>
       <FormSheet
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={(next) => {
+          // This sheet isn't remounted on close, and the form lives outside
+          // the sheet content — reset so a cancelled edit stops flagging the
+          // order page as having unsaved changes.
+          if (!next) reset();
+          onOpenChange(next);
+        }}
         title={customer ? t.orders.editCustomerInfoTitle : t.customers.addCustomerInfoTitle}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

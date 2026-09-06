@@ -328,6 +328,17 @@ export function PosWorkspace({
     setStep("customer");
   }
 
+  // "Edit sale" from the success dialog: the invoice has just been reversed
+  // server-side, and the cart / customer / payment are all still in state,
+  // so just drop back into the register with a fresh token — paying again
+  // creates a brand-new invoice from whatever the cashier changes.
+  function reopenSaleForEdit() {
+    setSale(null);
+    setResumedHeldId(null);
+    setSaleToken(crypto.randomUUID());
+    setStep("sell");
+  }
+
   async function handleBarcode(barcode: string) {
     const product = await findPosProductByBarcodeAction(barcode);
     if (!product) {
@@ -597,7 +608,11 @@ export function PosWorkspace({
         />
       )}
 
-      <SaleSuccessDialog sale={sale} onNewSale={resetSale} />
+      <SaleSuccessDialog
+        sale={sale}
+        onNewSale={resetSale}
+        onEdit={reopenSaleForEdit}
+      />
 
       <AlertDialog
         open={negativeBalance !== null}

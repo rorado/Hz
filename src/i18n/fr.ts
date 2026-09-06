@@ -74,6 +74,9 @@ export const fr = {
     createdByLabel: "Employé",
     unknownEmployee: "Inconnu",
     deletePasswordError: "Mot de passe incorrect",
+    unsavedChanges: "Modifications non enregistrées",
+    unsavedChangesLeaveConfirm:
+      "Vous avez des modifications non enregistrées. Si vous quittez cette page, vos changements pourraient être perdus. Continuer ?",
   },
   publicNav: {
     home: "Accueil",
@@ -1661,6 +1664,8 @@ export const fr = {
       "La facture sera supprimée, les produits remis en stock et tout effet sur le solde du client annulé. Cette action est irréversible.",
     confirmCancelSale: "Supprimer la vente",
     saleCancelledToast: "Vente annulée, stock rétabli",
+    editSale: "Modifier la vente",
+    saleReopenedToast: "Facture annulée — vous pouvez maintenant modifier la vente et la valider à nouveau",
     noCustomerError: "Veuillez sélectionner un client",
     emptyCartError: "Le panier est vide",
     productUnavailableError: "Un produit n'est plus disponible, veuillez vérifier le panier",

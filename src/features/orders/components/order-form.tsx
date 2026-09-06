@@ -62,6 +62,7 @@ import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 import type { Locale } from "@/i18n/config";
 import { StockAlertDialog, findStockIssue, type StockIssue } from "@/components/shared/stock-alert-dialog";
 import { QuickProductAddPanel } from "@/components/shared/quick-product-add-panel";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type ProductOption = {
   id: string;
@@ -221,7 +222,7 @@ export function OrderForm({
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CreateOrderInput, unknown, CreateOrderOutput>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
@@ -234,6 +235,8 @@ export function OrderForm({
   const productsById = new Map(
     products.map((product) => [product.id, product]),
   );
+  useUnsavedChanges(isDirty);
+
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: "items",

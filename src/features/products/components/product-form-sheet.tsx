@@ -40,6 +40,7 @@ import {
 } from "@/features/products/schema";
 import { createProduct, updateProduct } from "@/features/products/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 import type { Dictionary } from "@/i18n/dictionaries";
 
 type Option = { id: string; name: string };
@@ -143,7 +144,7 @@ export function ProductFormSheet({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProductInput, unknown, ProductOutput>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -165,6 +166,8 @@ export function ProductFormSheet({
       images: product?.images ?? [],
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());

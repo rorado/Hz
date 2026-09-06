@@ -41,6 +41,7 @@ import {
 } from "@/features/inventory/schema";
 import { recordInventoryMovement } from "@/features/inventory/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { ProductBarcodeScanner } from "@/components/shared/barcode-scanner";
 
@@ -137,11 +138,13 @@ export function RecordMovementDialog({
     handleSubmit,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<InventoryMovementInput, unknown, InventoryMovementOutput>({
     resolver: zodResolver(inventoryMovementSchema),
     defaultValues: getDefaultValues(),
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   const selectedProductId = watch("productId");
   const selectedType = watch("type");
@@ -167,7 +170,10 @@ export function RecordMovementDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (nextOpen) reset(getDefaultValues());
+        // Reset on both open and close: this form lives outside the dialog
+        // content so it stays mounted, and a half-filled-then-cancelled form
+        // must not keep flagging "unsaved changes" on the page behind it.
+        reset(getDefaultValues());
       }}
     >
       <DialogTrigger

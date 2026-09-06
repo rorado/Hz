@@ -25,6 +25,7 @@ import {
 } from "@/features/expenses/schema";
 import { createExpense, updateExpense } from "@/features/expenses/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type ExpenseRecord = {
   id: string;
@@ -63,7 +64,7 @@ export function ExpenseFormSheet({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ExpenseInput, unknown, ExpenseOutput>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -75,6 +76,8 @@ export function ExpenseFormSheet({
         : toDateInputValue(new Date()),
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());

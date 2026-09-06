@@ -22,6 +22,7 @@ import {
 } from "@/features/users/schema";
 import { resetUserPassword } from "@/features/users/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 export function ResetPasswordDialog({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
@@ -32,11 +33,13 @@ export function ResetPasswordDialog({ userId }: { userId: string }) {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "" },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function onSubmit(values: ResetPasswordInput) {
     startTransition(async () => {
@@ -56,7 +59,9 @@ export function ResetPasswordDialog({ userId }: { userId: string }) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) reset();
+        // Reset on open and close: the form outlives the dialog content, so a
+        // typed-then-cancelled password must not keep the page flagged dirty.
+        reset();
       }}
     >
       <DialogTrigger

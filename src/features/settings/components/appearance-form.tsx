@@ -17,6 +17,7 @@ import type { SystemSettingsData } from "@/features/settings/queries";
 import { cssColorToHex } from "@/lib/css-color-to-hex";
 import { companyConfig } from "@/config/company";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 const COLOR_TOKEN_KEYS = [
   "primary",
@@ -40,7 +41,7 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
     watch,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<SystemSettingsInput>({
     resolver: zodResolver(systemSettingsSchema),
     // colorsDark is kept in the form's state from the loaded settings and
@@ -51,6 +52,8 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
     defaultValues: settings,
   });
 
+  useUnsavedChanges(isDirty);
+
   function onSubmit(values: SystemSettingsInput) {
     startTransition(async () => {
       const result = await updateSystemSettings(values);
@@ -58,6 +61,8 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
         toast.error(result.error);
         return;
       }
+      // Re-baseline the form so it's no longer considered "dirty".
+      reset(values);
       toast.success(t.settings.toastUpdated);
     });
   }
@@ -65,12 +70,17 @@ export function AppearanceForm({ settings }: { settings: SystemSettingsData }) {
   // Only fills the form — nothing is persisted until the admin reviews it
   // and hits حفظ themselves, same as any other edit on this page.
   function handleResetAllToDefaults() {
-    reset({
-      appName: companyConfig.name,
-      appShortName: companyConfig.shortName,
-      colorsLight: { ...companyConfig.colors.light },
-      colorsDark: { ...companyConfig.colors.dark },
-    });
+    reset(
+      {
+        appName: companyConfig.name,
+        appShortName: companyConfig.shortName,
+        colorsLight: { ...companyConfig.colors.light },
+        colorsDark: { ...companyConfig.colors.dark },
+      },
+      // Keep the saved values as the dirty baseline so the "unsaved changes"
+      // indicator shows until the admin actually saves these defaults.
+      { keepDefaultValues: true },
+    );
     toast.success(t.settings.toastDefaultsLoaded);
   }
 

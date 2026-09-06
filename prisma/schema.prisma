@@ -401,9 +401,11 @@ model PurchaseOrderItem {
   product         Product              @relation(fields: [productId], references: [id])
   quantity        Decimal              @db.Decimal(12, 3)
   unitCost        Decimal              @db.Decimal(12, 4)
+  position        Int                  @default(1)
   returnItems     PurchaseReturnItem[]
 
   @@index([purchaseOrderId])
+  @@index([purchaseOrderId, position])
   @@index([productId])
 }
 

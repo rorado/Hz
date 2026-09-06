@@ -25,6 +25,7 @@ import {
 } from "@/features/users/schema";
 import { createUser, updateUser } from "@/features/users/actions";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type RoleOption = { id: string; name: string; isFullAccess: boolean };
 
@@ -79,11 +80,13 @@ function CreateUserForm({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
     defaultValues: { name: "", email: "", password: "", roleId: "" },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function onSubmit(values: CreateUserInput) {
     startTransition(async () => {
@@ -174,7 +177,7 @@ function EditUserForm({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<UpdateUserInput>({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
@@ -183,6 +186,8 @@ function EditUserForm({
       roleId: user.roleId,
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   function onSubmit(values: UpdateUserInput) {
     startTransition(async () => {

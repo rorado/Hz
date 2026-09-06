@@ -23,6 +23,7 @@ import {
 import { CustomerImageUploader } from "@/features/customers/components/customer-image-uploader";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/i18n/locale-provider";
+import { useUnsavedChanges } from "@/components/shared/unsaved-changes";
 
 type MatchingCustomer = {
   id: string;
@@ -64,7 +65,7 @@ export function CustomerFormSheet({
     control,
     handleSubmit,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -80,6 +81,8 @@ export function CustomerFormSheet({
           : null,
     },
   });
+
+  useUnsavedChanges(isDirty, { guardHistory: false });
 
   const phoneValue = watch("phone");
   const nameValue = watch("name");

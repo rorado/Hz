@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { requirePageAccess } from "@/lib/permissions";
+import { UnsavedChangesProvider } from "@/components/shared/unsaved-changes";
 
 export default async function CaisseLayout({
   children,
@@ -17,5 +18,9 @@ export default async function CaisseLayout({
   // The POS workspace manages its own full-height, non-scrolling shell;
   // the invoice view/print routes under /caisse need a normal scrolling
   // page. So this layout only gates access and stays out of the way.
-  return <div className="min-h-dvh bg-muted/30">{children}</div>;
+  return (
+    <div className="min-h-dvh bg-muted/30">
+      <UnsavedChangesProvider>{children}</UnsavedChangesProvider>
+    </div>
+  );
 }
