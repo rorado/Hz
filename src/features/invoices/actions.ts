@@ -12,12 +12,21 @@ import {
 import { invoiceSchema } from "@/features/invoices/schema";
 import { getCustomerOutstandingInvoices } from "@/features/invoices/queries";
 import { computePaymentStatus } from "@/lib/money";
-import { adjustCustomerBalance, computeBalanceEffect } from "@/features/customers/balance";
-import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
+import {
+  adjustCustomerBalance,
+  computeBalanceEffect,
+} from "@/features/customers/balance";
+import {
+  isDeletePasswordValid,
+  getDeletePasswordError,
+} from "@/lib/delete-guard";
 import { formatDocumentNumber } from "@/lib/document-number";
 import { getDictionary } from "@/i18n/server";
 import { formatMessage } from "@/i18n/format";
-import { getAvailableStockIssue, validateAvailableStock } from "@/lib/stock-validation";
+import {
+  getAvailableStockIssue,
+  validateAvailableStock,
+} from "@/lib/stock-validation";
 import type {
   InvoiceLanguage,
   PaymentMethod,
@@ -39,7 +48,10 @@ export async function checkInvoiceStockAvailability(
           where: { invoiceId },
           select: { productId: true, quantity: true },
         })
-      ).map((item) => ({ productId: item.productId, quantity: item.quantity.toNumber() }))
+      ).map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity.toNumber(),
+      }))
     : [];
   return getAvailableStockIssue(items, existingItems);
 }
@@ -52,12 +64,6 @@ function balanceEffectReason(delta: number): BalanceChangeReason {
   return delta < 0 ? "BALANCE_USED" : "OVERPAYMENT_CREDIT";
 }
 
-/**
- * Placeholder invoiceNumber used only between `create` and the immediate
- * `update` that stamps the real INV-…-#####-XX number from the row's
- * DB-assigned `sequenceNumber` (same transaction, never observed elsewhere).
- * A UUID keeps the required UNIQUE column satisfied at insert time.
- */
 function temporaryInvoiceNumber(): string {
   return `TMP-${randomUUID()}`;
 }
@@ -83,15 +89,9 @@ export async function createInvoice(
   input: unknown,
   options?: {
     excessToBalance?: boolean;
-    /** Stamped on this invoice's own payment rows so the print page can
-     * later find other invoices settled in the same session (e.g. when the
-     * overpayment on this new invoice was distributed to older ones via
-     * recordPaymentAcrossInvoices under the same batch). */
     batchId?: string;
     allowNegativeStock?: boolean;
-    /** When false, return `{ success, invoiceId }` instead of redirecting to
-     * the invoice detail page — used by callers that own their own
-     * post-create UI (La Caisse shows a success dialog and stays put). */
+
     redirect?: boolean;
     /** Permission to enforce instead of INVOICES_MANAGE — La Caisse cashiers
      * hold POS_MANAGE, not INVOICES_MANAGE, but are still allowed to ring up
@@ -103,7 +103,9 @@ export async function createInvoice(
     posSaleToken?: string;
   },
 ): Promise<ActionResult & { invoiceId?: string }> {
-  const access = await requirePermission(options?.permission ?? "INVOICES_MANAGE");
+  const access = await requirePermission(
+    options?.permission ?? "INVOICES_MANAGE",
+  );
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
 
@@ -146,11 +148,7 @@ export async function createInvoice(
   const paymentStatus = computePaymentStatus(total, paidAmount);
   const primaryMethod = payments[0]?.method ?? "CASH";
   const customerId = parsed.data.customerId;
-  // computeBalanceEffect nets a من الرصيد draw against any overpayment past
-  // the total. When that nets out positive, it's new credit rather than a
-  // draw — only apply that portion if the admin explicitly opted in;
-  // otherwise cap it at 0 so paying more than the total never silently
-  // grows رصيد on its own.
+
   const rawBalanceEffect = computeBalanceEffect(total, payments);
   const balanceEffect =
     rawBalanceEffect > 0.005 && !options?.excessToBalance
@@ -190,7 +188,7 @@ export async function createInvoice(
           language: parsed.data.language,
           customerId,
           customerName: parsed.data.customerName,
-          customerPhone: parsed.data.customerPhone,
+          customerPhone: parsed.data.customerPhone || "",
           customerEmail: parsed.data.customerEmail || null,
           notes: parsed.data.notes || null,
           orderId: linkedOrderId,
@@ -367,7 +365,10 @@ export async function updateInvoice(
   }));
 
   if (!options?.allowNegativeStock) {
-    const stockError = await validateAvailableStock(parsed.data.items, existingItemsForStockCheck);
+    const stockError = await validateAvailableStock(
+      parsed.data.items,
+      existingItemsForStockCheck,
+    );
     if (stockError) return { error: stockError };
   }
 
@@ -379,26 +380,21 @@ export async function updateInvoice(
   const paymentStatus = computePaymentStatus(total, paidAmount);
   const newBalanceEffect = computeBalanceEffect(
     total,
-    existing.payments.map((p) => ({ amount: Number(p.amount), method: p.method })),
+    existing.payments.map((p) => ({
+      amount: Number(p.amount),
+      method: p.method,
+    })),
   );
   const previousBalanceEffect = Number(existing.balanceEffectApplied);
   const newCustomerId = parsed.data.customerId;
 
-  // Stock was reserved per-product when this invoice was first created;
-  // editing its items must move that reservation by the exact delta, or the
-  // product's on-hand quantity (and everything derived from it — low-stock
-  // count, total inventory value, movement history) silently drifts out of
-  // sync with what the invoice actually says was sold.
-  // item.quantity here is a live Prisma.Decimal (InvoiceItem.quantity) —
-  // a native `+` would silently string-concatenate across multiple items
-  // for the same product instead of summing (Decimal.valueOf() returns a
-  // string). .toNumber() up front keeps this genuinely numeric.
   const existingQtyByProduct = new Map<string, number>();
   for (const item of existing.items) {
     if (!item.productId) continue;
     existingQtyByProduct.set(
       item.productId,
-      (existingQtyByProduct.get(item.productId) ?? 0) + item.quantity.toNumber(),
+      (existingQtyByProduct.get(item.productId) ?? 0) +
+        item.quantity.toNumber(),
     );
   }
   const newQtyByProduct = new Map<string, number>();
@@ -475,7 +471,7 @@ export async function updateInvoice(
           ...(issuedAt ? { createdAt: issuedAt } : {}),
           customerId: newCustomerId,
           customerName: parsed.data.customerName,
-          customerPhone: parsed.data.customerPhone,
+          customerPhone: parsed.data.customerPhone || "",
           customerEmail: parsed.data.customerEmail || null,
           notes: parsed.data.notes || null,
           total,
@@ -507,11 +503,16 @@ export async function updateInvoice(
         // Reassigned to a different customer: fully reverse the effect on
         // the old customer, then apply it fresh to the new one.
         if (existing.customerId) {
-          await adjustCustomerBalance(tx, existing.customerId, -previousBalanceEffect, {
-            reason: "INVOICE_EDIT",
-            invoiceId: id,
-            invoiceNumber: existing.invoiceNumber,
-          });
+          await adjustCustomerBalance(
+            tx,
+            existing.customerId,
+            -previousBalanceEffect,
+            {
+              reason: "INVOICE_EDIT",
+              invoiceId: id,
+              invoiceNumber: existing.invoiceNumber,
+            },
+          );
         }
         await adjustCustomerBalance(tx, newCustomerId, newBalanceEffect, {
           reason: "INVOICE_EDIT",
@@ -522,7 +523,10 @@ export async function updateInvoice(
     });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-      const stockError = await validateAvailableStock(parsed.data.items, existingItemsForStockCheck);
+      const stockError = await validateAvailableStock(
+        parsed.data.items,
+        existingItemsForStockCheck,
+      );
       return { error: stockError ?? t.invoices.insufficientStockFallbackError };
     }
     return { error: t.invoices.updateError };
@@ -533,20 +537,14 @@ export async function updateInvoice(
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
-  if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
+  if (existing.customerId)
+    revalidatePath(`/dashboard/customers/${existing.customerId}`);
   if (newCustomerId !== existing.customerId) {
     revalidatePath(`/dashboard/customers/${newCustomerId}`);
   }
   return { success: true };
 }
 
-/**
- * Deleting an invoice can undo whatever lifetime effect it had on its
- * customer's رصيد — a من الرصيد draw (negative) or leftover overpayment
- * credit (positive) — but only if the admin explicitly opts in via
- * `applyBalanceChange`. Leaving it unset/false never touches رصيد and
- * never writes a history entry, regardless of which direction it would go.
- */
 async function reverseInvoiceBalanceOnDelete(
   tx: Prisma.TransactionClient,
   invoice: {
@@ -570,17 +568,6 @@ async function reverseInvoiceBalanceOnDelete(
   });
 }
 
-/**
- * Reverses the net stock effect an invoice's OWN movements had, before the
- * invoice is deleted — mirrors reversePurchaseOrderStockOnDelete. Computed
- * from the invoice's own InventoryMovement rows (reference = invoice id),
- * never inferred from the linked order's status: an invoice generated for an
- * order that was already COMPLETED never decremented stock itself (the
- * order's completion did), and an edited invoice's item list no longer
- * reflects what it actually moved. Netting its own movements is correct in
- * every case and naturally reverses nothing for an invoice that never
- * touched stock to begin with.
- */
 async function reverseInvoiceStockOnDelete(
   tx: Prisma.TransactionClient,
   invoice: { id: string; invoiceNumber: string },
@@ -589,10 +576,6 @@ async function reverseInvoiceStockOnDelete(
     where: { reference: invoice.id, productId: { not: null } },
     select: { productId: true, type: true, quantity: true },
   });
-  // movement.quantity is a Prisma.Decimal — converting to a plain number
-  // before the `+` below avoids the same string-concatenation risk as
-  // elsewhere (Decimal.valueOf() returns a string, so a raw Decimal as
-  // a direct `+` operand silently concatenates instead of summing).
   const netByProduct = new Map<string, number>();
   for (const movement of movements) {
     const quantity = movement.quantity.toNumber();
@@ -709,7 +692,8 @@ export async function deleteInvoice(
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
-  if (existing.customerId) revalidatePath(`/dashboard/customers/${existing.customerId}`);
+  if (existing.customerId)
+    revalidatePath(`/dashboard/customers/${existing.customerId}`);
   return { success: true };
 }
 
@@ -770,9 +754,12 @@ export async function deleteInvoices(
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
   if (decisions.length === 0) return { success: true };
-  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  if (!isDeletePasswordValid(password))
+    return { error: await getDeletePasswordError() };
 
-  const decisionById = new Map(decisions.map((d) => [d.id, d.applyBalanceChange]));
+  const decisionById = new Map(
+    decisions.map((d) => [d.id, d.applyBalanceChange]),
+  );
   const ids = decisions.map((d) => d.id);
 
   const invoices = await prisma.invoice.findMany({
@@ -794,7 +781,11 @@ export async function deleteInvoices(
           `;
           if (!locked[0]) continue;
 
-          await reverseInvoiceOnDelete(tx, invoice, decisionById.get(invoice.id));
+          await reverseInvoiceOnDelete(
+            tx,
+            invoice,
+            decisionById.get(invoice.id),
+          );
           await tx.invoice.delete({ where: { id: invoice.id } });
         }
       });
@@ -983,7 +974,8 @@ export async function getOrCreateInvoiceForOrder(
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
-  if (order.customerId) revalidatePath(`/dashboard/customers/${order.customerId}`);
+  if (order.customerId)
+    revalidatePath(`/dashboard/customers/${order.customerId}`);
   redirect(`/dashboard/invoices/${invoiceId}`);
 }
 
@@ -1014,7 +1006,10 @@ export async function recordPayment(
   const paymentStatus = computePaymentStatus(total, newPaidAmount);
 
   const allPayments = [
-    ...invoice.payments.map((p) => ({ amount: Number(p.amount), method: p.method as string })),
+    ...invoice.payments.map((p) => ({
+      amount: Number(p.amount),
+      method: p.method as string,
+    })),
     { amount: input.amount, method: input.method as string },
   ];
   const newBalanceEffect = computeBalanceEffect(total, allPayments);
@@ -1097,7 +1092,9 @@ export async function recordPaymentAcrossInvoices(
     return { error: t.invoices.selectAtLeastOneInvoice };
   }
 
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+  });
   if (!customer) return { error: t.invoices.customerNotFoundError };
 
   const invoices = await prisma.invoice.findMany({
@@ -1105,7 +1102,8 @@ export async function recordPaymentAcrossInvoices(
     include: { payments: true },
     orderBy: { createdAt: "asc" },
   });
-  if (invoices.length === 0) return { error: t.invoices.selectedInvoicesNotFoundError };
+  if (invoices.length === 0)
+    return { error: t.invoices.selectedInvoicesNotFoundError };
 
   if (input.method === "BALANCE" && !input.allowNegativeBalance) {
     const customerBalance = Number(customer.balance);
@@ -1115,8 +1113,10 @@ export async function recordPaymentAcrossInvoices(
   }
 
   let amountLeft = input.amount;
-  const allocations: { invoice: (typeof invoices)[number]; allocated: number }[] =
-    [];
+  const allocations: {
+    invoice: (typeof invoices)[number];
+    allocated: number;
+  }[] = [];
   for (const invoice of invoices) {
     if (amountLeft <= 0.005) break;
     const total = Number(invoice.total);
@@ -1194,7 +1194,6 @@ export async function recordPaymentAcrossInvoices(
           invoiceNumber: invoice.invoiceNumber,
         });
       }
-
     });
   } catch {
     return { error: t.invoices.paymentError };
@@ -1253,7 +1252,10 @@ export async function updatePayment(
   const paymentStatus = computePaymentStatus(total, newPaidAmount);
 
   const allPayments = [
-    ...otherPayments.map((p) => ({ amount: Number(p.amount), method: p.method as string })),
+    ...otherPayments.map((p) => ({
+      amount: Number(p.amount),
+      method: p.method as string,
+    })),
     { amount: input.amount, method: input.method as string },
   ];
   const newBalanceEffect = computeBalanceEffect(total, allPayments);
@@ -1316,7 +1318,8 @@ export async function deletePayment(
   const access = await requirePermission("INVOICES_MANAGE");
   if (!access.ok) return { error: access.error };
   const t = await getDictionary();
-  if (!isDeletePasswordValid(password)) return { error: await getDeletePasswordError() };
+  if (!isDeletePasswordValid(password))
+    return { error: await getDeletePasswordError() };
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },

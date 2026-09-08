@@ -75,7 +75,7 @@ export default async function InvoiceEditPage({
         icon={FileText}
         action={
           <div className="flex gap-2">
-            <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/sales-returns/new?invoiceId=${invoice.id}`} />}><RotateCcw className="size-4" />إنشاء مرتجع</Button>
+            <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/sales-returns/new?invoiceId=${invoice.id}`} />}><RotateCcw className="size-4" />{t.returns.newReturn}</Button>
             <BackButton fallbackHref="/dashboard/invoices" />
             <Button
               nativeButton={false}
@@ -164,7 +164,7 @@ export default async function InvoiceEditPage({
             amount: Number(payment.amount),
           }))}
       />
-      <Card><CardHeader><CardTitle>سجل المرتجعات</CardTitle></CardHeader><CardContent>{invoice.returns.length === 0 ? <p className="text-sm text-muted-foreground">لا توجد مرتجعات لهذه الفاتورة.</p> : <div className="space-y-2">{invoice.returns.map((r) => <Link key={r.id} href={`/dashboard/sales-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity.toNumber(),0)} قطعة — {formatCurrency(Number(r.refundAmount),locale)}</span></Link>)}</div>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{t.returns.returnHistory}</CardTitle></CardHeader><CardContent>{invoice.returns.length === 0 ? <p className="text-sm text-muted-foreground">{t.returns.noInvoiceReturns}</p> : <div className="space-y-2">{invoice.returns.map((r) => <Link key={r.id} href={`/dashboard/sales-returns/${r.id}`} className="flex justify-between rounded-md border p-3 text-sm hover:bg-muted"><span className="font-medium">{r.returnNumber}</span><span>{r.items.reduce((s,i)=>s+i.quantity.toNumber(),0)} {t.returns.piece} — {formatCurrency(Number(r.refundAmount),locale)}</span></Link>)}</div>}</CardContent></Card>
     </div>
   );
 }

@@ -301,7 +301,35 @@ export async function saveOrderCustomerInfo(
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return { error: t.orders.notFoundError };
 
-  if (!resolution) {
+  // Names must be unique. `keep_existing` doesn't write the submitted name
+  // anywhere, so it's exempt; otherwise the row that will receive the name is
+  // excluded, and the check is skipped when that row already carries this
+  // name (so pre-existing same-name records stay editable).
+  if (resolution?.action !== "keep_existing") {
+    const nameOwnerId =
+      resolution?.action === "update_existing"
+        ? resolution.existingCustomerId
+        : customerId;
+    const nextNameNormalized = normalizeArabicName(parsed.data.name);
+    const nameOwner = nameOwnerId
+      ? await prisma.customer.findUnique({
+          where: { id: nameOwnerId },
+          select: { nameNormalized: true },
+        })
+      : null;
+    if (nameOwner?.nameNormalized !== nextNameNormalized) {
+      const nameTaken = await prisma.customer.findFirst({
+        where: {
+          nameNormalized: nextNameNormalized,
+          ...(nameOwnerId ? { id: { not: nameOwnerId } } : {}),
+        },
+        select: { id: true },
+      });
+      if (nameTaken) return { error: t.customers.nameTakenError };
+    }
+  }
+
+  if (!resolution && parsed.data.phone) {
     const conflictingCustomer = await prisma.customer.findFirst({
       where: {
         phone: parsed.data.phone,
@@ -325,7 +353,7 @@ export async function saveOrderCustomerInfo(
   const customerData = {
     name: parsed.data.name,
     nameNormalized: normalizeArabicName(parsed.data.name),
-    phone: parsed.data.phone,
+    phone: parsed.data.phone || "",
     email: parsed.data.email || null,
     address: parsed.data.address || null,
     notes: parsed.data.notes || null,

@@ -6,7 +6,10 @@ import { requirePermission, hasPermission } from "@/lib/permissions";
 import { destroyCloudinaryAsset } from "@/lib/cloudinary";
 import { customerSchema } from "@/features/customers/schema";
 import { normalizeArabicName } from "@/lib/arabic-name";
-import { findCustomerByPhone } from "@/features/customers/queries";
+import {
+  findCustomerByPhone,
+  findCustomerByNormalizedName,
+} from "@/features/customers/queries";
 import { adjustCustomerBalance } from "@/features/customers/balance";
 import { isDeletePasswordValid, getDeletePasswordError } from "@/lib/delete-guard";
 import { getDictionary } from "@/i18n/server";
@@ -25,19 +28,29 @@ export async function createCustomer(
   const parsed = customerSchema.safeParse(input);
   if (!parsed.success) return { error: t.customers.validationError };
 
-  const existing = await prisma.customer.findFirst({
-    where: { phone: parsed.data.phone },
+  const nameTaken = await prisma.customer.findFirst({
+    where: { nameNormalized: normalizeArabicName(parsed.data.name) },
     select: { id: true },
   });
-  if (existing) {
-    return { error: t.customers.phoneTakenError };
+  if (nameTaken) {
+    return { error: t.customers.nameTakenError };
+  }
+
+  if (parsed.data.phone) {
+    const existing = await prisma.customer.findFirst({
+      where: { phone: parsed.data.phone },
+      select: { id: true },
+    });
+    if (existing) {
+      return { error: t.customers.phoneTakenError };
+    }
   }
 
   const customer = await prisma.customer.create({
     data: {
       name: parsed.data.name,
       nameNormalized: normalizeArabicName(parsed.data.name),
-      phone: parsed.data.phone,
+      phone: parsed.data.phone || "",
       email: parsed.data.email || null,
       address: parsed.data.address || null,
       notes: parsed.data.notes || null,
@@ -63,12 +76,34 @@ export async function updateCustomer(
   const parsed = customerSchema.safeParse(input);
   if (!parsed.success) return { error: t.customers.validationError };
 
-  const existing = await prisma.customer.findFirst({
-    where: { phone: parsed.data.phone, id: { not: id } },
-    select: { id: true },
+  const current = await prisma.customer.findUnique({
+    where: { id },
+    select: { nameNormalized: true },
   });
-  if (existing) {
-    return { error: t.customers.phoneTakenError };
+  if (!current) return { error: t.customers.notFoundError };
+
+  // Enforce unique names, but only when the name is actually being changed —
+  // so an admin can still edit a customer that happens to share a name with
+  // a record created before this rule existed.
+  const nextNameNormalized = normalizeArabicName(parsed.data.name);
+  if (nextNameNormalized !== current.nameNormalized) {
+    const nameTaken = await prisma.customer.findFirst({
+      where: { nameNormalized: nextNameNormalized, id: { not: id } },
+      select: { id: true },
+    });
+    if (nameTaken) {
+      return { error: t.customers.nameTakenError };
+    }
+  }
+
+  if (parsed.data.phone) {
+    const existing = await prisma.customer.findFirst({
+      where: { phone: parsed.data.phone, id: { not: id } },
+      select: { id: true },
+    });
+    if (existing) {
+      return { error: t.customers.phoneTakenError };
+    }
   }
 
   // `image` is only present when the caller actually manages a photo (the
@@ -91,7 +126,7 @@ export async function updateCustomer(
   const customerData = {
     name: parsed.data.name,
     nameNormalized: normalizeArabicName(parsed.data.name),
-    phone: parsed.data.phone,
+    phone: parsed.data.phone || "",
     email: parsed.data.email || null,
     address: parsed.data.address || null,
     notes: parsed.data.notes || null,
@@ -105,7 +140,7 @@ export async function updateCustomer(
   };
   const snapshotData = {
     customerName: parsed.data.name,
-    customerPhone: parsed.data.phone,
+    customerPhone: parsed.data.phone || "",
     customerEmail: parsed.data.email || null,
   };
 
@@ -165,6 +200,15 @@ export async function findCustomerByPhoneAction(
   if (!(await hasPermission("CUSTOMERS_MANAGE"))) return [];
   if (phone.trim().length < 6) return [];
   return findCustomerByPhone(phone, excludeId);
+}
+
+export async function findCustomerByNameAction(
+  name: string,
+  excludeId?: string,
+) {
+  if (!(await hasPermission("CUSTOMERS_MANAGE"))) return [];
+  if (name.trim().length < 2) return [];
+  return findCustomerByNormalizedName(name, excludeId);
 }
 
 export async function deleteCustomer(

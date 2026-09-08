@@ -565,6 +565,7 @@ export function PosWorkspace({
             categoryId={activeCategory}
             query={query}
             categoryName={categoryName}
+            customerId={customer.id}
             cartQuantities={cartQuantities}
             onAddProduct={(p) => setDialogProduct(p)}
             onIncrement={(p) => changeQty(p.id, 1)}

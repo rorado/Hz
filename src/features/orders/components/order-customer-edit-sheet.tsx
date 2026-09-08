@@ -134,10 +134,10 @@ export function OrderCustomerEditSheet({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="order-customer-name">{t.customers.fullNameLabel}</Label>
+              <Label htmlFor="order-customer-name">{t.customers.nameLabel}</Label>
               <Input
                 id="order-customer-name"
-                placeholder={t.customers.fullNamePlaceholder}
+                placeholder={t.customers.namePlaceholder}
                 {...register("name")}
               />
               {errors.name && (
@@ -147,7 +147,7 @@ export function OrderCustomerEditSheet({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="order-customer-phone">{t.customers.phoneWhatsappLabel}</Label>
+              <Label htmlFor="order-customer-phone">{t.customers.phoneOptionalLabel}</Label>
               <Input
                 id="order-customer-phone"
                 dir="ltr"

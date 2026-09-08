@@ -19,6 +19,7 @@ import {
   createCustomer,
   updateCustomer,
   findCustomerByPhoneAction,
+  findCustomerByNameAction,
 } from "@/features/customers/actions";
 import { CustomerImageUploader } from "@/features/customers/components/customer-image-uploader";
 import { cn } from "@/lib/utils";
@@ -89,17 +90,31 @@ export function CustomerFormSheet({
   const [matchingCustomers, setMatchingCustomers] = useState<MatchingCustomer[]>(
     [],
   );
+  const [nameMatches, setNameMatches] = useState<MatchingCustomer[]>([]);
 
   useEffect(() => {
-    if (customer || !phoneValue || phoneValue.trim().length < 6) {
+    if (!phoneValue || phoneValue.trim().length < 6) {
       setMatchingCustomers([]);
       return;
     }
     const timeout = setTimeout(() => {
-      findCustomerByPhoneAction(phoneValue).then(setMatchingCustomers);
+      findCustomerByPhoneAction(phoneValue, customer?.id).then(
+        setMatchingCustomers,
+      );
     }, 400);
     return () => clearTimeout(timeout);
-  }, [phoneValue, customer]);
+  }, [phoneValue, customer?.id]);
+
+  useEffect(() => {
+    if (!nameValue || nameValue.trim().length < 2) {
+      setNameMatches([]);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      findCustomerByNameAction(nameValue, customer?.id).then(setNameMatches);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [nameValue, customer?.id]);
 
   function close() {
     if (onOpenChange) {
@@ -152,14 +167,40 @@ export function CustomerFormSheet({
           )}
         />
         <div className="space-y-2">
-          <Label htmlFor="customer-name">{t.customers.fullNameLabel}</Label>
+          <Label htmlFor="customer-name">{t.customers.nameLabel}</Label>
           <Input
             id="customer-name"
-            placeholder={t.customers.fullNamePlaceholder}
+            placeholder={t.customers.namePlaceholder}
             {...register("name")}
           />
           {errors.name && (
             <p className="text-sm text-destructive">{errors.name.message}</p>
+          )}
+          {nameMatches.length > 0 && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-sm">
+              <p className="mb-1 font-medium">{t.customers.matchingNameHint}</p>
+              <ul className="space-y-1">
+                {nameMatches.map((match) => (
+                  <li key={match.id}>
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={() => {
+                        const params = new URLSearchParams(
+                          searchParams.toString(),
+                        );
+                        params.delete("new");
+                        params.set("edit", match.id);
+                        router.push(`${pathname}?${params.toString()}`);
+                      }}
+                    >
+                      {match.name}
+                      {match.phone ? ` — ${match.phone}` : ""}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
         <Controller
@@ -195,7 +236,7 @@ export function CustomerFormSheet({
           )}
         />
         <div className="space-y-2">
-          <Label htmlFor="customer-phone">{t.customers.phoneWhatsappLabel}</Label>
+          <Label htmlFor="customer-phone">{t.customers.phoneOptionalLabel}</Label>
           <Input id="customer-phone" dir="ltr" {...register("phone")} />
           {errors.phone && (
             <p className="text-sm text-destructive">{errors.phone.message}</p>

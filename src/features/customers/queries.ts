@@ -133,16 +133,6 @@ export async function getCustomersPage({
   };
 }
 
-/**
- * Total money owed to the store across all customers, combining two
- * independent debt sources per customer: a negative رصيد (the account
- * itself is overdrawn) and the remaining unpaid amount on their
- * UNPAID/PARTIALLY_PAID invoices (goods invoiced but not yet paid off,
- * regardless of رصيد). These never overlap — رصيد only moves via من الرصيد
- * usage/overpayment/manual adjustments, never by an invoice simply being
- * unpaid — so summing them per customer is a plain addition, not
- * double-counting.
- */
 export async function getCustomersOwingSummary() {
   const rows = await prisma.$queryRaw<{ count: bigint; totalOwed: string }[]>`
     WITH customer_debt AS (
@@ -202,6 +192,7 @@ export async function getCustomerStatement(
   from?: string,
   to?: string,
 ) {
+  console.log("SERVER LOG:", { customerId, from, to });
   const createdAt = {
     ...(from ? { gte: new Date(`${from}T00:00:00`) } : {}),
     ...(to ? { lte: new Date(`${to}T23:59:59.999`) } : {}),
@@ -298,6 +289,23 @@ export async function findCustomerByPhone(phone: string, excludeId?: string) {
     LIMIT 5
   `;
   return rows;
+}
+
+export async function findCustomerByNormalizedName(
+  name: string,
+  excludeId?: string,
+) {
+  const normalized = normalizeArabicName(name);
+  if (normalized.length < 2) return [];
+
+  return prisma.customer.findMany({
+    where: {
+      nameNormalized: normalized,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true, name: true, phone: true, email: true },
+    take: 5,
+  });
 }
 
 export async function getCustomerProfile(id: string) {

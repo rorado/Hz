@@ -66,7 +66,7 @@ export default async function PurchaseOrderDetailPage({
         icon={ClipboardList}
         action={
           <div className="flex flex-wrap gap-2">
-            {order.status === "RECEIVED" && <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-returns/new?purchaseId=${order.id}`} />}><Undo2 className="size-4" />إنشاء مرتجع</Button>}
+            {order.status === "RECEIVED" && <Button variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-returns/new?purchaseId=${order.id}`} />}><Undo2 className="size-4" />{t.returns.newReturn}</Button>}
             <DeletePurchaseOrderButton
               purchaseOrderId={order.id}
               orderNumber={order.orderNumber}
@@ -131,12 +131,12 @@ export default async function PurchaseOrderDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>سجل المرتجعات</CardTitle>
+              <CardTitle>{t.returns.returnHistory}</CardTitle>
             </CardHeader>
             <CardContent>
               {order.returns.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  لا توجد مرتجعات.
+                  {t.returns.noReturns}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -149,7 +149,7 @@ export default async function PurchaseOrderDetailPage({
                       <span className="font-medium">{r.returnNumber}</span>
                       <span>
                         {r.items.reduce((s, i) => s + i.quantity.toNumber(), 0)}{" "}
-                        قطعة
+                        {t.returns.piece}
                       </span>
                     </Link>
                   ))}

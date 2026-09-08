@@ -73,6 +73,9 @@ const PRODUCT_SELECT = {
 
 export const POS_PRODUCT_SORTS = [
   "best",
+  // Orders by how often the selected customer has bought each product
+  // (needs `customerId`; falls back to "best" without one).
+  "customerFrequent",
   "newest",
   "name",
   "priceAsc",
@@ -83,6 +86,9 @@ export type PosProductSort = (typeof POS_PRODUCT_SORTS)[number];
 
 const SORT_ORDER: Record<PosProductSort, Prisma.ProductOrderByWithRelationInput[]> = {
   best: [{ invoiceItems: { _count: "desc" } }, { name: "asc" }],
+  // Handled by a dedicated raw query before this map is consulted; kept here
+  // only so the Record stays exhaustive.
+  customerFrequent: [{ invoiceItems: { _count: "desc" } }, { name: "asc" }],
   newest: [{ createdAt: "desc" }],
   name: [{ name: "asc" }],
   priceAsc: [{ price1: "asc" }, { name: "asc" }],
@@ -157,13 +163,15 @@ export async function getPosCategoriesPage({
 
 /** Offset-paginated product feed for the infinite-scroll grid. Ordered
  * best-seller first (by how many invoice lines reference the product),
- * then by name. `take + 1` tells us whether there's another page. */
+ * then by name — unless `sort` overrides it. `take + 1` tells us whether
+ * there's another page. */
 export async function getPosProducts({
   offset = 0,
   categoryId,
   q,
   sort = "best",
   inStockOnly = false,
+  customerId,
   take = POS_PRODUCTS_PAGE_SIZE,
 }: {
   offset?: number;
@@ -171,14 +179,29 @@ export async function getPosProducts({
   q?: string | null;
   sort?: PosProductSort;
   inStockOnly?: boolean;
+  /** Required for the "customerFrequent" sort; ignored otherwise. */
+  customerId?: string | null;
   take?: number;
 }) {
+  if (sort === "customerFrequent" && customerId) {
+    return getPosProductsByCustomerHistory({
+      customerId,
+      categoryId,
+      q,
+      inStockOnly,
+      offset,
+      take,
+    });
+  }
+
   const where = productWhere(categoryId, q, inStockOnly);
+  const effectiveSort: PosProductSort =
+    sort === "customerFrequent" ? "best" : sort;
 
   const [rows, total] = await Promise.all([
     prisma.product.findMany({
       where,
-      orderBy: SORT_ORDER[sort] ?? SORT_ORDER.best,
+      orderBy: SORT_ORDER[effectiveSort] ?? SORT_ORDER.best,
       skip: offset,
       take: take + 1,
       select: PRODUCT_SELECT,
@@ -191,6 +214,87 @@ export async function getPosProducts({
 
   return {
     items: page.map(mapProduct),
+    total,
+    nextOffset: hasMore ? offset + take : null,
+  };
+}
+
+/** Product feed ordered by the given customer's own purchase history —
+ * products they've bought on the most separate invoices come first, then by
+ * total quantity, then name. Products they've never bought still appear,
+ * after the ones they have. Same filters / paging shape as `getPosProducts`. */
+async function getPosProductsByCustomerHistory({
+  customerId,
+  categoryId,
+  q,
+  inStockOnly,
+  offset,
+  take,
+}: {
+  customerId: string;
+  categoryId?: string | null;
+  q?: string | null;
+  inStockOnly?: boolean;
+  offset: number;
+  take: number;
+}) {
+  const where = productWhere(categoryId, q, inStockOnly);
+
+  const conditions: Prisma.Sql[] = [Prisma.sql`p.status = 'ACTIVE'`];
+  if (categoryId) conditions.push(Prisma.sql`p."categoryId" = ${categoryId}`);
+  if (inStockOnly) conditions.push(Prisma.sql`p.quantity > 0`);
+  const search = q?.trim();
+  if (search) {
+    const like = `%${search}%`;
+    conditions.push(
+      Prisma.sql`(p.name ILIKE ${like} OR p.sku ILIKE ${like} OR p.barcode ILIKE ${like})`,
+    );
+  }
+  const whereSql = Prisma.join(conditions, " AND ");
+
+  const [idRows, total] = await Promise.all([
+    prisma.$queryRaw<{ id: string }[]>`
+      SELECT p.id
+      FROM public."Product" p
+      LEFT JOIN (
+        SELECT ii."productId" AS pid,
+               COUNT(DISTINCT i.id) AS purchases,
+               SUM(ii.quantity)     AS qty
+        FROM public."InvoiceItem" ii
+        JOIN public."Invoice" i ON i.id = ii."invoiceId"
+        WHERE i."customerId" = ${customerId}
+          AND ii."productId" IS NOT NULL
+        GROUP BY ii."productId"
+      ) f ON f.pid = p.id
+      WHERE ${whereSql}
+      ORDER BY
+        COALESCE(f.purchases, 0) DESC,
+        COALESCE(f.qty, 0)       DESC,
+        p.name ASC,
+        p.id ASC
+      LIMIT ${take + 1} OFFSET ${offset}
+    `,
+    prisma.product.count({ where }),
+  ]);
+
+  const hasMore = idRows.length > take;
+  const pageIds = (hasMore ? idRows.slice(0, take) : idRows).map((r) => r.id);
+
+  const rows = await prisma.product.findMany({
+    where: { id: { in: pageIds } },
+    select: PRODUCT_SELECT,
+  });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+
+  // Re-apply the ranked order — `findMany`'s `in` filter doesn't preserve it.
+  const items: PosProduct[] = [];
+  for (const id of pageIds) {
+    const row = byId.get(id);
+    if (row) items.push(mapProduct(row));
+  }
+
+  return {
+    items,
     total,
     nextOffset: hasMore ? offset + take : null,
   };

@@ -28,7 +28,7 @@ import type { PosProduct, PosProductSort } from "@/features/pos/queries";
 
 type Feed = { items: PosProduct[]; total: number; nextOffset: number | null };
 
-const SORT_KEYS: PosProductSort[] = [
+const BASE_SORT_KEYS: PosProductSort[] = [
   "best",
   "newest",
   "name",
@@ -42,6 +42,7 @@ export function ProductGrid({
   categoryId,
   query,
   categoryName,
+  customerId,
   cartQuantities,
   onAddProduct,
   onIncrement,
@@ -51,6 +52,8 @@ export function ProductGrid({
   categoryId: string;
   query: string;
   categoryName: string;
+  /** The selected customer — enables the "most bought by this customer" sort. */
+  customerId?: string | null;
   cartQuantities: Record<string, number>;
   onAddProduct: (product: PosProduct) => void;
   onIncrement: (product: PosProduct) => void;
@@ -61,7 +64,10 @@ export function ProductGrid({
   const [total, setTotal] = useState(initial.total);
   const [nextOffset, setNextOffset] = useState<number | null>(initial.nextOffset);
   const [loading, setLoading] = useState(false);
-  const [sort, setSort] = useState<PosProductSort>("best");
+  // With a customer selected, default to their own purchase history.
+  const [sort, setSort] = useState<PosProductSort>(
+    customerId ? "customerFrequent" : "best",
+  );
   const [inStockOnly, setInStockOnly] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -69,8 +75,13 @@ export function ProductGrid({
   const requestIdRef = useRef(0);
   const didMountRef = useRef(false);
 
+  const sortKeys: PosProductSort[] = customerId
+    ? ["customerFrequent", ...BASE_SORT_KEYS]
+    : BASE_SORT_KEYS;
+
   const sortLabels: Record<PosProductSort, string> = {
     best: t.pos.sortBest,
+    customerFrequent: t.pos.sortCustomerFrequent,
     newest: t.pos.sortNewest,
     name: t.pos.sortName,
     priceAsc: t.pos.sortPriceAsc,
@@ -86,6 +97,9 @@ export function ProductGrid({
       if (categoryId && categoryId !== "ALL") params.set("categoryId", categoryId);
       if (query.trim()) params.set("q", query.trim());
       if (sort !== "best") params.set("sort", sort);
+      if (sort === "customerFrequent" && customerId) {
+        params.set("customerId", customerId);
+      }
       if (inStockOnly) params.set("inStock", "1");
       if (offset > 0) params.set("offset", String(offset));
 
@@ -110,16 +124,18 @@ export function ProductGrid({
         if (requestId === requestIdRef.current) setLoading(false);
       }
     },
-    [categoryId, query, sort, inStockOnly],
+    [categoryId, query, sort, inStockOnly, customerId],
   );
 
-  // Reset + reload whenever the category, search, sort or filter changes.
-  // The first render already has server-provided data, so skip that one.
+  // Reset + reload whenever the category, search, sort, filter or customer
+  // changes. On the very first run the server-rendered feed already matches
+  // the default view (best-sorted, no filters), so skip the refetch then —
+  // but a non-default starting state (e.g. the customer-history sort) still
+  // needs its first load.
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
+    const firstRun = !didMountRef.current;
+    didMountRef.current = true;
+    if (firstRun && sort === "best" && !inStockOnly) return;
     fetchPage(true, 0);
   }, [categoryId, query, sort, inStockOnly, fetchPage]);
 
@@ -168,7 +184,7 @@ export function ProductGrid({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {SORT_KEYS.map((key) => (
+            {sortKeys.map((key) => (
               <SelectItem key={key} value={key}>
                 {sortLabels[key]}
               </SelectItem>

@@ -13,78 +13,95 @@ export type CustomerProductAnalysis = {
   purchases: number;
   totalSpent: number;
   avgPrice: number;
-  /** Unit price actually charged on this product's most recent purchase in
-   * the period — an immutable historical snapshot (InvoiceItem.unitPrice),
-   * never recomputed from the product's current price. */
   purchasedPrice: number;
   purchasedDate: Date;
   purchasedQuantity: number;
-  /** The product's live current default price (Product.price1) as of now
-   * — this is what actually answers "did the price change since this
-   * customer bought it", including admin edits made after the purchase.
-   * Null only if the product record itself no longer exists. */
   currentPrice: number | null;
 };
 
-/**
- * Per-product purchase breakdown for the period, comparing what the
- * customer actually paid (the immutable historical unit price on their most
- * recent purchase of it) against the product's current live price — so an
- * admin price change made after the sale shows up here, even if the
- * customer only ever bought that product once.
- */
+type CustomerProductRow = {
+  key: string;
+  name: string;
+  quantity: string;
+  purchases: bigint;
+  totalSpent: string;
+  purchasedPrice: string;
+  purchasedDate: Date;
+  purchasedQuantity: string;
+  currentPrice: string | null;
+};
+
 export async function getCustomerProductAnalysis(
   customerId: string,
   range: ResolvedRange,
 ): Promise<CustomerProductAnalysis[]> {
   const { from, to } = bounds(range);
 
-  const rows = await prisma.$queryRaw<
-    {
-      key: string;
-      name: string;
-      quantity: string;
-      purchases: bigint;
-      totalSpent: string;
-      purchasedPrice: string;
-      purchasedDate: Date;
-      purchasedQuantity: string;
-      currentPrice: string | null;
-    }[]
-  >`
+  const rows = await prisma.$queryRaw<CustomerProductRow[]>`
     WITH in_period AS (
       SELECT
-        COALESCE(ii."productId", ii.name) as key,
+        COALESCE(ii."productId", ii.name) AS key,
         ii."productId",
-        ii.name, ii.quantity, ii."unitPrice", i."createdAt", i.id as "invoiceId"
-      FROM public."InvoiceItem" ii
-      JOIN public."Invoice" i ON i.id = ii."invoiceId"
-      WHERE i."customerId" = ${customerId} AND i."createdAt" BETWEEN ${from} AND ${to}
+        ii.name,
+        ii.quantity,
+        ii."unitPrice",
+        i."createdAt",
+        i.id AS "invoiceId"
+      FROM public."InvoiceItem" AS ii
+      JOIN public."Invoice" AS i
+        ON i.id = ii."invoiceId"
+      WHERE
+        i."customerId" = ${customerId}
+        AND i."createdAt" BETWEEN ${from} AND ${to}
     ),
+
     agg AS (
-      SELECT key, MIN(name) as name, MIN("productId") as "productId",
-        -- Not ::bigint — InvoiceItem.quantity carries up to 3 decimal
-        -- places now, and a bigint cast would truncate that.
-        SUM(quantity)::numeric as quantity,
-        COUNT(DISTINCT "invoiceId")::bigint as purchases,
-        SUM(quantity * "unitPrice")::numeric as "totalSpent"
+      SELECT
+        key,
+        MIN(name) AS name,
+        MIN("productId") AS "productId",
+        SUM(quantity)::numeric AS quantity,
+        COUNT(DISTINCT "invoiceId")::bigint AS purchases,
+        SUM(quantity * "unitPrice")::numeric AS "totalSpent"
       FROM in_period
       GROUP BY key
     ),
+
     ranked AS (
-      SELECT key, "unitPrice", "createdAt", quantity,
-        ROW_NUMBER() OVER (PARTITION BY key ORDER BY "createdAt" DESC) as rn
+      SELECT
+        key,
+        "unitPrice",
+        "createdAt",
+        quantity,
+        ROW_NUMBER() OVER (
+          PARTITION BY key
+          ORDER BY "createdAt" DESC
+        ) AS rn
       FROM in_period
     )
+
     SELECT
-      agg.key, agg.name, agg.quantity, agg.purchases, agg."totalSpent",
-      latest."unitPrice" as "purchasedPrice",
-      latest."createdAt" as "purchasedDate",
-      latest.quantity as "purchasedQuantity",
-      p.price1 as "currentPrice"
+      agg.key,
+      agg.name,
+      agg.quantity,
+      agg.purchases,
+      agg."totalSpent",
+
+      latest."unitPrice" AS "purchasedPrice",
+      latest."createdAt" AS "purchasedDate",
+      latest.quantity AS "purchasedQuantity",
+
+      p.price1 AS "currentPrice"
+
     FROM agg
-    JOIN ranked latest ON latest.key = agg.key AND latest.rn = 1
-    LEFT JOIN public."Product" p ON p.id = agg."productId"
+
+    JOIN ranked AS latest
+      ON latest.key = agg.key
+      AND latest.rn = 1
+
+    LEFT JOIN public."Product" AS p
+      ON p.id = agg."productId"
+
     ORDER BY agg."totalSpent" DESC
   `;
 

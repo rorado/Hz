@@ -1,16 +1,16 @@
 import { z } from "zod";
-import { isFullName } from "@/lib/arabic-name";
 
 export const customerSchema = z.object({
+  // Only a name is required now — a single first name is fine, and it does
+  // not have to include a family name.
   name: z
     .string()
-    .min(2, { error: "الاسم يجب أن يتكون من حرفين على الأقل" })
-    .refine(isFullName, {
-      error: "الرجاء إدخال الاسم الكامل (الاسم واللقب)",
-    }),
+    .trim()
+    .min(2, { error: "الاسم يجب أن يتكون من حرفين على الأقل" }),
+  // Phone is optional; when given it still has to look like a real number.
   phone: z
-    .string()
-    .min(6, { error: "رقم الهاتف غير صحيح" }),
+    .union([z.string().min(6, { error: "رقم الهاتف غير صحيح" }), z.literal("")])
+    .optional(),
   email: z.union([z.email({ error: "البريد الإلكتروني غير صحيح" }), z.literal("")]).optional(),
   address: z.string().optional(),
   notes: z.string().optional(),

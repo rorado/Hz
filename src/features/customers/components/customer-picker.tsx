@@ -81,7 +81,12 @@ export function CustomerPicker({
     const email = String(formData.get("email") ?? "").trim();
 
     startTransition(async () => {
-      const result = await createCustomer({ name, phone, email });
+      const result = await createCustomer({
+        name,
+        phone,
+        email,
+        isFavorite: false,
+      });
       if (result.error || !result.customerId) {
         toast.error(result.error ?? t.customers.createErrorToast);
         return;
@@ -160,22 +165,19 @@ export function CustomerPicker({
           <form action={handleCreate} className="space-y-4">
             <fieldset disabled={isPending} className="contents space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="picker-customer-name">{t.customers.fullNameLabel}</Label>
+              <Label htmlFor="picker-customer-name">{t.customers.nameLabel}</Label>
               <Input
                 id="picker-customer-name"
                 name="name"
-                placeholder={t.customers.fullNamePlaceholder}
+                placeholder={t.customers.namePlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="picker-customer-phone">{t.customers.phoneOnlyLabel}</Label>
-              <Input
-                id="picker-customer-phone"
-                name="phone"
-                dir="ltr"
-                required
-              />
+              <Label htmlFor="picker-customer-phone">
+                {t.customers.phoneOptionalLabel}
+              </Label>
+              <Input id="picker-customer-phone" name="phone" dir="ltr" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="picker-customer-email">

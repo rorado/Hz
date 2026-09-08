@@ -39,7 +39,10 @@ export const invoiceSchema = z.object({
   customerName: z
     .string()
     .min(2, { error: "الاسم يجب أن يتكون من حرفين على الأقل" }),
-  customerPhone: z.string().min(6, { error: "رقم الهاتف غير صحيح" }),
+  // Optional — a customer may have no phone on file.
+  customerPhone: z
+    .union([z.string().min(6, { error: "رقم الهاتف غير صحيح" }), z.literal("")])
+    .optional(),
   customerEmail: z
     .union([z.email({ error: "البريد الإلكتروني غير صحيح" }), z.literal("")])
     .optional(),

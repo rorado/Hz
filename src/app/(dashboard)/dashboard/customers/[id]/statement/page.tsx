@@ -61,8 +61,7 @@ export default async function CustomerStatementPage({
     0,
   );
   const totalRemaining = statement.invoices.reduce(
-    (sum, invoice) =>
-      sum + Math.max(0, invoice.total - invoice.paidAmount),
+    (sum, invoice) => sum + Math.max(0, invoice.total - invoice.paidAmount),
     0,
   );
   const displayPeriodDate = (value: string | undefined) =>
@@ -103,7 +102,9 @@ export default async function CustomerStatementPage({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <ReceiptText className="size-6 text-primary print:hidden" />
-              <h1 className="text-2xl font-bold">{t.customers.statementTitle}</h1>
+              <h1 className="text-2xl font-bold">
+                {t.customers.statementTitle}
+              </h1>
             </div>
             <DocumentLogo
               logoUrl={settings.logoUrl}
@@ -141,7 +142,10 @@ export default async function CustomerStatementPage({
           <table className="w-full border-collapse text-sm">
             <thead className="bg-muted/60">
               <tr>
-                <th colSpan={2} className="border-e px-4 py-3 text-start print:py-2">
+                <th
+                  colSpan={2}
+                  className="border-e px-4 py-3 text-start print:py-2"
+                >
                   {t.customers.statementInvoicesLabel}
                 </th>
                 <th colSpan={2} className="px-4 py-3 text-start print:py-2">
@@ -152,7 +156,10 @@ export default async function CustomerStatementPage({
             <tbody>
               {statement.invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                  <td
+                    colSpan={4}
+                    className="px-4 py-10 text-center text-muted-foreground"
+                  >
                     {t.customers.statementNoInvoices}
                   </td>
                 </tr>

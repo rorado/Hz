@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     q: params.get("q"),
     sort,
     inStockOnly: params.get("inStock") === "1",
+    customerId: params.get("customerId"),
   });
 
   return NextResponse.json(feed);
